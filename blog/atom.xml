@@ -6,7 +6,7 @@
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://duckui.com/blog"/>
     <subtitle>Duck-UI Blog</subtitle>
-    <icon>https://duckui.com/img/favicon.png</icon>
+    <icon>https://duckui.com/img/logo-padding.png</icon>
     <entry>
         <title type="html"><![CDATA[... Duck-UI?]]></title>
         <id>https://duckui.com/blog/welcome-duck-ui-blog</id>
