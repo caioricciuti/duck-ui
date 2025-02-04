@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?><?xml-stylesheet type="text/xsl" href="atom.xsl"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://duckui.com/blog</id>
-    <title>Duck-UI Blog</title>
+    <title>Duck-UI: Data Visualization Made Easy Blog</title>
     <updated>2025-02-01T00:00:00.000Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://duckui.com/blog"/>
-    <subtitle>Duck-UI Blog</subtitle>
+    <subtitle>Duck-UI: Data Visualization Made Easy Blog</subtitle>
     <icon>https://duckui.com/img/logo-padding.png</icon>
+    <rights>Copyright © 2025 Duck-UI</rights>
     <entry>
         <title type="html"><![CDATA[... Duck-UI?]]></title>
         <id>https://duckui.com/blog/welcome-duck-ui-blog</id>
