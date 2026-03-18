@@ -166,7 +166,16 @@ export interface MountedFolderInfo {
 // Editor & Chart Types
 //
 
-export type EditorTabType = "sql" | "home" | "brain" | "connections" | "settings";
+export type EditorTabType = "sql" | "notebook" | "home" | "brain" | "connections" | "settings";
+
+export interface NotebookCell {
+  id: string;
+  type: "sql" | "markdown";
+  content: string;
+  result?: QueryResult | null;
+  chartConfig?: ChartConfig;
+  collapsed?: boolean;
+}
 
 export type ChartType =
   | "bar"
@@ -339,6 +348,17 @@ export interface TabSlice {
   updateTabChartConfig: (tabId: string, chartConfig: ChartConfig | undefined) => void;
   moveTab: (oldIndex: number, newIndex: number) => void;
   closeAllTabs: () => void;
+
+  // Notebook cell operations
+  getNotebookCells: (tabId: string) => NotebookCell[];
+  addNotebookCell: (tabId: string, afterCellId?: string, cellType?: "sql" | "markdown") => void;
+  removeNotebookCell: (tabId: string, cellId: string) => void;
+  updateNotebookCellContent: (tabId: string, cellId: string, content: string) => void;
+  updateNotebookCellResult: (tabId: string, cellId: string, result: QueryResult | null) => void;
+  updateNotebookCellChartConfig: (tabId: string, cellId: string, chartConfig: ChartConfig | undefined) => void;
+  moveNotebookCell: (tabId: string, cellId: string, direction: "up" | "down") => void;
+  toggleNotebookCellCollapsed: (tabId: string, cellId: string) => void;
+  toggleNotebookCellType: (tabId: string, cellId: string) => void;
 }
 
 export interface DuckBrainSlice {

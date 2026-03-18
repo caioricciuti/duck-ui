@@ -153,6 +153,107 @@ export const createEditor = (
   };
 };
 
+// Create a lightweight editor for notebook cells (no auto-save to tab query)
+export const createCellEditor = (
+  container: HTMLElement,
+  config: EditorConfig,
+  initialContent: string,
+  executeQueryFn: () => Promise<void>,
+  onContentChange: (value: string) => void
+): EditorInstance => {
+  const editor = monaco.editor.create(container, {
+    ...config,
+    value: initialContent,
+    wordBasedSuggestions: config.wordBasedSuggestions ? "allDocuments" : "off",
+    bracketPairColorization: { enabled: true },
+    guides: { bracketPairs: true, indentation: true },
+    renderWhitespace: "selection",
+    smoothScrolling: true,
+    cursorSmoothCaretAnimation: "on",
+    formatOnPaste: true,
+    formatOnType: true,
+    snippetSuggestions: "inline",
+    suggest: {
+      preview: true,
+      showMethods: true,
+      showFunctions: true,
+      showVariables: true,
+      showWords: true,
+      showColors: true,
+    },
+  });
+
+  // Ctrl/Cmd+Enter to run cell
+  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, async () => {
+    const query = editor.getValue().trim();
+    if (!query) return;
+    try {
+      await executeQueryFn();
+    } catch (err) {
+      toast.error(
+        `Query execution failed: ${err instanceof Error ? err.message : "Unknown error"}`
+      );
+    }
+  });
+
+  // Shift+Enter to run cell (Jupyter-style)
+  editor.addCommand(monaco.KeyMod.Shift | monaco.KeyCode.Enter, async () => {
+    const query = editor.getValue().trim();
+    if (!query) return;
+    try {
+      await executeQueryFn();
+    } catch (err) {
+      toast.error(
+        `Query execution failed: ${err instanceof Error ? err.message : "Unknown error"}`
+      );
+    }
+  });
+
+  editor.addCommand(monaco.KeyMod.Alt | monaco.KeyCode.KeyF, () => {
+    const formatAction = editor.getAction("editor.action.formatDocument");
+    formatAction?.run();
+  });
+
+  editor.addAction({
+    id: "format-sql",
+    label: "Format SQL",
+    keybindings: [monaco.KeyMod.Alt | monaco.KeyCode.KeyF],
+    contextMenuGroupId: "modification",
+    run: (ed) => {
+      const text = ed.getValue();
+      try {
+        const formatted = format(text, {
+          language: "sql",
+          keywordCase: "upper",
+          indentStyle: "standard",
+          linesBetweenQueries: 2,
+        });
+        ed.setValue(formatted);
+      } catch {
+        toast.error("Failed to format SQL");
+      }
+    },
+  });
+
+  // Content change listener — calls provided callback instead of updateTabQuery
+  let timeoutId: number;
+  const disposable = editor.onDidChangeModelContent(() => {
+    clearTimeout(timeoutId);
+    timeoutId = window.setTimeout(() => {
+      onContentChange(editor.getValue());
+    }, 300);
+  });
+
+  return {
+    editor,
+    dispose: () => {
+      clearTimeout(timeoutId);
+      disposable.dispose();
+      editor.dispose();
+    },
+  };
+};
+
 // Enhanced config hook with better defaults
 export const useMonacoConfig = (theme: string): EditorConfig => {
   return useMemo(

@@ -50,7 +50,18 @@ async function persistWorkspaceState(state: DuckStoreState): Promise<void> {
 
   try {
     // Save workspace (tabs, active tab, current DB)
-    const tabsJson = JSON.stringify(state.tabs.map((tab) => ({ ...tab, result: undefined })));
+    const tabsJson = JSON.stringify(state.tabs.map((tab) => {
+      if (tab.type === "notebook" && typeof tab.content === "string") {
+        try {
+          const cells = JSON.parse(tab.content) as Array<Record<string, unknown>>;
+          const cleanCells = cells.map((c) => ({ ...c, result: undefined }));
+          return { ...tab, result: undefined, content: JSON.stringify(cleanCells) };
+        } catch {
+          return { ...tab, result: undefined };
+        }
+      }
+      return { ...tab, result: undefined };
+    }));
     if (tabsJson !== lastSavedTabs) {
       await saveWorkspace(currentProfileId, {
         tabs: tabsJson,

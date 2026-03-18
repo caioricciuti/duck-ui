@@ -3,7 +3,7 @@ import { useMemo, useEffect, lazy, Suspense } from "react";
 import { Tabs, TabsList, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Plus, XSquareIcon, Loader2 } from "lucide-react";
+import { Plus, XSquareIcon, Loader2, Terminal, BookOpen } from "lucide-react";
 import { useQueryFromURL } from "@/hooks/useQueryFromURL";
 import {
   DndContext,
@@ -26,6 +26,12 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import SortableTab from "@/components/workspace/SortableTab";
 import { useDuckStore } from "@/store";
 import { ErrorBoundary, type FallbackProps } from "react-error-boundary";
@@ -52,6 +58,7 @@ const TabErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => (
 
 const HomeTab = lazy(() => import("@/components/workspace/HomeTab"));
 const SqlTab = lazy(() => import("@/components/workspace/SqlTab"));
+const NotebookTab = lazy(() => import("@/components/notebook/NotebookTab"));
 const BrainTab = lazy(() => import("@/components/workspace/BrainTab"));
 const ConnectionsTab = lazy(() => import("@/components/workspace/ConnectionsTab"));
 const SettingsTab = lazy(() => import("@/components/workspace/SettingsTab"));
@@ -108,6 +115,10 @@ export default function WorkspaceTabs() {
     createTab("sql", "");
   };
 
+  const addNewNotebookTab = () => {
+    createTab("notebook");
+  };
+
   return (
     <div className="flex flex-col h-full">
       <Tabs
@@ -116,15 +127,28 @@ export default function WorkspaceTabs() {
         className="flex flex-col h-full"
       >
         <div className="flex-shrink-0 flex items-center border-b bg-muted">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="rounded-none hover:bg-accent h-9 px-3 gap-2"
-            onClick={addNewCodeTab}
-            aria-label="New SQL tab"
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="rounded-none hover:bg-accent h-9 px-3 gap-2"
+                aria-label="New tab"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem onClick={addNewCodeTab}>
+                <Terminal className="h-4 w-4 mr-2" />
+                SQL Tab
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={addNewNotebookTab}>
+                <BookOpen className="h-4 w-4 mr-2" />
+                Notebook
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <ScrollArea className="flex-grow">
             <ContextMenu>
               <ContextMenuTrigger>
@@ -149,7 +173,12 @@ export default function WorkspaceTabs() {
               </ContextMenuTrigger>
               <ContextMenuContent>
                 <ContextMenuItem onClick={addNewCodeTab}>
-                  New Query Tab <Plus className="ml-4 h-4 w-4" />
+                  <Terminal className="h-4 w-4 mr-2" />
+                  New SQL Tab
+                </ContextMenuItem>
+                <ContextMenuItem onClick={addNewNotebookTab}>
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  New Notebook
                 </ContextMenuItem>
                 <ContextMenuSeparator />
                 <ContextMenuItem onClick={closeAllTabs} className="text-red-600">
@@ -173,6 +202,8 @@ export default function WorkspaceTabs() {
                     <HomeTab />
                   ) : tab.type === "sql" ? (
                     <SqlTab tabId={tab.id} />
+                  ) : tab.type === "notebook" ? (
+                    <NotebookTab tabId={tab.id} />
                   ) : tab.type === "brain" ? (
                     <BrainTab />
                   ) : tab.type === "connections" ? (

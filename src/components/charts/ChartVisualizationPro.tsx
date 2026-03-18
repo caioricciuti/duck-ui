@@ -300,7 +300,7 @@ export const ChartVisualizationPro: React.FC<ChartVisualizationProProps> = ({
   const { theme } = useTheme();
   const chartRef = useRef<HTMLDivElement>(null);
   const uPlotRef = useRef<uPlot | null>(null);
-  const [legendState, setLegendState] = useState<{ label: string; show: boolean }[]>([]);
+  const [hiddenSeries, setHiddenSeries] = useState<Set<number>>(new Set());
 
   // Get numeric columns for Y-axis
   const numericColumns = useMemo(
@@ -582,19 +582,22 @@ export const ChartVisualizationPro: React.FC<ChartVisualizationProProps> = ({
     return { uPlotOptions: opts, uPlotData: data, seriesInfo: sInfo };
   }, [config, transformedData, theme]);
 
-  // Sync legend state when series change
-  useEffect(() => {
-    if (seriesInfo.length > 0) {
-      setLegendState(seriesInfo.map((s) => ({ label: s.label, show: true })));
-    }
-  }, [seriesInfo]);
+  const legendState = useMemo(
+    () => seriesInfo.map((s, i) => ({ label: s.label, show: !hiddenSeries.has(i) })),
+    [seriesInfo, hiddenSeries]
+  );
 
   const handleLegendToggle = useCallback((idx: number) => {
-    setLegendState((prev) => {
-      const next = prev.map((s, i) => (i === idx ? { ...s, show: !s.show } : s));
+    setHiddenSeries((prev) => {
+      const next = new Set(prev);
+      if (next.has(idx)) {
+        next.delete(idx);
+      } else {
+        next.add(idx);
+      }
       // Toggle series visibility on the uPlot instance
       if (uPlotRef.current) {
-        uPlotRef.current.setSeries(idx + 1, { show: next[idx].show });
+        uPlotRef.current.setSeries(idx + 1, { show: !next.has(idx) });
       }
       return next;
     });

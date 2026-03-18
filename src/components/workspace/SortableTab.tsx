@@ -2,7 +2,7 @@ import React from "react";
 import { CSS } from "@dnd-kit/utilities";
 import { useSortable } from "@dnd-kit/sortable";
 import { TabsTrigger } from "@/components/ui/tabs";
-import { X, Home, Terminal, GripVertical, Brain, Cable, Settings } from "lucide-react";
+import { X, Home, Terminal, GripVertical, Brain, Cable, Settings, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDuckStore, type EditorTabType } from "@/store";
 
@@ -89,6 +89,8 @@ const SortableTab = React.memo(function SortableTab({ tab, isActive }: SortableT
               <Home className="h-4 w-4" />
             ) : tab.type === "sql" ? (
               <Terminal className="h-4 w-4" />
+            ) : tab.type === "notebook" ? (
+              <BookOpen className="h-4 w-4" />
             ) : tab.type === "brain" ? (
               <Brain className="h-4 w-4" />
             ) : tab.type === "connections" ? (
