@@ -52,9 +52,7 @@ export const createTabSlice: StateCreator<
 
   createTab: (type = "sql", content = "", title) => {
     const isNotebook = type === "notebook";
-    const defaultContent = isNotebook
-      ? serializeCells([createDefaultCell("sql")])
-      : content;
+    const defaultContent = isNotebook ? serializeCells([createDefaultCell("sql")]) : content;
     const defaultTitle = isNotebook ? "Untitled Notebook" : "Untitled Query";
 
     const newTab: EditorTab = {
@@ -223,7 +221,12 @@ export const createTabSlice: StateCreator<
       tabs: updateNotebookContent(state.tabs, tabId, (cells) =>
         cells.map((c) =>
           c.id === cellId
-            ? { ...c, type: c.type === "sql" ? "markdown" : "sql", result: null, chartConfig: undefined }
+            ? {
+                ...c,
+                type: c.type === "sql" ? "markdown" : "sql",
+                result: null,
+                chartConfig: undefined,
+              }
             : c
         )
       ),

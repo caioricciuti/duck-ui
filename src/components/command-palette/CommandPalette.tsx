@@ -50,7 +50,9 @@ export default function CommandPalette() {
   // Load saved queries when palette opens
   useEffect(() => {
     if (open && currentProfileId) {
-      getSavedQueries(currentProfileId).then(setSavedQueries).catch(() => {});
+      getSavedQueries(currentProfileId)
+        .then(setSavedQueries)
+        .catch(() => {});
     }
   }, [open, currentProfileId, savedQueriesVersion]);
 
@@ -76,10 +78,7 @@ export default function CommandPalette() {
     setOpen(false);
   };
 
-  const openTabs = useMemo(
-    () => tabs.filter((t) => t.id !== activeTabId),
-    [tabs, activeTabId]
-  );
+  const openTabs = useMemo(() => tabs.filter((t) => t.id !== activeTabId), [tabs, activeTabId]);
 
   const tableEntries = useMemo(() => {
     const entries: { database: string; table: string }[] = [];

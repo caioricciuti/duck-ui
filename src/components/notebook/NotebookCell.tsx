@@ -8,7 +8,6 @@ import {
   Code,
   Type,
   ChevronRight,
-
   BarChart3,
   Table,
   Plus,
@@ -19,7 +18,11 @@ import { cn } from "@/lib/utils";
 import { useDuckStore } from "@/store";
 import type { NotebookCell as NotebookCellType, QueryResult, ChartConfig } from "@/store/types";
 import { useTheme } from "@/components/theme/theme-provider";
-import { createCellEditor, useMonacoConfig, type EditorInstance } from "@/components/editor/monacoConfig";
+import {
+  createCellEditor,
+  useMonacoConfig,
+  type EditorInstance,
+} from "@/components/editor/monacoConfig";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DuckUiTable from "@/components/table/DuckUItable";
@@ -34,7 +37,9 @@ import {
 
 const CellErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => (
   <div className="p-3 text-center">
-    <p className="text-xs text-destructive mb-2">{error instanceof Error ? error.message : "Render error"}</p>
+    <p className="text-xs text-destructive mb-2">
+      {error instanceof Error ? error.message : "Render error"}
+    </p>
     <button onClick={resetErrorBoundary} className="text-xs px-2 py-1 bg-muted rounded">
       Retry
     </button>
@@ -75,7 +80,8 @@ export function NotebookCellComponent({
   const toggleCollapsed = useDuckStore((s) => s.toggleNotebookCellCollapsed);
   const toggleCellType = useDuckStore((s) => s.toggleNotebookCellType);
 
-  const hasResult = cell.type === "sql" && cell.result && !cell.result.error && cell.result.data.length > 0;
+  const hasResult =
+    cell.type === "sql" && cell.result && !cell.result.error && cell.result.data.length > 0;
   const hasError = cell.type === "sql" && cell.result?.error;
 
   // Status indicator
@@ -210,15 +216,19 @@ export function NotebookCellComponent({
           onClick={() => toggleCellType(tabId, cell.id)}
         >
           {cell.type === "sql" ? (
-            <><Code className="h-3 w-3 mr-1" />SQL</>
+            <>
+              <Code className="h-3 w-3 mr-1" />
+              SQL
+            </>
           ) : (
-            <><Type className="h-3 w-3 mr-1" />MD</>
+            <>
+              <Type className="h-3 w-3 mr-1" />
+              MD
+            </>
           )}
         </Badge>
 
-        <span className="text-[10px] text-muted-foreground ml-1">
-          [{cellIndex + 1}]
-        </span>
+        <span className="text-[10px] text-muted-foreground ml-1">[{cellIndex + 1}]</span>
 
         {/* Spacer */}
         <div className="flex-1" />
@@ -249,10 +259,7 @@ export function NotebookCellComponent({
               onClick={() => toggleCollapsed(tabId, cell.id)}
             >
               <ChevronRight
-                className={cn(
-                  "h-3 w-3 transition-transform",
-                  !cell.collapsed && "rotate-90"
-                )}
+                className={cn("h-3 w-3 transition-transform", !cell.collapsed && "rotate-90")}
               />
             </Button>
           )}
@@ -302,10 +309,7 @@ export function NotebookCellComponent({
             className="w-full p-3 bg-transparent resize-none outline-none text-sm font-mono min-h-[60px]"
           />
         ) : (
-          <div
-            className="p-3 cursor-pointer"
-            onClick={() => setIsEditing(true)}
-          >
+          <div className="p-3 cursor-pointer" onClick={() => setIsEditing(true)}>
             <MarkdownRenderer
               content={cell.content}
               className="prose prose-sm dark:prose-invert max-w-none"
@@ -388,11 +392,7 @@ function CellResults({
       <TabsContent value="table" className="mt-0">
         <div className="max-h-[400px] overflow-auto">
           <ErrorBoundary FallbackComponent={CellErrorFallback}>
-            <DuckUiTable
-              data={result.data}
-              tableHeight={300}
-              initialPageSize={50}
-            />
+            <DuckUiTable data={result.data} tableHeight={300} initialPageSize={50} />
           </ErrorBoundary>
         </div>
       </TabsContent>

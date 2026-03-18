@@ -14,16 +14,15 @@ interface NotebookToolbarProps {
   cellCount: number;
 }
 
-export function NotebookToolbar({ onRunAll, onAddCell, isRunning, cellCount }: NotebookToolbarProps) {
+export function NotebookToolbar({
+  onRunAll,
+  onAddCell,
+  isRunning,
+  cellCount,
+}: NotebookToolbarProps) {
   return (
     <div className="flex items-center gap-2 px-4 py-2 border-b bg-muted/30">
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={onRunAll}
-        disabled={isRunning}
-        className="gap-2"
-      >
+      <Button variant="outline" size="sm" onClick={onRunAll} disabled={isRunning} className="gap-2">
         {isRunning ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
         ) : (

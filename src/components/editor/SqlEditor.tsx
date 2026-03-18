@@ -1,5 +1,15 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
-import { Play, Loader2, Lightbulb, Command, Edit, Share2, Brain, Bookmark, ListTree } from "lucide-react";
+import {
+  Play,
+  Loader2,
+  Lightbulb,
+  Command,
+  Edit,
+  Share2,
+  Brain,
+  Bookmark,
+  ListTree,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useDuckStore } from "@/store";
 import { useTheme } from "../theme/theme-provider";
@@ -132,9 +142,7 @@ const SqlEditor: React.FC<SqlEditorProps> = ({ tabId, title, className }) => {
       const result = await executeQuery(`EXPLAIN ANALYZE ${query}`);
       if (result && result.data?.length > 0) {
         // DuckDB returns rows with explain_key / explain_value — the analyzed_plan row has the full plan
-        const planRow = result.data.find(
-          (row) => row["explain_key"] === "analyzed_plan"
-        );
+        const planRow = result.data.find((row) => row["explain_key"] === "analyzed_plan");
         const planText = planRow
           ? String(planRow["explain_value"])
           : result.data.map((row) => String(row["explain_value"] ?? "")).join("\n");

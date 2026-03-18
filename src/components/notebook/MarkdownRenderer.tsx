@@ -27,10 +27,5 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
     );
   }
 
-  return (
-    <div
-      className={className}
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
-  );
+  return <div className={className} dangerouslySetInnerHTML={{ __html: html }} />;
 }

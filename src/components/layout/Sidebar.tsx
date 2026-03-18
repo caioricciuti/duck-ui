@@ -109,12 +109,14 @@ export default function Sidebar({ isExplorerOpen, onToggleExplorer }: SidebarPro
     }
   };
 
-
   const otherProfiles = profiles.filter((p) => p.id !== currentProfile?.id);
 
   return (
     <>
-      <nav aria-label="Main navigation" className="flex flex-col h-full w-16 border-r bg-background shrink-0">
+      <nav
+        aria-label="Main navigation"
+        className="flex flex-col h-full w-16 border-r bg-background shrink-0"
+      >
         {/* Profile Avatar */}
         <div className="flex items-center justify-center w-16 h-10 border-b">
           <DropdownMenu>
@@ -389,7 +391,12 @@ export default function Sidebar({ isExplorerOpen, onToggleExplorer }: SidebarPro
               <Tooltip>
                 <TooltipTrigger asChild>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="mx-auto h-9 w-9" aria-label="Help">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="mx-auto h-9 w-9"
+                      aria-label="Help"
+                    >
                       <HelpCircle className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>

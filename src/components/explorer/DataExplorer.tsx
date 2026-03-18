@@ -86,13 +86,16 @@ export default function DataExplorer() {
   const treeData = buildTreeData();
   const isExternal = currentConnection?.scope === "External";
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.dataTransfer.types.includes("Files") && !isExternal) {
-      setIsDraggingOver(true);
-    }
-  }, [isExternal]);
+  const handleDragOver = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.dataTransfer.types.includes("Files") && !isExternal) {
+        setIsDraggingOver(true);
+      }
+    },
+    [isExternal]
+  );
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -103,13 +106,16 @@ export default function DataExplorer() {
     }
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDraggingOver(false);
-    if (isExternal || !e.dataTransfer.files.length) return;
-    setIsSheetOpen(true);
-  }, [isExternal]);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDraggingOver(false);
+      if (isExternal || !e.dataTransfer.files.length) return;
+      setIsSheetOpen(true);
+    },
+    [isExternal]
+  );
 
   return (
     <Card

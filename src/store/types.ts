@@ -355,7 +355,11 @@ export interface TabSlice {
   removeNotebookCell: (tabId: string, cellId: string) => void;
   updateNotebookCellContent: (tabId: string, cellId: string, content: string) => void;
   updateNotebookCellResult: (tabId: string, cellId: string, result: QueryResult | null) => void;
-  updateNotebookCellChartConfig: (tabId: string, cellId: string, chartConfig: ChartConfig | undefined) => void;
+  updateNotebookCellChartConfig: (
+    tabId: string,
+    cellId: string,
+    chartConfig: ChartConfig | undefined
+  ) => void;
   moveNotebookCell: (tabId: string, cellId: string, direction: "up" | "down") => void;
   toggleNotebookCellCollapsed: (tabId: string, cellId: string) => void;
   toggleNotebookCellType: (tabId: string, cellId: string) => void;
