@@ -31,6 +31,7 @@ export default function DataExplorer() {
   const fetchDatabasesAndTablesInfo = useDuckStore((s) => s.fetchDatabasesAndTablesInfo);
   const isFileSystemSupported = useDuckStore((s) => s.isFileSystemSupported);
   const schemaFetchError = useDuckStore((s) => s.schemaFetchError);
+  const isLoadingDbTablesFetch = useDuckStore((s) => s.isLoadingDbTablesFetch);
   const [searchTerm, setSearchTerm] = useState("");
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -150,18 +151,16 @@ export default function DataExplorer() {
           </div>
 
           <div className="flex items-center gap-1">
-            {/* Refresh button for external connections */}
-            {isExternal && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => fetchDatabasesAndTablesInfo()}
-                title="Refresh Schema"
-              >
-                <RefreshCw className="h-4 w-4" />
-              </Button>
-            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => fetchDatabasesAndTablesInfo()}
+              disabled={isLoadingDbTablesFetch}
+              title="Refresh Schema"
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoadingDbTablesFetch ? "animate-spin" : ""}`} />
+            </Button>
 
             {/* Import menu - only show for non-external connections */}
             {!isExternal && (

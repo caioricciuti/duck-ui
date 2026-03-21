@@ -164,7 +164,7 @@ const HomeTab = () => {
       createTab(
         "sql",
         `
-SELECT * FROM 'https://shell.duckdb.org/data/tpch/0_01/parquet/orders.parquet' LIMIT 1000;
+SELECT * FROM 'https://caioricciuti.com/data.parquet'LIMIT 1000;
 `,
         "Duck UI Explore"
       );

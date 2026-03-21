@@ -55,7 +55,9 @@ export const createQuerySlice: StateCreator<
         addHistoryEntry(currentProfileId, query).catch(() => {});
       }
       // If the query is DDL, refresh schema.
-      if (/^(CREATE|ALTER|DROP|ATTACH)/i.test(query.trim())) {
+      // Strip leading comments and whitespace before matching
+      const stripped = query.trim().replace(/^(--[^\n]*\n\s*|\/\*[\s\S]*?\*\/\s*)*/g, "");
+      if (/^(CREATE|ALTER|DROP|ATTACH|DETACH|INSTALL|LOAD)\b/i.test(stripped)) {
         await get().fetchDatabasesAndTablesInfo();
       }
       return tabId ? undefined : queryResult;
