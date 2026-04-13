@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
@@ -26,7 +27,8 @@ import {
 import { Settings, Trash2, UserPlus } from "lucide-react";
 import { useTheme } from "@/components/theme/theme-provider";
 import { useDuckStore } from "@/store";
-import { setSetting } from "@/services/persistence/repositories/settingsRepository";
+import { getSetting, setSetting } from "@/services/persistence/repositories/settingsRepository";
+import { DEFAULT_DUCKDB_MEMORY_LIMIT_MB } from "@/store/slices/duckdbSlice";
 import { toast } from "sonner";
 import ProfileEditor from "@/components/profile/ProfileEditor";
 import ProfileAvatar from "@/components/profile/ProfileAvatar";
@@ -47,6 +49,44 @@ export default function SettingsTab() {
   const [switchTarget, setSwitchTarget] = useState<Profile | null>(null);
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [pendingDeleteTargetId, setPendingDeleteTargetId] = useState<string | null>(null);
+  const [memoryLimitMb, setMemoryLimitMb] = useState<number>(DEFAULT_DUCKDB_MEMORY_LIMIT_MB);
+  const [isSavingPerformance, setIsSavingPerformance] = useState(false);
+
+  useEffect(() => {
+    if (!currentProfileId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const raw = await getSetting(currentProfileId, "duckdb", "memory_limit_mb");
+        if (!cancelled && raw) {
+          const parsed = Number(JSON.parse(raw));
+          if (Number.isFinite(parsed)) {
+            setMemoryLimitMb(Math.floor(parsed));
+          }
+        }
+      } catch {
+        // ignore — fall back to default
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentProfileId]);
+
+  const handleSaveMemoryLimit = async () => {
+    if (!currentProfileId) return;
+    const clamped = Math.max(256, Math.min(16384, Math.floor(memoryLimitMb || 0)));
+    if (clamped !== memoryLimitMb) setMemoryLimitMb(clamped);
+    setIsSavingPerformance(true);
+    try {
+      await setSetting(currentProfileId, "duckdb", "memory_limit_mb", JSON.stringify(clamped));
+      toast.success("Memory limit saved. Reload to apply.");
+    } catch {
+      toast.error("Failed to save memory limit");
+    } finally {
+      setIsSavingPerformance(false);
+    }
+  };
 
   const handleProfileSave = async (values: { name: string; avatarEmoji: string }) => {
     try {
@@ -151,6 +191,7 @@ export default function SettingsTab() {
             <TabsList className="mb-6">
               <TabsTrigger value="profile">Profile</TabsTrigger>
               <TabsTrigger value="general">General</TabsTrigger>
+              <TabsTrigger value="performance">Performance</TabsTrigger>
             </TabsList>
 
             <TabsContent value="profile" className="mt-0 space-y-6">
@@ -232,6 +273,38 @@ export default function SettingsTab() {
                     Cannot delete the only profile. Create another profile first.
                   </p>
                 )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="performance" className="mt-0 space-y-6">
+              <div className="space-y-3">
+                <Label htmlFor="memory-limit" className="text-sm font-medium">
+                  DuckDB memory limit (MB)
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="memory-limit"
+                    type="number"
+                    min={256}
+                    max={16384}
+                    step={256}
+                    value={memoryLimitMb}
+                    onChange={(e) => setMemoryLimitMb(Number(e.target.value))}
+                    className="max-w-[160px]"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={handleSaveMemoryLimit}
+                    disabled={isSavingPerformance || !currentProfileId}
+                  >
+                    Save
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Caps DuckDB heap usage. Raise this if large sorts or aggregations fail with
+                  out-of-memory errors; lower it on memory-constrained devices. Browser WASM
+                  practical ceiling is around 4 GB. Changes take effect after reload.
+                </p>
               </div>
             </TabsContent>
 

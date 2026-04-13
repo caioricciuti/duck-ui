@@ -227,24 +227,8 @@ const ConnectionsTab = () => {
                     <TableCell>{connection.environment}</TableCell>
 
                     <TableCell className="text-right">
-                      {connection.environment === "BUILT_IN" || connection.environment === "ENV" ? (
-                        <div className="justify-end flex gap-2 p-2 rounded-md">
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <InfoIcon size={20} />
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p className="text-sm max-w-[200px] !text-center">
-                                  This connection is built-in or was set via docker environment
-                                  variables and cannot be modified or deleted.
-                                </p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
-                      ) : (
-                        <div className="flex justify-end gap-2">
+                      <div className="flex justify-end gap-2 items-center">
+                        {connection.environment !== "BUILT_IN" && (
                           <Button
                             variant="outline"
                             size="sm"
@@ -253,49 +237,70 @@ const ConnectionsTab = () => {
                           >
                             {connection.id === currentConnection?.id ? "Connected" : "Connect"}
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => onEdit(connection.id)}
-                            disabled={connection.id === "WASM"}
-                          >
-                            <Edit2 size={16} />
-                          </Button>
-                          <AlertDialog
-                            open={deleteConfirmationId === connection.id}
-                            onOpenChange={(isOpen) =>
-                              setDeleteConfirmationId(isOpen ? connection.id : null)
-                            }
-                          >
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="sm" disabled={isLoading}>
-                                <Trash2 size={16} className="text-destructive" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Connection</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to delete the connection "{connection.name}
-                                  "? This action cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => {
-                                    deleteConnection(connection.id);
-                                    setDeleteConfirmationId(null);
-                                  }}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      )}
+                        )}
+
+                        {connection.environment === "BUILT_IN" ||
+                        connection.environment === "ENV" ? (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <InfoIcon size={18} className="text-muted-foreground" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="text-sm max-w-[220px] !text-center">
+                                  {connection.environment === "ENV"
+                                    ? "Configured via environment variables — cannot be edited or deleted."
+                                    : "Built-in connection — cannot be edited or deleted."}
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ) : (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => onEdit(connection.id)}
+                              disabled={connection.id === "WASM"}
+                            >
+                              <Edit2 size={16} />
+                            </Button>
+                            <AlertDialog
+                              open={deleteConfirmationId === connection.id}
+                              onOpenChange={(isOpen) =>
+                                setDeleteConfirmationId(isOpen ? connection.id : null)
+                              }
+                            >
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="sm" disabled={isLoading}>
+                                  <Trash2 size={16} className="text-destructive" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Connection</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete the connection "
+                                    {connection.name}"? This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => {
+                                      deleteConnection(connection.id);
+                                      setDeleteConfirmationId(null);
+                                    }}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

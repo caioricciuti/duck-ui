@@ -1,7 +1,10 @@
 import type { StateCreator } from "zustand";
 import { initializeWasmConnection } from "@/services/duckdb";
 import type { DuckStoreState, DuckdbSlice, ConnectionProvider } from "../types";
+import { getSetting } from "@/services/persistence/repositories/settingsRepository";
 import { toast } from "sonner";
+
+export const DEFAULT_DUCKDB_MEMORY_LIMIT_MB = 4096;
 
 export const createDuckdbSlice: StateCreator<
   DuckStoreState,
@@ -80,9 +83,29 @@ export const createDuckdbSlice: StateCreator<
         console.warn("[DuckDB] Failed to set enable_http_metadata_cache");
       }
 
-      for (const ext of ["arrow", "parquet"]) {
+      try {
+        const profileId = get().currentProfileId;
+        let memoryLimitMb = DEFAULT_DUCKDB_MEMORY_LIMIT_MB;
+        if (profileId) {
+          const raw = await getSetting(profileId, "duckdb", "memory_limit_mb");
+          if (raw) {
+            const parsed = Number(JSON.parse(raw));
+            if (Number.isFinite(parsed) && parsed >= 256 && parsed <= 16384) {
+              memoryLimitMb = Math.floor(parsed);
+            }
+          }
+        }
+        await connection.query(`SET memory_limit='${memoryLimitMb}MB'`);
+      } catch {
+        console.warn("[DuckDB] Failed to set memory_limit");
+      }
+
+      for (const ext of ["arrow", "parquet", "ducklake"]) {
         try {
           await connection.query(`INSTALL ${ext}`);
+          if (ext === "ducklake") {
+            await connection.query(`LOAD ${ext}`);
+          }
         } catch {
           console.warn(`[DuckDB] Failed to install ${ext} extension`);
           failedExtensions.push(ext);
