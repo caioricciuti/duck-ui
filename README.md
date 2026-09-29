@@ -23,7 +23,7 @@ Open `http://localhost:5522`. That's the whole setup.
 
 ## What you get
 
-- **SQL editor** — Monaco with schema-aware autocomplete, formatting, snippets, multi-tab workspace, query history, saved queries, EXPLAIN viewer.
+- **SQL editor**: CodeMirror with schema-aware autocomplete, DuckDB formatting, multi-tab workspace, query history, saved queries, EXPLAIN viewer.
 - **Notebooks** — SQL, Python (Pyodide, with `sql()` returning pandas DataFrames) and markdown cells with per-cell results and charts.
 - **Query parameters** — `$name` placeholders get an input bar, in SQL tabs and notebooks.
 - **Compare results** — pin a result and diff it against a later run: schema, row counts, changed cells.
@@ -138,7 +138,7 @@ MIT. See [LICENSE](LICENSE.md).
 
 ## Acknowledgements
 
-[DuckDB](https://duckdb.org/) · [duckdb-wasm](https://github.com/duckdb/duckdb-wasm) · [React](https://react.dev/) · [Tailwind CSS](https://tailwindcss.com/) · [Zustand](https://github.com/pmndrs/zustand) · [Lucide](https://lucide.dev/)
+[DuckDB](https://duckdb.org/) · [duckdb-wasm](https://github.com/duckdb/duckdb-wasm) · [Svelte](https://svelte.dev/) · [CodeMirror](https://codemirror.net/) · [Tailwind CSS](https://tailwindcss.com/) · [uPlot](https://github.com/leeoniya/uPlot) · [Lucide](https://lucide.dev/)
 
 ## Sponsors
 
