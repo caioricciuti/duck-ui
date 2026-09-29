@@ -1,6 +1,6 @@
 <script lang="ts">
   import {
-    SquareTerminal, NotebookPen, FlaskConical, Server, PackageCheck, Star, BookOpen,
+    SquareTerminal, NotebookPen, FlaskConical, LayoutDashboard, Radio, Brain, Server, PackageCheck, Star, BookOpen,
     ExternalLink, Database, Building2, ChartColumn, Logs, Bot, ArrowUpRight, Play,
   } from 'lucide-svelte'
   import ProfileAvatar from '../profile/ProfileAvatar.svelte'
@@ -10,6 +10,7 @@
   import { stageRemoteTextFile } from '@/services/duckdb/utils'
   import { getUiConfig } from '@/lib/appConfig'
   import { goTo } from '../../stores/router.svelte'
+  import { openShareLive } from '../../stores/overlays.svelte'
 
   const ui = getUiConfig()
   const version = __DUCK_UI_VERSION__
@@ -35,6 +36,28 @@
       icon: NotebookPen,
       run: () => duckActions().createTab('notebook'),
     },
+    {
+      title: 'Dashboards',
+      description: 'Reports as markdown with live SQL, charts and inputs.',
+      icon: LayoutDashboard,
+      run: () => goTo('dashboards'),
+    },
+    {
+      title: 'Share live',
+      description: 'Invite another browser into your workspace. No server.',
+      icon: Radio,
+      run: openShareLive,
+    },
+    ...(ui.hideBrain
+      ? []
+      : [
+          {
+            title: 'Duck Brain',
+            description: 'Ask questions in plain language, get SQL back.',
+            icon: Brain,
+            run: () => duckActions().toggleBrainPanel(),
+          },
+        ]),
     {
       title: 'Explore with examples',
       description: 'Open a sample query over a public Parquet file.',

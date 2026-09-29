@@ -3,6 +3,7 @@
   import ExtensionsPage from '../settings/ExtensionsPage.svelte'
   import ConnectionsPage from '../connections/ConnectionsPage.svelte'
   import SavedQueriesPage from '../saved-queries/SavedQueriesPage.svelte'
+  import DashboardsPage from '../dashboard/DashboardsPage.svelte'
   import QueryHistoryPage from '../history/QueryHistoryPage.svelte'
   import { getRoute } from '../../stores/router.svelte'
 
@@ -17,6 +18,8 @@
     <ExtensionsPage />
   {:else if route === 'connections'}
     <ConnectionsPage />
+  {:else if route === 'dashboards'}
+    <DashboardsPage />
   {:else if route === 'saved-queries'}
     <SavedQueriesPage />
   {:else if route === 'history'}

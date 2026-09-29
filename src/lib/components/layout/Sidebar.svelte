@@ -1,6 +1,7 @@
 <script lang="ts">
   import Button from '../common/Button.svelte'
   import ProfileAvatar from '../profile/ProfileAvatar.svelte'
+  import SessionIndicator from '../collaboration/SessionIndicator.svelte'
   import { duck } from '../../stores/duck.svelte'
   import { toggleTheme, getTheme } from '../../stores/theme.svelte'
   import { openCommandPalette } from '../../stores/command-palette.svelte'
@@ -80,6 +81,8 @@
   {/if}
 
   <span class="my-1.5 h-px w-5 bg-edge"></span>
+
+  <SessionIndicator />
 
   <span
     class="my-1 h-1.5 w-1.5 rounded-full {online ? 'bg-success' : 'bg-danger'}"

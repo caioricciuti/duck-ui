@@ -7,11 +7,16 @@
   import ContextPanel from './ContextPanel.svelte'
   import PageRouter from './PageRouter.svelte'
   import DuckBrainSheet from '../duck-brain/DuckBrainSheet.svelte'
-  import { duckActions } from '../../stores/duck.svelte'
+  import JoinSessionDialog from '../collaboration/JoinSessionDialog.svelte'
+  import DeepLinkLoader from '../share/DeepLinkLoader.svelte'
+  import ShareLiveDialog from '../collaboration/ShareLiveDialog.svelte'
+  import DashboardShareLoader from '../dashboard/DashboardShareLoader.svelte'
+  import { isShareLiveOpen, closeShareLive } from '../../stores/overlays.svelte'
+  import { duck, duckActions } from '../../stores/duck.svelte'
   import { openCommandPalette, toggleCommandPalette } from '../../stores/command-palette.svelte'
   import { toggleExplorer } from '../../stores/layout.svelte'
   import { hasUnsavedWork } from '@/lib/boot'
-  import { initRouter, isOnWorkspace, goWorkspace } from '../../stores/router.svelte'
+  import { initRouter, isOnWorkspace, goWorkspace, goTo } from '../../stores/router.svelte'
 
   function handleGlobalShortcuts(e: KeyboardEvent) {
     const mod = e.metaKey || e.ctrlKey
@@ -61,6 +66,24 @@
     }
   }
 
+  // The dashboards list used to be a panel behind a store flag. Logic still
+  // raises that flag, which now opens the page.
+  const dashboardsRequested = $derived(duck((s) => s.isDashboardsPanelOpen))
+  $effect(() => {
+    if (!dashboardsRequested) return
+    duckActions().setDashboardsPanelOpen(false)
+    goTo('dashboards')
+  })
+
+  // Opening a dashboard from anywhere lands on its tab, not behind a page.
+  const activeTabId = $derived(duck((s) => s.activeTabId))
+  let lastActiveTabId = duckActions().activeTabId
+  $effect(() => {
+    if (activeTabId === lastActiveTabId) return
+    lastActiveTabId = activeTabId
+    goWorkspace()
+  })
+
   function handleBeforeUnload(e: BeforeUnloadEvent) {
     if (hasUnsavedWork()) e.preventDefault()
   }
@@ -100,3 +123,7 @@
 
 <CommandPalette />
 <DuckBrainSheet />
+<JoinSessionDialog />
+<DeepLinkLoader />
+<DashboardShareLoader />
+<ShareLiveDialog open={isShareLiveOpen()} onclose={closeShareLive} />

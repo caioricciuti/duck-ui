@@ -1,6 +1,7 @@
 <script lang="ts">
   import HomeTab from '../workspace/HomeTab.svelte'
-  import PendingTab from '../workspace/PendingTab.svelte'
+  import DashboardTab from '../dashboard/DashboardTab.svelte'
+  import { openShareLive } from '../../stores/overlays.svelte'
   import SqlTab from '../workspace/SqlTab.svelte'
   import NotebookTab from '../notebook/NotebookTab.svelte'
   import { duck } from '../../stores/duck.svelte'
@@ -20,7 +21,7 @@
     {:else if tab.type === 'notebook'}
       <NotebookTab tabId={tab.id} />
     {:else if tab.type === 'dashboard'}
-      <PendingTab name="Dashboards" />
+      <DashboardTab tabId={tab.id} onsharelive={openShareLive} />
     {/if}
   </div>
 {/each}

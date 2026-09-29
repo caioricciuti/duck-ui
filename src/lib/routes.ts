@@ -1,5 +1,6 @@
 import {
   Bookmark,
+  LayoutDashboard,
   Cable,
   History,
   Library,
@@ -10,7 +11,8 @@ import {
 } from "lucide-svelte";
 import { getUiConfig, type UiConfig } from "@/lib/appConfig";
 
-export type PageRoute = "saved-queries" | "history" | "connections" | "extensions" | "settings";
+export type PageRoute =
+  "dashboards" | "saved-queries" | "history" | "connections" | "extensions" | "settings";
 export type Route = "workspace" | PageRoute;
 export type NavGroupId = "query" | "library" | "data" | "settings";
 
@@ -37,6 +39,11 @@ export interface NavGroup {
 }
 
 export const PAGE_ROUTES: Record<PageRoute, PageMeta> = {
+  dashboards: {
+    label: "Dashboards",
+    description: "Reports written as markdown, with live SQL",
+    icon: LayoutDashboard,
+  },
   "saved-queries": {
     label: "Saved queries",
     description: "Queries you kept for later",
@@ -79,7 +86,12 @@ export const PAGE_SECTIONS: Partial<Record<PageRoute, PageSection[]>> = {
 
 export const NAV_GROUPS: NavGroup[] = [
   { id: "query", label: "Query", icon: SquareTerminal, routes: [] },
-  { id: "library", label: "Library", icon: Library, routes: ["saved-queries", "history"] },
+  {
+    id: "library",
+    label: "Library",
+    icon: Library,
+    routes: ["dashboards", "saved-queries", "history"],
+  },
   { id: "data", label: "Data", icon: Database, routes: ["connections", "extensions"] },
   { id: "settings", label: "Settings", icon: Settings, routes: ["settings"] },
 ];

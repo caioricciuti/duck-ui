@@ -1,5 +1,7 @@
 <script lang="ts">
-  import { Play, Square, ListTree, WandSparkles, Pin, GitCompare, Keyboard, Brain, Sparkles, Bookmark, ChartColumn, Map as MapIcon } from 'lucide-svelte'
+  import { untrack } from 'svelte'
+  import type { Extension } from '@codemirror/state'
+  import { Play, Square, ListTree, WandSparkles, Pin, GitCompare, Keyboard, Brain, Sparkles, Bookmark, Share2, LayoutDashboard, ChartColumn, Map as MapIcon } from 'lucide-svelte'
   import Button from '../common/Button.svelte'
   import Tooltip from '../common/Tooltip.svelte'
   import CodeEditor from '../editor/CodeEditor.svelte'
@@ -9,6 +11,8 @@
   import ResultCompareDialog from '../editor/ResultCompareDialog.svelte'
   import ChartView from '../charts/ChartView.svelte'
   import Spinner from '../common/Spinner.svelte'
+  import AddToDashboardDialog from '../dashboard/AddToDashboardDialog.svelte'
+  import ShareDialog from '../share/ShareDialog.svelte'
   import SaveQueryDialog from '../saved-queries/SaveQueryDialog.svelte'
   import BrainResultActions from '../duck-brain/BrainResultActions.svelte'
   import { duck, duckActions } from '../../stores/duck.svelte'
@@ -18,6 +22,10 @@
   import { PIN_ROW_LIMIT } from '@/lib/resultDiff'
   import { getUiConfig } from '@/lib/appConfig'
   import { findGeometryColumns } from '@/lib/geoResult'
+  import { isNumericColumn } from '@/lib/chartDataTransform'
+  import { collaborativeBinding } from '@/lib/editor/collaboration'
+  import { getCollaboration } from '@/store/slices/sessionSlice'
+  import type { EditorTab } from '@/store/types'
 
   interface Props {
     tabId: string
@@ -57,6 +65,47 @@
   let resizing = $state(false)
   let fixing = $state(false)
   let saveOpen = $state(false)
+  let addToDashboardOpen = $state(false)
+  let shareTab = $state<EditorTab | null>(null)
+
+  const sessionStatus = $derived(duck((s) => s.session.status))
+  // Raw and replaced as a whole: the editor reconfigures when the array
+  // identity changes, which would tear the binding down on every render.
+  let collabExtensions = $state.raw<Extension[]>([])
+
+  // Collaborative binding: attaches only while a session is live, so a solo
+  // Duck-UI pays nothing for it.
+  $effect(() => {
+    if (sessionStatus !== 'connected') return
+    const collaboration = getCollaboration()
+    if (!collaboration) return
+
+    // The tab must exist in shared state before it can be bound; a tab created
+    // locally mid-session would otherwise never reach the other person.
+    const { title, content } = untrack(() => ({
+      title: tab?.title ?? '',
+      content: editor?.getValue() ?? sqlText,
+    }))
+    collaboration.document.addTab({ id: tabId, title, type: 'sql' }, content)
+    const text = collaboration.document.textFor(tabId)
+    if (!text) return
+
+    collabExtensions = [collaborativeBinding({ text, presence: collaboration.presence, tabId })]
+    return () => {
+      collabExtensions = []
+    }
+  })
+
+  function share() {
+    const query = currentSql()
+    if (!query || !tab) {
+      toast.error('No query to share')
+      return
+    }
+    // The live editor text plus the tab's chart config. The result rides
+    // along so the dialog can offer its columns as embed filters.
+    shareTab = { id: tabId, title: tab.title || 'Shared Query', type: 'sql', content: query, chartConfig: tab.chartConfig, result: tab.result ?? null }
+  }
   const profileId = $derived(duck((s) => s.currentProfileId))
 
   const savedSplit = parseFloat(localStorage.getItem(SPLIT_KEY) ?? '')
@@ -204,6 +253,11 @@
           Save
         </Button>
 
+        <Button size="sm" variant="ghost" onclick={share} title="Share query and chart" disabled={!sqlText.trim()}>
+          <Share2 size={13} />
+          Share
+        </Button>
+
         <div class="ml-auto flex items-center">
           {#if !ui.hideBrain}
             <Button
@@ -234,6 +288,8 @@
           onchange={(text) => duckActions().updateTabQuery(tabId, text)}
           onrun={run}
           onrunselection={run}
+          extensions={collabExtensions}
+          syncValue={collabExtensions.length === 0}
         />
       </div>
     </div>
@@ -298,12 +354,25 @@
               <GitCompare size={13} />
               Compare{pinCount > 0 ? ` (${pinCount})` : ''}
             </Button>
+            <Button size="xs" variant="ghost" onclick={() => (addToDashboardOpen = true)}>
+              <LayoutDashboard size={13} />
+              Add to dashboard
+            </Button>
           {/snippet}
         </ResultPanel>
       </div>
     </div>
   </div>
 
+  <AddToDashboardDialog
+    open={addToDashboardOpen}
+    sql={sqlText}
+    title={tab.title}
+    chartConfig={tab.chartConfig}
+    columns={tab.result?.columns.map((name) => ({ name, numeric: isNumericColumn(tab.result?.data ?? [], name) }))}
+    onclose={() => (addToDashboardOpen = false)}
+  />
+  <ShareDialog open={shareTab !== null} tab={shareTab} onclose={() => (shareTab = null)} />
   <SaveQueryDialog open={saveOpen} sql={sqlText} defaultTitle={tab.title} onclose={() => (saveOpen = false)} />
   <ExplainPlanViewer open={explainOpen} {explainText} onclose={() => (explainOpen = false)} />
   <ResultCompareDialog open={compareOpen} currentResult={tab.result} onclose={() => (compareOpen = false)} />
