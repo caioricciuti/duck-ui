@@ -1,9 +1,12 @@
 <script lang="ts">
-  import { PanelLeftClose, PanelLeftOpen, RefreshCw, Search, Database } from 'lucide-svelte'
+  import { PanelLeftClose, PanelLeftOpen, RefreshCw, Search, Database, Upload } from 'lucide-svelte'
   import Button from '../common/Button.svelte'
   import EmptyState from '../common/EmptyState.svelte'
   import Spinner from '../common/Spinner.svelte'
   import SchemaTree from './SchemaTree.svelte'
+  import FileImporter from '../importer/FileImporter.svelte'
+  import FolderBrowser from '../folders/FolderBrowser.svelte'
+  import { getUiConfig } from '@/lib/appConfig'
   import { duck, duckActions } from '../../stores/duck.svelte'
   import {
     getExplorerWidth, setExplorerWidth, isExplorerCollapsed, setExplorerCollapsed,
@@ -17,6 +20,32 @@
   let narrow = $state(matchMedia(NARROW_QUERY).matches)
   let panelEl: HTMLDivElement | undefined = $state()
   let search = $state('')
+  let importerOpen = $state(false)
+  let droppedFiles = $state<File[]>([])
+  let dropActive = $state(false)
+
+  const ui = getUiConfig()
+  const canImport = $derived(duck((s) => s.currentSession?.capabilities.supportsFileImport ?? false) && !ui.hideImport)
+  const foldersSupported = $derived(duck((s) => s.isFileSystemSupported))
+
+  function hasFiles(e: DragEvent): boolean {
+    return !!e.dataTransfer?.types.includes('Files')
+  }
+
+  function onDragOver(e: DragEvent) {
+    if (!canImport || !hasFiles(e)) return
+    e.preventDefault()
+    dropActive = true
+  }
+
+  function onDrop(e: DragEvent) {
+    if (!canImport || !hasFiles(e)) return
+    e.preventDefault()
+    dropActive = false
+    // A new array each time: the importer queues a given array once.
+    droppedFiles = Array.from(e.dataTransfer?.files ?? [])
+    importerOpen = true
+  }
 
   const databases = $derived(duck((s) => s.databases))
   const loading = $derived(duck((s) => s.isLoadingDbTablesFetch))
@@ -62,10 +91,14 @@
   }
 </script>
 
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
   bind:this={panelEl}
-  class="relative flex h-full shrink-0 flex-col border-r border-edge-subtle bg-sidebar {dragging ? '' : 'transition-[width] duration-150'}"
+  class="relative flex h-full shrink-0 flex-col border-r border-edge-subtle bg-sidebar {dragging ? '' : 'transition-[width] duration-150'} {dropActive ? 'ring-1 ring-inset ring-accent' : ''}"
   style="width: {width}px"
+  ondragover={onDragOver}
+  ondragleave={() => (dropActive = false)}
+  ondrop={onDrop}
 >
   {#if collapsed}
     <div class="flex h-9 items-center justify-center">
@@ -77,6 +110,11 @@
     <div class="flex h-9 shrink-0 items-center gap-1 border-b border-edge-subtle pl-3 pr-1.5">
       <span class="truncate text-xs font-medium text-fg-2">{connection?.name ?? 'Explorer'}</span>
       <div class="ml-auto flex items-center">
+        {#if canImport}
+          <Button icon variant="ghost" size="xs" onclick={() => (importerOpen = true)} title="Import data" aria-label="Import data">
+            <Upload size={13} />
+          </Button>
+        {/if}
         <Button icon variant="ghost" size="xs" onclick={refresh} title="Refresh schema" aria-label="Refresh schema" disabled={loading}>
           <RefreshCw size={13} class={loading ? 'animate-spin' : ''} />
         </Button>
@@ -103,9 +141,21 @@
       {:else if loading && databases.length === 0}
         <div class="flex justify-center py-8"><Spinner /></div>
       {:else if databases.length === 0}
-        <EmptyState size="compact" icon={Database} title="No data yet" description="Import a file or run CREATE TABLE to see it here." />
+        <EmptyState
+          size="compact"
+          icon={Database}
+          title="No data yet"
+          description="Drop a file here, import one, or run CREATE TABLE."
+          primary={canImport ? { label: 'Import data', onclick: () => (importerOpen = true) } : undefined}
+        />
       {:else}
         <SchemaTree {search} />
+      {/if}
+
+      {#if canImport && foldersSupported}
+        <div class="border-t border-edge-subtle">
+          <FolderBrowser />
+        </div>
       {/if}
     </div>
 
@@ -120,3 +170,5 @@
     ></div>
   {/if}
 </div>
+
+<FileImporter open={importerOpen} initialFiles={droppedFiles} onclose={() => (importerOpen = false)} />
