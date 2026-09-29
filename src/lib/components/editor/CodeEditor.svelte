@@ -11,6 +11,8 @@
   import { formatSql } from '@/lib/editor/formatSql'
   import { duckdbCompletionSource, toSqlSchema } from '@/lib/editor/sqlCompletion'
   import { diffStrings } from '@/lib/textDiff'
+  import { errorMark, setErrorMark, type ErrorMark } from '@/lib/editor/errorMark'
+  import { statementAt } from '@/lib/editor/statements'
   import { duck } from '../../stores/duck.svelte'
 
   export type EditorLanguage = 'sql' | 'python' | 'markdown'
@@ -20,10 +22,22 @@
     language?: EditorLanguage
     /** Fires after edits settle, not on every keystroke. */
     onchange?: (value: string) => void
-    /** Mod-Enter. Receives the whole document. */
-    onrun?: (text: string) => void
-    /** Mod-Shift-Enter. Receives the selection, or the whole document without one. */
-    onrunselection?: (text: string) => void
+    /**
+     * Mod-Enter. Receives the text to run and the offset it starts at, so an
+     * error position can be mapped back into the document.
+     */
+    onrun?: (text: string, from: number) => void
+    /**
+     * Mod-Shift-Enter. In `document` scope it receives the selection, or the
+     * whole document without one. In `statement` scope it receives the whole
+     * document.
+     */
+    onrunselection?: (text: string, from: number) => void
+    /**
+     * What Mod-Enter runs. `document`: everything. `statement`: the selection,
+     * or the statement the cursor is in.
+     */
+    runScope?: 'document' | 'statement'
     /** Notebook cells also run on Shift-Enter. */
     runOnShiftEnter?: boolean
     readonly?: boolean
@@ -49,6 +63,7 @@
     onrun,
     onrunselection,
     runOnShiftEnter = false,
+    runScope = 'document',
     readonly = false,
     showLineNumbers = true,
     placeholder = '',
@@ -75,10 +90,32 @@
 
   const databases = $derived(duck((s) => s.databases))
 
-  function selectionOrAll(target: EditorView): string {
+  interface RunTarget {
+    text: string
+    from: number
+  }
+
+  /** Trimmed text and the offset its first character has in the document. */
+  function trimmed(raw: string, offset: number): RunTarget {
+    const text = raw.trim()
+    return { text, from: offset + (raw.length - raw.trimStart().length) }
+  }
+
+  function wholeDocument(target: EditorView): RunTarget {
+    return trimmed(target.state.doc.toString(), 0)
+  }
+
+  function selectionOrAll(target: EditorView): RunTarget {
     const { from, to } = target.state.selection.main
-    const text = from === to ? target.state.doc.toString() : target.state.sliceDoc(from, to)
-    return text.trim()
+    return from === to ? wholeDocument(target) : trimmed(target.state.sliceDoc(from, to), from)
+  }
+
+  function primaryTarget(target: EditorView): RunTarget {
+    if (runScope !== 'statement') return wholeDocument(target)
+    const { from, to, head } = target.state.selection.main
+    if (from !== to) return trimmed(target.state.sliceDoc(from, to), from)
+    const statement = statementAt(target.state.doc.toString(), head)
+    return statement ? { text: statement.text, from: statement.from } : { text: '', from: 0 }
   }
 
   async function languageExtension(lang: EditorLanguage): Promise<Extension> {
@@ -129,7 +166,17 @@
   }
 
   export function getSelectedOrAll(): string {
-    return view ? selectionOrAll(view) : value.trim()
+    return view ? selectionOrAll(view).text : value.trim()
+  }
+
+  /** What Mod-Enter would run right now. */
+  export function getRunTarget(): RunTarget {
+    return view ? primaryTarget(view) : trimmed(value, 0)
+  }
+
+  /** Underlines a range with a message, or clears the mark with null. */
+  export function markError(mark: ErrorMark | null): void {
+    view?.dispatch({ effects: setErrorMark.of(mark) })
   }
 
   export async function format(): Promise<void> {
@@ -157,7 +204,8 @@
           key: 'Mod-Enter',
           run: (target) => {
             flushChange()
-            onrun?.(target.state.doc.toString().trim())
+            const { text, from } = primaryTarget(target)
+            onrun?.(text, from)
             return true
           },
         },
@@ -165,7 +213,8 @@
           key: 'Mod-Shift-Enter',
           run: (target) => {
             flushChange()
-            ;(onrunselection ?? onrun)?.(selectionOrAll(target))
+            const { text, from } = runScope === 'statement' ? wholeDocument(target) : selectionOrAll(target)
+            ;(onrunselection ?? onrun)?.(text, from)
             return true
           },
         },
@@ -174,7 +223,8 @@
           run: (target) => {
             if (!runOnShiftEnter) return false
             flushChange()
-            onrun?.(target.state.doc.toString().trim())
+            const { text, from } = wholeDocument(target)
+            onrun?.(text, from)
             return true
           },
         },
@@ -217,6 +267,7 @@
           languageCompartment.of([]),
           readonlyCompartment.of([EditorState.readOnly.of(readonly), EditorView.editable.of(!readonly)]),
           extraCompartment.of(extensions),
+          errorMark,
           editorTheme,
           EditorView.lineWrapping,
           EditorView.contentAttributes.of({ 'aria-label': ariaLabel, spellcheck: 'false', autocapitalize: 'off' }),

@@ -24,6 +24,7 @@
   import { findGeometryColumns } from '@/lib/geoResult'
   import { isNumericColumn } from '@/lib/chartDataTransform'
   import { collaborativeBinding } from '@/lib/editor/collaboration'
+  import { locateError } from '@/lib/editor/sqlError'
   import { getCollaboration } from '@/store/slices/sessionSlice'
   import type { EditorTab } from '@/store/types'
 
@@ -115,18 +116,44 @@
     return (editor?.getValue() ?? sqlText).trim()
   }
 
-  async function run(sql: string) {
+  // What the last run sent, and where it starts in the editor. An error
+  // position is relative to this text, not to the document.
+  let lastRun: { sql: string; from: number } | null = null
+
+  async function run(sql: string, from = 0) {
     if (executing) return
     if (!sql) {
       toast.warning('Write a query first')
       return
     }
+    lastRun = { sql, from }
+    editor?.markError(null)
     try {
       await duckActions().executeQuery(sql, tabId)
     } catch (error) {
       console.error('Query execution failed:', error)
       toast.error('Query execution failed')
     }
+  }
+
+  // Underline the spot DuckDB points at. With `$name` parameters the engine
+  // saw substituted text, and the position is only used when it still lines
+  // up with what is in the editor.
+  $effect(() => {
+    const error = tab?.result?.error
+    if (!error || !lastRun || executing) return
+    const location = locateError(error, lastRun.sql)
+    if (!location) return
+    editor?.markError({
+      from: lastRun.from + location.from,
+      to: lastRun.from + location.to,
+      message: error.split('\n')[0],
+    })
+  })
+
+  function runFromToolbar() {
+    const target = editor?.getRunTarget()
+    void run(target?.text ?? sqlText.trim(), target?.from ?? 0)
   }
 
   async function cancel() {
@@ -231,7 +258,7 @@
             Stop
           </Button>
         {:else}
-          <Button size="sm" onclick={() => run(currentSql())} title="Run query ({mod}+Enter)">
+          <Button size="sm" onclick={runFromToolbar} title="Run the selection or the statement at the cursor ({mod}+Enter)">
             <Play size={12} />
             Run
           </Button>
@@ -272,7 +299,7 @@
               Duck Brain
             </Button>
           {/if}
-          <Tooltip text="Run query: {mod}+Enter. Run selection: {mod}+Shift+Enter. Format: Alt+F. Search: {mod}+F." side="bottom">
+          <Tooltip text="Run selection or statement at cursor: {mod}+Enter. Run everything: {mod}+Shift+Enter. Format: Alt+F. Search: {mod}+F." side="bottom">
             <span class="inline-flex h-7 w-7 items-center justify-center text-fg-4"><Keyboard size={14} /></span>
           </Tooltip>
         </div>
@@ -283,6 +310,7 @@
           bind:this={editor}
           value={sqlText}
           language="sql"
+          runScope="statement"
           ariaLabel="SQL editor for {tab.title}"
           placeholder="SELECT * FROM ..."
           onchange={(text) => duckActions().updateTabQuery(tabId, text)}
