@@ -60,6 +60,8 @@
   let changeTimer: ReturnType<typeof setTimeout> | undefined
   /** The last text handed to `onchange`, so an echo of our own edit is not re-applied. */
   let lastEmitted = untrack(() => value)
+  /** The last `value` prop acted on. Only a prop that actually changed is an outside edit. */
+  let lastSeenValue = untrack(() => value)
 
   const languageCompartment = new Compartment()
   const readonlyCompartment = new Compartment()
@@ -97,6 +99,11 @@
     if (text === lastEmitted) return
     lastEmitted = text
     onchange?.(text)
+  }
+
+  /** Hands any edit still inside the debounce window to `onchange` now. */
+  export function flush(): void {
+    flushChange()
   }
 
   export function getValue(): string {
@@ -247,6 +254,8 @@
   // The store changed the text from outside: a formatter, an AI fix, a restored tab.
   $effect(() => {
     const next = value
+    if (next === lastSeenValue) return
+    lastSeenValue = next
     if (!view || next === lastEmitted || next === view.state.doc.toString()) return
     // A pending local edit is newer than what the store just echoed back.
     if (changeTimer !== undefined) return

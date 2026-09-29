@@ -2,6 +2,7 @@
   import HomeTab from '../workspace/HomeTab.svelte'
   import PendingTab from '../workspace/PendingTab.svelte'
   import SqlTab from '../workspace/SqlTab.svelte'
+  import NotebookTab from '../notebook/NotebookTab.svelte'
   import { duck } from '../../stores/duck.svelte'
 
   const tabs = $derived(duck((s) => s.tabs))
@@ -17,7 +18,7 @@
     {:else if tab.type === 'sql'}
       <SqlTab tabId={tab.id} />
     {:else if tab.type === 'notebook'}
-      <PendingTab name="Notebooks" />
+      <NotebookTab tabId={tab.id} />
     {:else if tab.type === 'dashboard'}
       <PendingTab name="Dashboards" />
     {/if}
