@@ -36,15 +36,12 @@ export function errorMessageOf(e: unknown): string {
 /**
  * Runs an ad-hoc statement and throws when it fails.
  *
- * `executeQuery` records a failure in history and resolves with nothing
- * instead of rejecting, so awaiting it alone reports every failed import as
- * a success. The message is read back from the history entry it just wrote.
+ * `executeQuery` resolves with a result carrying `error` instead of
+ * rejecting, so awaiting it alone would report a failed import as a success.
  */
 export async function runImportQuery(sql: string): Promise<QueryResult> {
   const result = await useDuckStore.getState().executeQuery(sql);
-  if (result && !result.error) return result;
-  const failed = useDuckStore
-    .getState()
-    .queryHistory.find((item) => item.error && item.query.trim() === sql.trim());
-  throw new Error(result?.error ?? failed?.error ?? "Query failed");
+  if (!result) throw new Error("Query failed");
+  if (result.error) throw new Error(result.error);
+  return result;
 }

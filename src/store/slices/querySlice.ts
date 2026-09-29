@@ -191,6 +191,10 @@ export const createQuerySlice: StateCreator<DuckStoreState, [], [], QuerySlice> 
       if (currentProfileId) {
         addHistoryEntry(currentProfileId, query, { error: errorMessage }).catch(() => {});
       }
+      // An ad-hoc caller has no tab to read the failure from, so it gets the
+      // same error result the tab would. Resolving with nothing made every
+      // `await executeQuery(sql)` look like a success.
+      return tabId ? undefined : errorResult;
     }
   },
 
