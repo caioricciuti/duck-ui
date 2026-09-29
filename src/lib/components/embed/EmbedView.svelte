@@ -7,7 +7,7 @@
   import ChartView from '../charts/ChartView.svelte'
   import { duck, duckActions } from '../../stores/duck.svelte'
   import { runQuery } from '@/services/engine'
-  import { decodeShare, readShareParam, queryReadsRemoteSource } from '@/lib/share'
+  import { appRootUrl, decodeShare, readShareParam, queryReadsRemoteSource } from '@/lib/share'
   import { resultToGrid } from '@/lib/resultTable/gridData'
   import type { ChartConfig, QueryResult } from '@/store/types'
   import logo from '../../../assets/logo.png'
@@ -45,7 +45,8 @@
 
   // The full-app deep link that "Open in Duck-UI" points back to.
   const shareParam = readShareParam()
-  const forkUrl = shareParam ? `${window.location.origin}/#s=${shareParam}` : window.location.origin
+  // The app root, not the origin: under a sub path the origin is another site.
+  const forkUrl = shareParam ? `${appRootUrl()}#s=${shareParam}` : appRootUrl()
 
   // The embed is a public, profile-free widget: it boots the engine itself
   // and skips the profile gate, persistence and autosave.

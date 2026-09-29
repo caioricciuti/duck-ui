@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, vi, beforeAll, afterAll, afterEach } from "vitest";
 import {
+  appRootUrl,
   encodeShare,
   decodeShare,
   tabToSharePayload,
@@ -212,5 +213,58 @@ describe("buildShareLinks", () => {
     };
     const payload = tabToSharePayload(tab, true, []);
     expect(payload?.params).toBeUndefined();
+  });
+});
+
+describe("share links under a base path", () => {
+  const tab: EditorTab = { id: "1", title: "Q", type: "sql", content: "SELECT 1" };
+
+  beforeAll(() => {
+    vi.stubGlobal("window", {
+      location: { origin: "https://tools.example.com", pathname: "/duck-ui/" },
+    });
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+  afterAll(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("puts embed and crawl links under the base path", async () => {
+    vi.stubEnv("BASE_URL", "/duck-ui/");
+    const links = await buildShareLinks(tab);
+    const token = links!.embedUrl.split("#s=")[1];
+
+    expect(links!.embedUrl).toBe(`https://tools.example.com/duck-ui/embed#s=${token}`);
+    expect(links!.crawlUrl).toBe(`https://tools.example.com/duck-ui/a/?s=${token}`);
+    expect(links!.appUrl).toBe(`https://tools.example.com/duck-ui/#s=${token}`);
+    expect(links!.iframeSnippet).toContain(
+      `src="https://tools.example.com/duck-ui/embed#s=${token}"`
+    );
+  });
+
+  it("does not take the base from the page the link was made on", async () => {
+    // Made while looking at a crawlable share link, /duck-ui/a/.
+    vi.stubGlobal("window", {
+      location: { origin: "https://tools.example.com", pathname: "/duck-ui/a/" },
+    });
+    vi.stubEnv("BASE_URL", "/duck-ui/");
+    const links = await buildShareLinks(tab);
+    expect(links!.embedUrl.startsWith("https://tools.example.com/duck-ui/embed#s=")).toBe(true);
+    expect(links!.crawlUrl.startsWith("https://tools.example.com/duck-ui/a/?s=")).toBe(true);
+  });
+
+  it("accepts a base path without a trailing slash", () => {
+    expect(appRootUrl("https://x.test", "/duck-ui")).toBe("https://x.test/duck-ui/");
+    expect(appRootUrl("https://x.test", "/a/b/")).toBe("https://x.test/a/b/");
+  });
+
+  it("stays at the origin root for the default, relative and absolute bases", () => {
+    expect(appRootUrl("https://x.test", "/")).toBe("https://x.test/");
+    expect(appRootUrl("https://x.test", "./")).toBe("https://x.test/");
+    expect(appRootUrl("https://x.test", "")).toBe("https://x.test/");
+    expect(appRootUrl("https://x.test", "https://cdn.test/assets/")).toBe("https://x.test/");
+    expect(appRootUrl("https://x.test", "//cdn.test/assets/")).toBe("https://x.test/");
   });
 });
