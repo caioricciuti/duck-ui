@@ -67,36 +67,60 @@ export const aggregate = (values: unknown[], aggregationType: AggregationType): 
   }
 };
 
+/** A column to aggregate, optionally with its own aggregation. */
+export type ValueColumn = string | { column: string; aggregation?: AggregationType };
+
 /**
- * Group data by a column and aggregate values
+ * Map keys compare objects by identity, so two rows holding equal dates
+ * would land in separate groups.
+ */
+const groupKey = (value: unknown): unknown => (value instanceof Date ? value.getTime() : value);
+
+/**
+ * Group data by a column and aggregate values.
+ *
+ * Takes one value column or several: every one of them is aggregated, so a
+ * multi series chart keeps all its series.
  */
 export const groupByColumn = (
   data: Record<string, unknown>[],
   groupByColumn: string,
-  valueColumn: string,
+  valueColumns: ValueColumn | ValueColumn[],
   aggregationType: AggregationType
 ): TransformedData => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const grouped = new Map<string | number, any[]>();
+  const columns = new Map<string, AggregationType>();
+  for (const entry of Array.isArray(valueColumns) ? valueColumns : [valueColumns]) {
+    const column = typeof entry === "string" ? entry : entry.column;
+    const aggregation = typeof entry === "string" ? undefined : entry.aggregation;
+    // Aggregating the key itself would overwrite it in the output row.
+    if (!column || column === groupByColumn || columns.has(column)) continue;
+    columns.set(column, aggregation ?? aggregationType);
+  }
 
-  // Group values
+  const grouped = new Map<unknown, { key: unknown; rows: Record<string, unknown>[] }>();
+
+  // Group rows
   data.forEach((row) => {
-    const key = row[groupByColumn] as string | number;
+    const key = row[groupByColumn];
     if (key === null || key === undefined) return;
 
-    if (!grouped.has(key)) {
-      grouped.set(key, []);
-    }
-    grouped.get(key)!.push(row[valueColumn]);
+    const id = groupKey(key);
+    const group = grouped.get(id);
+    if (group) group.rows.push(row);
+    else grouped.set(id, { key, rows: [row] });
   });
 
-  // Aggregate grouped values
+  // Aggregate each value column per group
   const result: TransformedData = [];
-  grouped.forEach((values, key) => {
-    result.push({
-      [groupByColumn]: key,
-      [valueColumn]: aggregate(values, aggregationType),
+  grouped.forEach(({ key, rows }) => {
+    const aggregated: Record<string, unknown> = { [groupByColumn]: key };
+    columns.forEach((aggregation, column) => {
+      aggregated[column] = aggregate(
+        rows.map((row) => row[column]),
+        aggregation
+      );
     });
+    result.push(aggregated);
   });
 
   return result;
@@ -140,12 +164,13 @@ export const transformData = (
 ): TransformedData => {
   let data = [...result.data];
 
-  // Apply grouping and aggregation
-  if (transform?.groupBy && transform.groupBy !== xAxis) {
-    const valueColumn = typeof yAxis === "string" ? yAxis : yAxis?.[0]?.column;
-    if (valueColumn) {
+  // Apply grouping and aggregation. The chart settings group by the x axis:
+  // one point per x value, each series aggregated over the rows sharing it.
+  if (transform?.groupBy) {
+    const valueColumns: ValueColumn[] = typeof yAxis === "string" ? [yAxis] : (yAxis ?? []);
+    if (valueColumns.length > 0) {
       const aggregation = transform.aggregation || "sum";
-      data = groupByColumn(data, transform.groupBy, valueColumn, aggregation);
+      data = groupByColumn(data, transform.groupBy, valueColumns, aggregation);
     }
   }
 
