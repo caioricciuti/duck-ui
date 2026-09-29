@@ -31,8 +31,9 @@ COPY --from=build /app/dist /app
 COPY inject-env.js /app/
 COPY serve.json /app/
 
-# Install just serve for serving the built app
-RUN bun add serve
+# The static file server, pinned. An unpinned install would pull whatever is
+# latest on the day the image is built.
+RUN bun add --exact serve@14.2.6
 
 # Expose port 5522
 EXPOSE 5522
@@ -52,5 +53,6 @@ RUN chown -R duck-user:duck-group /app
 
 USER duck-user
 
-# Run the injection script then serve using bunx
-CMD bun inject-env.js && bunx serve -s -l 5522 -c serve.json
+# Run the injection script, then the server installed above. The local binary
+# is used directly so nothing can be fetched when the container starts.
+CMD bun inject-env.js && ./node_modules/.bin/serve -s -l 5522 -c serve.json
