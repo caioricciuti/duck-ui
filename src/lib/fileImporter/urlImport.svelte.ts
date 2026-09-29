@@ -136,7 +136,10 @@ export function createUrlImport(ctx: ImporterContext) {
         const createType = importMode === "view" ? "VIEW" : "TABLE";
         const resultType = importMode === "view" ? "view" : "table";
 
-        const read = buildReadExpression(url, extension, { ignoreErrors: true });
+        // The same source the preview read. Reading the raw URL here could
+        // sniff a different CSV dialect than the one the user just approved.
+        const source = await resolveUrlSource(url, extension);
+        const read = buildReadExpression(source, extension, { ignoreErrors: true });
         if (!read) throw new Error(`Unsupported file type: .${extension}`);
         const query = buildCreateAs(
           createType,
