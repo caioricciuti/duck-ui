@@ -1,8 +1,9 @@
-import {
-  CreateWebWorkerMLCEngine,
+// Types only. The runtime is several megabytes and is imported when a local
+// model is first initialized, so it stays out of the app's startup bundle.
+import type {
   WebWorkerMLCEngine,
-  type InitProgressReport,
-  type ChatCompletionMessageParam,
+  InitProgressReport,
+  ChatCompletionMessageParam,
 } from "@mlc-ai/web-llm";
 import { DEFAULT_MODEL } from "./models.config";
 
@@ -173,7 +174,9 @@ class DuckBrainService {
       this.worker = new Worker(new URL("./webllm.worker.ts", import.meta.url), { type: "module" });
 
       // Create engine with worker
-      this.engine = await CreateWebWorkerMLCEngine(this.worker, modelId, {
+      this.engine = await (
+        await import("@mlc-ai/web-llm")
+      ).CreateWebWorkerMLCEngine(this.worker, modelId, {
         initProgressCallback: this.handleProgress,
       });
 
