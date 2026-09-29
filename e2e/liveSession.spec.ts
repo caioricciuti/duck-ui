@@ -23,14 +23,14 @@ const LAN_ONLY_ICE = () => {
 };
 
 async function ensureProfile(page: Page, name: string) {
-  const dialog = page.getByRole("dialog", { name: "Create Profile" });
+  const dialog = page.getByRole("dialog", { name: "New profile" });
   try {
     await dialog.waitFor({ state: "visible", timeout: 20_000 });
   } catch {
     return;
   }
-  await dialog.getByPlaceholder("Profile name").fill(name);
-  await dialog.getByRole("button", { name: "Create Profile" }).click();
+  await dialog.getByLabel("Name", { exact: true }).fill(name);
+  await dialog.getByRole("button", { name: "Create profile" }).click();
   await dialog.waitFor({ state: "hidden" });
 }
 
@@ -39,7 +39,9 @@ async function bootPeer(context: BrowserContext, name: string, url = "/"): Promi
   await page.addInitScript(LAN_ONLY_ICE);
   await page.goto(url);
   await ensureProfile(page, name);
-  await expect(page.getByText("Duck-UI").first()).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole("tablist", { name: "Open tabs" })).toBeVisible({
+    timeout: 60_000,
+  });
   return page;
 }
 
@@ -47,6 +49,20 @@ async function bootPeer(context: BrowserContext, name: string, url = "/"): Promi
 async function runSql(page: Page, sql: string) {
   const encoded = Buffer.from(sql, "utf8").toString("base64");
   await page.goto(`/?query=${encoded}&execute=true`);
+}
+
+/**
+ * Waits until the query in the active tab has finished, with rows or with an
+ * error. The grid footer reads "3 rows" or "1 row"; a failure is titled
+ * "Query error".
+ */
+async function expectQueryFinished(page: Page) {
+  await expect(
+    page
+      .getByRole("tabpanel")
+      .getByText(/^\d+ rows?$|Query error/i)
+      .first()
+  ).toBeVisible({ timeout: 60_000 });
 }
 
 /** Creates a table in this browser's own engine, for the host to share. */
@@ -57,37 +73,61 @@ async function seedHostData(page: Page) {
        ('north', 100), ('south', 250), ('east', 75)
      ) AS t(region, amount)`
   );
-  await expect(page.getByText(/rows|Query Error/i).first()).toBeVisible({ timeout: 60_000 });
+  await expectQueryFinished(page);
 }
 
 /**
  * Types SQL into a new tab and runs it, without navigating.
  *
- * A guest must never be sent through `page.goto` — reloading tears down the
+ * A guest must never be sent through `page.goto`: reloading tears down the
  * peer connection along with the session.
  */
 async function runSqlInNewTab(page: Page, sql: string) {
-  await page.getByRole("button", { name: "New tab" }).click();
-  await page.getByRole("menuitem", { name: "SQL Tab" }).click();
+  await page.getByRole("button", { name: "New query" }).click();
 
-  // Scoped to the active tab panel — inactive panels are unmounted, but a
-  // stale match would silently type into the wrong editor. Monaco is a large
-  // lazy chunk, so give it room on first open.
+  // Scoped to the active tab panel: inactive panels stay mounted but hidden,
+  // and a stale match would silently type into the wrong editor.
   const panel = page.getByRole("tabpanel");
-  const lines = panel.locator(".view-lines").first();
-  await expect(lines).toBeVisible({ timeout: 90_000 });
-  await lines.click();
+  const content = panel.locator(".cm-content").first();
+  await expect(content).toBeVisible({ timeout: 90_000 });
+  await content.click();
   await page.keyboard.type(sql);
 
-  await page.getByRole("button", { name: "Run Query" }).click();
+  await panel.getByRole("button", { name: "Run", exact: true }).click();
+}
+
+/**
+ * Waits for a database node in the explorer and makes sure it is expanded.
+ * Database nodes start expanded, so a blind click would close the node.
+ */
+async function expandDatabase(page: Page, name: string) {
+  const tree = page.getByRole("tree", { name: "Database schema" });
+  const label = new RegExp(`^${name}\\b`);
+  const node = tree.getByRole("button", { name: label }).first();
+  await expect(node).toBeVisible({ timeout: 60_000 });
+  const item = tree
+    .getByRole("treeitem")
+    .filter({ has: page.getByRole("button", { name: label }) })
+    .first();
+  if ((await item.getAttribute("aria-expanded")) !== "true") await node.click();
+  await expect(item).toHaveAttribute("aria-expanded", "true");
+  return tree;
+}
+
+/**
+ * A cell of the result grid in the active tab. Scoped on purpose: the shared
+ * editors of other tabs hold the same literals in their SQL text.
+ */
+function resultCell(page: Page, value: string | RegExp) {
+  return page.getByRole("tabpanel").getByRole("cell", { name: value, exact: true }).first();
 }
 
 /** Opens the host's Share Live dialog and returns it. */
 async function openShareDialog(page: Page) {
-  await page.getByRole("button", { name: "Live session" }).click();
+  await page.getByRole("button", { name: "Live session", exact: true }).click();
   await page.getByRole("menuitem", { name: /Share Live/ }).click();
-  const dialog = page.getByRole("dialog");
-  await expect(dialog.getByText("Share Live")).toBeVisible();
+  const dialog = page.getByRole("dialog", { name: "Share Live" });
+  await expect(dialog).toBeVisible();
   return dialog;
 }
 
@@ -135,17 +175,15 @@ test.describe("live session", () => {
 
       // ---- Host completes the handshake ----------------------------------
       await shareDialog.getByPlaceholder("Paste their connection code here").fill(answerCode);
-      await shareDialog.getByRole("button", { name: "Connect" }).click();
+      await shareDialog.getByRole("button", { name: "Connect", exact: true }).click();
       await expect(shareDialog.getByText(/Connected/)).toBeVisible({ timeout: 60_000 });
 
       // ---- Guest receives the grant and can see the shared table ---------
       await expect(joinDialog.getByText("Shared data available")).toBeVisible({ timeout: 60_000 });
       await joinDialog.getByRole("button", { name: /Open workspace|Hide/ }).click();
 
-      // The catalog node starts collapsed; the shared table lives under it.
-      const tree = guest.getByRole("tree");
-      await expect(tree.getByText("memory", { exact: true })).toBeVisible({ timeout: 60_000 });
-      await tree.getByText("memory", { exact: true }).click();
+      // The shared table lives under the catalog node.
+      const tree = await expandDatabase(guest, "memory");
 
       const sharedTable = tree.getByText("regional_sales", { exact: true });
       await expect(sharedTable).toBeVisible({ timeout: 60_000 });
@@ -159,8 +197,8 @@ test.describe("live session", () => {
 
       // Values that exist ONLY in the host's engine. Seeing them here means the
       // query crossed the wire and came back as Arrow.
-      await expect(guest.getByText("250").first()).toBeVisible({ timeout: 60_000 });
-      await expect(guest.getByText("north").first()).toBeVisible();
+      await expect(resultCell(guest, "250")).toBeVisible({ timeout: 60_000 });
+      await expect(resultCell(guest, "north")).toBeVisible();
     } finally {
       await hostContext.close();
       await guestContext.close();
@@ -202,17 +240,15 @@ test.describe("live session", () => {
       const answerCode = await answerInput.inputValue();
 
       await shareDialog.getByPlaceholder("Paste their connection code here").fill(answerCode);
-      await shareDialog.getByRole("button", { name: "Connect" }).click();
+      await shareDialog.getByRole("button", { name: "Connect", exact: true }).click();
       await expect(joinDialog.getByText("Shared data available")).toBeVisible({ timeout: 60_000 });
       await joinDialog.getByRole("button", { name: /Open workspace|Hide/ }).click();
 
       // The grant must be reachable as a connection before it is withdrawn,
       // otherwise this asserts nothing.
-      await expect(guest.getByRole("tree").getByText("memory", { exact: true })).toBeVisible({
-        timeout: 60_000,
-      });
+      await expandDatabase(guest, "memory");
 
-      // The share dialog is modal — the session panel behind it is unclickable
+      // The share dialog is modal: the session panel behind it is unclickable
       // until it is dismissed.
       await host.getByRole("button", { name: "Close", exact: true }).click();
       await expect(host.getByRole("dialog")).toBeHidden();
@@ -238,7 +274,7 @@ test.describe("live session", () => {
     try {
       const host = await bootPeer(hostContext, "hostuser");
       await runSql(host, "SELECT 1 AS seeded");
-      await expect(host.getByText(/rows|Query Error/i).first()).toBeVisible({ timeout: 60_000 });
+      await expectQueryFinished(host);
 
       const shareDialog = await openShareDialog(host);
       await shareDialog.getByLabel("Session name").fill("Editing test");
@@ -256,7 +292,7 @@ test.describe("live session", () => {
       const answerCode = await joinDialog.locator("input[readonly]").first().inputValue();
 
       await shareDialog.getByPlaceholder("Paste their connection code here").fill(answerCode);
-      await shareDialog.getByRole("button", { name: "Connect" }).click();
+      await shareDialog.getByRole("button", { name: "Connect", exact: true }).click();
       await expect(shareDialog.getByText(/Connected/)).toBeVisible({ timeout: 60_000 });
       await joinDialog.getByRole("button", { name: /Open workspace|Hide/ }).click();
 
@@ -265,16 +301,16 @@ test.describe("live session", () => {
         timeout: 60_000,
       });
       await guest.getByRole("tab", { name: /Query|seeded/i }).first().click();
-      await expect(guest.locator(".view-lines").first()).toContainText("seeded", {
+      await expect(guest.getByRole("tabpanel").locator(".cm-content").first()).toContainText("seeded", {
         timeout: 60_000,
       });
 
       // ---- Presence: the guest's caret is VISIBLE on the host -------------
       // Clicking into the shared editor publishes the guest's cursor; the
       // host must render it as a caret decoration with a name flag. This is
-      // the "I can see where you are" half of collaboration — merged text
+      // the "I can see where you are" half of collaboration: merged text
       // with invisible collaborators reads as haunted, not multiplayer.
-      await guest.locator(".view-lines").first().click();
+      await guest.getByRole("tabpanel").locator(".cm-content").first().click();
       await guest.keyboard.type(" -- guest was here");
       // The host's share dialog is modal; its workspace is unreachable until
       // it closes. The session survives the dialog.
@@ -295,7 +331,7 @@ test.describe("live session", () => {
     const guestContext = await browser.newContext();
 
     try {
-      // The host starts with an EMPTY database — the exact case from the
+      // The host starts with an EMPTY database: the exact case from the
       // report: "no tables to share" at share time must not mean "no tables
       // ever".
       const host = await bootPeer(hostContext, "hostuser");
@@ -318,37 +354,37 @@ test.describe("live session", () => {
       const answerCode = await joinDialog.locator("input[readonly]").first().inputValue();
 
       await shareDialog.getByPlaceholder("Paste their connection code here").fill(answerCode);
-      await shareDialog.getByRole("button", { name: "Connect" }).click();
+      await shareDialog.getByRole("button", { name: "Connect", exact: true }).click();
       await expect(shareDialog.getByText(/Connected/)).toBeVisible({ timeout: 60_000 });
       await joinDialog.getByRole("button", { name: /Open workspace|Hide/ }).click();
 
-      // The share dialog is modal — close it, or the host's workspace below
+      // The share dialog is modal: close it, or the host's workspace below
       // is unreachable. The session itself survives the dialog.
       await host.keyboard.press("Escape");
       await expect(shareDialog).toBeHidden({ timeout: 10_000 });
 
-      // NOW the host creates a table — after the session is live. No goto:
+      // NOW the host creates a table: after the session is live. No goto:
       // navigation would tear down the peer connection.
       await runSqlInNewTab(
         host,
         "CREATE TABLE late_arrival AS SELECT 'crossed' AS status, 4242 AS marker"
       );
-      await expect(host.getByText(/rows|Query Error/i).first()).toBeVisible({ timeout: 60_000 });
+      await expectQueryFinished(host);
 
-      // The grown grant reaches the guest's data explorer first — wait for
+      // The grown grant reaches the guest's data explorer first: wait for
       // it there, so the query below cannot race the capability update.
-      const tree = guest.getByRole("tree");
-      await expect(tree.getByText("memory", { exact: true })).toBeVisible({ timeout: 60_000 });
-      await tree.getByText("memory", { exact: true }).click();
+      const tree = await expandDatabase(guest, "memory");
       await expect(tree.getByText("late_arrival", { exact: true })).toBeVisible({
         timeout: 60_000,
       });
 
-      // The guest queries the table it was never explicitly granted — the
+      // The guest queries the table it was never explicitly granted: the
       // catalog watcher copied it into the share runtime and grew the grant.
       await runSqlInNewTab(guest, "SELECT status, marker FROM late_arrival");
-      await expect(guest.getByText("4242").first()).toBeVisible({ timeout: 60_000 });
-      await expect(guest.getByText("crossed").first()).toBeVisible();
+      // The grid groups thousands by default ("4,242"); the footer toggle
+      // "1,000" turns that off. Either rendering is the value that crossed.
+      await expect(resultCell(guest, /^4,?242$/)).toBeVisible({ timeout: 60_000 });
+      await expect(resultCell(guest, "crossed")).toBeVisible();
     } finally {
       await hostContext.close();
       await guestContext.close();
@@ -367,7 +403,7 @@ test.describe("multi-peer session", () => {
     try {
       const host = await bootPeer(hostContext, "hostuser");
       await runSql(host, "SELECT 1 AS seeded");
-      await expect(host.getByText(/rows|Query Error/i).first()).toBeVisible({ timeout: 60_000 });
+      await expectQueryFinished(host);
 
       const shareDialog = await openShareDialog(host);
       await shareDialog.getByLabel("Session name").fill("Group session");
@@ -385,7 +421,7 @@ test.describe("multi-peer session", () => {
       const codeOne = await dialogOne.locator("input[readonly]").first().inputValue();
 
       await shareDialog.getByPlaceholder("Paste their connection code here").fill(codeOne);
-      await shareDialog.getByRole("button", { name: "Connect" }).click();
+      await shareDialog.getByRole("button", { name: "Connect", exact: true }).click();
       await expect(shareDialog.getByText(/Connected ·/)).toBeVisible({ timeout: 60_000 });
       await dialogOne.getByRole("button", { name: /Open workspace|Hide/ }).click();
 
@@ -415,15 +451,17 @@ test.describe("multi-peer session", () => {
       const codeTwo = await dialogTwo.locator("input[readonly]").first().inputValue();
 
       await shareDialog.getByPlaceholder("Paste their connection code here").fill(codeTwo);
-      await shareDialog.getByRole("button", { name: "Connect" }).click();
+      await shareDialog.getByRole("button", { name: "Connect", exact: true }).click();
       await dialogTwo.getByRole("button", { name: /Open workspace|Hide/ }).click();
 
       // ---- All three are in the session ----------------------------------
       await host.getByRole("button", { name: "Close", exact: true }).click();
       await expect(host.getByRole("dialog")).toBeHidden();
       await host.getByRole("button", { name: "Session details" }).click();
-      await expect(host.getByText("guestone")).toBeVisible({ timeout: 60_000 });
-      await expect(host.getByText("guesttwo")).toBeVisible();
+      // Scoped to the panel: peer carets in the editor carry the names too.
+      const sessionPanel = host.getByRole("dialog", { name: "Session details" });
+      await expect(sessionPanel.getByText("guestone")).toBeVisible({ timeout: 60_000 });
+      await expect(sessionPanel.getByText("guesttwo")).toBeVisible();
 
       // ---- The host's work reached BOTH guests ---------------------------
       // Guest two has no connection to guest one; anything shared between them
@@ -473,7 +511,7 @@ test.describe("fork session", () => {
       const answerCode = await answerInput.inputValue();
 
       await shareDialog.getByPlaceholder("Paste their connection code here").fill(answerCode);
-      await shareDialog.getByRole("button", { name: "Connect" }).click();
+      await shareDialog.getByRole("button", { name: "Connect", exact: true }).click();
       await expect(joinDialog.getByText("Shared data available")).toBeVisible({ timeout: 60_000 });
       await joinDialog.getByRole("button", { name: /Open workspace|Hide/ }).click();
 
@@ -494,7 +532,7 @@ test.describe("fork session", () => {
       await hostContext.close();
 
       // WebRTC takes a few seconds to notice a dead peer. The app then falls
-      // back to the local engine and says so — wait for that notice, as a
+      // back to the local engine and says so: wait for that notice, as a
       // person would, before querying.
       await expect(
         guest.getByText("That shared connection is no longer available").first()
@@ -505,7 +543,7 @@ test.describe("fork session", () => {
         guest,
         "SELECT region, amount FROM regional_sales WHERE amount = 250"
       );
-      await expect(guest.getByText("south").first()).toBeVisible({ timeout: 60_000 });
+      await expect(resultCell(guest, "south")).toBeVisible({ timeout: 60_000 });
     } finally {
       await guestContext.close();
       // hostContext already closed by the test; a second close is a no-op.

@@ -15,9 +15,13 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:4599',
     trace: 'retain-on-failure',
+    // Locally the suite drives the installed Google Chrome, so no Playwright
+    // browser download is needed. CI keeps the bundled Chromium.
+    ...(process.env.CI ? {} : { channel: 'chrome' }),
   },
   webServer: {
-    command: 'bunx vite preview --port 4599 --strictPort',
+    // The local script, not bunx: nothing may be fetched to run the suite.
+    command: 'bun run preview -- --port 4599 --strictPort',
     url: 'http://localhost:4599',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

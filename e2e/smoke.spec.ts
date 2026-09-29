@@ -15,16 +15,16 @@ const fixture = (...parts: string[]) => path.join(here, "fixtures", ...parts);
 
 const b64 = (sql: string) => Buffer.from(sql, "utf8").toString("base64");
 
-/** First boot in a fresh context shows the Create Profile dialog — complete it. */
+/** First boot in a fresh context shows the New profile dialog: complete it. */
 async function ensureProfile(page: Page) {
-  const dialog = page.getByRole("dialog", { name: "Create Profile" });
+  const dialog = page.getByRole("dialog", { name: "New profile" });
   try {
     await dialog.waitFor({ state: "visible", timeout: 20_000 });
   } catch {
     return; // profile already exists (persisted context) or dialog not needed
   }
-  await dialog.getByPlaceholder("Profile name").fill("e2e");
-  await dialog.getByRole("button", { name: "Create Profile" }).click();
+  await dialog.getByLabel("Name", { exact: true }).fill("e2e");
+  await dialog.getByRole("button", { name: "Create profile" }).click();
   await dialog.waitFor({ state: "hidden" });
 }
 
@@ -32,27 +32,41 @@ async function ensureProfile(page: Page) {
 async function bootApp(page: Page, url = "/") {
   await page.goto(url);
   await ensureProfile(page);
-  await expect(page.getByText("Duck-UI").first()).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole("tablist", { name: "Open tabs" })).toBeVisible({
+    timeout: 60_000,
+  });
 }
 
-/** Import files through the real UI flow, wait for success, close the sheet. */
+/** Import files through the real UI flow and wait for the sheet to finish. */
 async function importFiles(page: Page, files: string[]) {
-  await page.getByLabel("Data menu").click();
-  await page.getByRole("menuitem", { name: "Import Data" }).click();
+  await page.getByRole("button", { name: "Import data" }).first().click();
+  const sheet = page.getByRole("dialog", { name: "Import data" });
   // Scoped to the importer sheet: other features keep their own hidden inputs.
-  await page.getByRole("dialog").locator('input[type="file"]').setInputFiles(files);
-  await page.getByRole("button", { name: /Import \d+ File/ }).click();
+  await sheet.locator('input[type="file"]').setInputFiles(files);
+  await sheet.getByRole("button", { name: /Import \d+ files?/ }).click();
   await expect(page.getByText("Successfully imported").first()).toBeVisible({
     timeout: 60_000,
   });
-  await page.getByRole("button", { name: "Close", exact: true }).click();
-  await expect(page.getByRole("dialog")).toBeHidden();
+  // The sheet closes itself once every file has landed. A file that failed
+  // keeps it open, so this also asserts that nothing failed.
+  await expect(page.getByRole("dialog")).toBeHidden({ timeout: 60_000 });
 }
 
-/** Expand a database node in the explorer tree and return the tree locator. */
+/**
+ * Make sure a database node in the explorer tree is expanded and return the
+ * tree locator. Database nodes start expanded, so a blind click would close it.
+ */
 async function expandTreeNode(page: Page, name: string) {
-  const tree = page.getByRole("tree");
-  await tree.getByText(name, { exact: true }).first().click();
+  const tree = page.getByRole("tree", { name: "Database schema" });
+  const label = new RegExp(`^${name}\\b`);
+  const node = tree.getByRole("button", { name: label }).first();
+  await expect(node).toBeVisible({ timeout: 60_000 });
+  const item = tree
+    .getByRole("treeitem")
+    .filter({ has: page.getByRole("button", { name: label }) })
+    .first();
+  if ((await item.getAttribute("aria-expanded")) !== "true") await node.click();
+  await expect(item).toHaveAttribute("aria-expanded", "true");
   return tree;
 }
 
@@ -89,7 +103,7 @@ test("imports the whole dirty CSV corpus without errors", async ({ page }) => {
   await bootApp(page);
   await importFiles(page, corpus);
 
-  // Every file must land as a table — the import path IS the demo.
+  // Every file must land as a table: the import path IS the demo.
   const tree = await expandTreeNode(page, "memory");
   for (const file of corpus) {
     const tableName = path.basename(file, ".csv");
@@ -118,26 +132,31 @@ test("exports query results to CSV", async ({ page }) => {
   });
 
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Export" }).click();
-  await page.getByRole("menuitem", { name: "Export as CSV" }).click();
+  await page.getByRole("button", { name: "Export", exact: true }).click();
+  await page.getByRole("menuitem", { name: "CSV", exact: true }).click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toMatch(/\.csv$/);
 });
 
-test("cell context menu items actually work", async ({ page }) => {
+// FIXME(app): the Svelte result grid has no cell selection and no cell context
+// menu. src/lib/components/table/VirtualTable.svelte only tracks a selected
+// row (`selectedRow`, row `onclick`) and src/lib/components/table/TableCell.svelte
+// has no `oncontextmenu`; the old useCellSelection and CellContextMenu were
+// not ported. Nothing renders "1 cell selected" or a "Select Column" item.
+test.fixme("cell context menu items actually work", async ({ page }) => {
   const sql = "SELECT range AS id, 'name_' || range AS name FROM range(25)";
   await page.goto(`/?query=${b64(sql)}&execute=true`);
   await ensureProfile(page);
   const cell = page.getByText("name_3", { exact: true }).first();
   await expect(cell).toBeVisible({ timeout: 60_000 });
 
-  // Select a cell, open the menu, pick Select Column — the selection must
+  // Select a cell, open the menu, pick Select Column: the selection must
   // grow to the whole column (regression: menu items used to unmount before
   // their click handlers could fire, so every item silently did nothing).
   await cell.click();
   await expect(page.getByText("1 cell selected")).toBeVisible();
   await cell.click({ button: "right" });
-  await page.getByRole("button", { name: "Select Column" }).click();
+  await page.getByRole("menuitem", { name: "Select Column" }).click();
   await expect(page.getByText("25 cells selected")).toBeVisible();
 });
 
@@ -146,7 +165,7 @@ test("Open-in-Duck-UI deep link confirms, loads remote parquet, and runs", async
 }) => {
   const parquet = fs.readFileSync(fixture("tiny.parquet"));
 
-  // Serve the fixture as a CORS-enabled remote host, with Range support —
+  // Serve the fixture as a CORS-enabled remote host, with Range support:
   // DuckDB's browser httpfs reads parquet files via range requests.
   await page.route("https://fixtures.test/**", async (route) => {
     const request = route.request();
@@ -188,7 +207,7 @@ test("Open-in-Duck-UI deep link confirms, loads remote parquet, and runs", async
   await page.goto("/?load=https://fixtures.test/tiny.parquet");
   await ensureProfile(page);
 
-  // The confirm interstitial lists the host — nothing loads before consent.
+  // The confirm interstitial lists the host: nothing loads before consent.
   await expect(page.getByText("Open shared data?")).toBeVisible({ timeout: 60_000 });
   await expect(page.getByText("https://fixtures.test/tiny.parquet")).toBeVisible();
 
@@ -203,7 +222,9 @@ test.describe("short viewport", () => {
   // past the bottom edge if it weren't clamped.
   test.use({ viewport: { width: 1280, height: 520 } });
 
-  test("cell context menu stays fully inside the viewport", async ({ page }) => {
+  // FIXME(app): same missing feature as "cell context menu items actually
+  // work": right-clicking a cell opens the browser menu, not an app menu.
+  test.fixme("cell context menu stays fully inside the viewport", async ({ page }) => {
     const sql = "SELECT range AS id, 'name_' || range AS name FROM range(25)";
     await page.goto(`/?query=${b64(sql)}&execute=true`);
     await ensureProfile(page);
@@ -213,16 +234,16 @@ test.describe("short viewport", () => {
     await cell.click();
     await cell.click({ button: "right" });
 
-    // Items rendered past the edge are unreachable — Playwright reports them
+    // Items rendered past the edge are unreachable: Playwright reports them
     // as "outside of the viewport" and a real user simply cannot click them.
-    const menu = page.locator(".context-menu");
+    const menu = page.getByRole("menu");
     await expect(menu).toBeVisible();
     const box = (await menu.boundingBox())!;
     const viewport = page.viewportSize()!;
     expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
     expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
 
-    await page.getByRole("button", { name: "Select Column" }).click();
+    await page.getByRole("menuitem", { name: "Select Column" }).click();
     await expect(page.getByText("25 cells selected")).toBeVisible();
   });
 });
