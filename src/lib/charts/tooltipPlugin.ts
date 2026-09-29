@@ -38,9 +38,8 @@ export function tooltipPlugin(xLabels: string[], opts?: TooltipPluginOptions): u
         tooltip.style.zIndex = "100";
         over.appendChild(tooltip);
 
-        over.addEventListener("mouseenter", () => {
-          tooltip.style.display = "block";
-        });
+        // Shown by setCursor once it has something to say. Showing it on
+        // mouseenter drew an empty box until the cursor reached a data point.
         over.addEventListener("mouseleave", () => {
           tooltip.style.display = "none";
         });
@@ -100,6 +99,7 @@ export function tooltipPlugin(xLabels: string[], opts?: TooltipPluginOptions): u
         }
 
         tooltip.innerHTML = html;
+        tooltip.style.display = "block";
 
         const tooltipW = tooltip.offsetWidth;
         const tooltipH = tooltip.offsetHeight;

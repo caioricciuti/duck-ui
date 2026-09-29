@@ -14,6 +14,19 @@ export const DEFAULT_CHART_COLORS = [
   "#F97316",
 ];
 
+/** Rows looked at to decide whether a column varies. */
+const VARIES_SAMPLE = 200;
+
+const varies = (result: QueryResult, column: string): boolean => {
+  const first = result.data[0]?.[column];
+  const end = Math.min(result.data.length, VARIES_SAMPLE);
+  for (let i = 1; i < end; i++) {
+    if (String(result.data[i][column]) !== String(first)) return true;
+  }
+  // One row cannot vary, and should not be penalised for it.
+  return result.data.length <= 1;
+};
+
 /**
  * Picks a sensible chart for a result with no saved config. Also the
  * fallback when a Duck Brain chart suggestion fails validation.
@@ -24,10 +37,13 @@ export const autoDetectChartConfig = (
 ): ChartConfig => {
   const numericColumns = result.columns.filter((col) => isNumericColumn(result.data, col));
 
-  // Prefer a categorical column for the x-axis; fall back to the first
-  // column when everything is numeric.
+  // Prefer a categorical column for the x-axis, and among those one that
+  // actually varies: a column holding the same value in every row would put
+  // every mark on one label. Fall back to the first column when everything
+  // is numeric.
+  const categorical = result.columns.filter((col) => !isNumericColumn(result.data, col));
   const xAxis =
-    result.columns.find((col) => !isNumericColumn(result.data, col)) || result.columns[0] || "";
+    categorical.find((col) => varies(result, col)) || categorical[0] || result.columns[0] || "";
 
   // The x-axis column must NOT also be plotted as a series. With an
   // all-numeric result (`SELECT 1, 2, 3`) the old default picked column one

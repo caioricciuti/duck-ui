@@ -7,6 +7,7 @@ import { formatNumberWithSuffix, shortenLabel } from "@/lib/chartUtils";
 import { tooltipPlugin } from "@/lib/charts/tooltipPlugin";
 import type { ChartConfig } from "@/store/types";
 import { chartTheme, resolvePalette, resolveSeriesColor, withAlpha } from "./palette";
+import { barSlot, categoryRange, categorySplits } from "./barLayout";
 
 export interface ChartSeriesInfo {
   column: string;
@@ -52,7 +53,9 @@ export const buildXYChart = (
   const isBar = ["bar", "stacked_bar", "grouped_bar"].includes(config.type);
   const isArea = ["area", "stacked_area"].includes(config.type);
   const isScatter = config.type === "scatter";
-  const isGrouped = config.type === "grouped_bar" && series.length > 1;
+  // Several series on a plain bar chart sit side by side. Drawn on the same
+  // spot they would hide each other.
+  const isGrouped = isBar && !isStacked && series.length > 1;
   const smooth = Boolean(config.smooth) && (config.type === "line" || isArea);
 
   const xs = rows.map((_, i) => i);
@@ -76,19 +79,46 @@ export const buildXYChart = (
   const order = series.map((_, i) => i);
   if (isStacked) order.reverse();
 
-  const barPaths =
-    isBar && !isGrouped ? uPlot.paths.bars?.({ size: [0.6, 100], radius: 0.2 }) : undefined;
   const splinePaths = smooth ? uPlot.paths.spline?.() : undefined;
 
+  // Position of each series among the visible ones, so hiding a series
+  // closes its gap instead of leaving a hole in every group.
+  const visible = series.filter((entry) => !hidden.has(entry.column));
+  const positionOf = (i: number) => Math.max(0, visible.indexOf(series[i]));
+
+  /** Bars as plain rectangles with softened top corners, any number per group. */
+  const barPaths = (i: number): uPlot.Series.PathBuilder => {
+    const count = isGrouped ? visible.length : 1;
+    const position = isGrouped ? positionOf(i) : 0;
+    return (u, seriesIdx, idx0, idx1) => {
+      const fill = new Path2D();
+      const xData = u.data[0];
+      const slotPx =
+        xData.length > 1
+          ? Math.abs(u.valToPos(xData[1], "x", true) - u.valToPos(xData[0], "x", true))
+          : u.bbox.width;
+      const { offset, width } = barSlot(slotPx, count, position);
+      const zero = u.valToPos(0, "y", true);
+      const radius = Math.min(3 * uPlot.pxRatio, width / 2);
+
+      for (let di = idx0; di <= idx1; di++) {
+        const value = u.data[seriesIdx][di];
+        if (value == null) continue;
+        const top = u.valToPos(value, "y", true);
+        const height = Math.abs(zero - top);
+        if (height <= 0) continue;
+        const x = u.valToPos(xData[di], "x", true) + offset;
+        // Round the end away from the baseline, which is the bottom edge for
+        // a negative value.
+        const corners = top <= zero ? [radius, radius, 0, 0] : [0, 0, radius, radius];
+        fill.roundRect(x, Math.min(top, zero), width, height, corners);
+      }
+      return { fill, stroke: fill };
+    };
+  };
+
   const pathsFor = (i: number): uPlot.Series["paths"] => {
-    if (isGrouped) {
-      return uPlot.paths.bars?.({
-        size: [0.6 / series.length, 100],
-        radius: 0.2,
-        align: i === 0 ? -1 : i === series.length - 1 ? 1 : 0,
-      });
-    }
-    if (isBar) return barPaths;
+    if (isBar) return barPaths(i);
     if (smooth) return splinePaths;
     if (isScatter) return () => null;
     return undefined;
@@ -113,16 +143,31 @@ export const buildXYChart = (
     }),
   ];
 
-  const rotate = rows.length > 10;
   const longestLabel = Math.max(...xLabels.map((l) => l.length), 1);
+  const LABEL_CHAR_PX = 6.5;
+  const flatLabelPx = longestLabel * LABEL_CHAR_PX + 16;
+  // Labels lie flat while they fit. Past that they are slanted, which takes
+  // far less width per label.
+  const SLANTED_LABEL_PX = 26;
 
   // Colors and fonts are left out on purpose: UPlotChart fills them from the theme.
   const axes: uPlot.Axis[] = [
     {
       values: (_u, vals) => vals.map((v) => xLabels[v] ?? ""),
+      // One tick per row, on the row. uPlot's own ticks would land between
+      // categories and draw grid lines for positions that hold no data.
+      splits: (u) => {
+        const widthPx = u.bbox.width / uPlot.pxRatio;
+        const slanted = rows.length * flatLabelPx > widthPx;
+        return categorySplits(rows.length, widthPx, slanted ? SLANTED_LABEL_PX : flatLabelPx);
+      },
+      rotate: (u) => (rows.length * flatLabelPx > u.bbox.width / uPlot.pxRatio ? -45 : 0),
+      grid: { show: false },
       gap: 8,
-      size: rotate ? Math.min(120, 40 + longestLabel * 5) : 60,
-      rotate: rotate ? -45 : 0,
+      size: (u) =>
+        rows.length * flatLabelPx > u.bbox.width / uPlot.pxRatio
+          ? Math.min(120, 40 + longestLabel * 5)
+          : 44,
     },
     {
       grid: (config.showGrid ?? true) ? { dash: [4, 4] } : { show: false },
@@ -168,14 +213,24 @@ export const buildXYChart = (
     scales: {
       x: {
         time: false,
-        /**
-         * A result with one row collapses the x range to a single value, and
-         * uPlot then draws the whole series pinned to the left edge with the
-         * rest of the canvas empty, which reads as a broken chart rather
-         * than as one data point. Pad the range so a lone bar sits centred.
-         */
-        range: rows.length === 1 ? (_u, min, max) => [min - 1, max + 1] : undefined,
+        // Rows sit at 0, 1, 2 and so on. Half a slot of padding keeps the
+        // first and last mark whole, and centres a result with one row.
+        range: (_u, min, max) => categoryRange(min, max),
       },
+      ...(isBar
+        ? {
+            y: {
+              // Bars are read by their length, so the axis has to include zero.
+              range: (_u: uPlot, min: number, max: number): [number, number] => {
+                const low = Math.min(0, min);
+                const high = Math.max(0, max);
+                if (low === high) return [0, 1];
+                const pad = (high - low) * 0.06;
+                return [low < 0 ? low - pad : 0, high > 0 ? high + pad : 0];
+              },
+            },
+          }
+        : {}),
     },
     series: uSeries,
     axes,

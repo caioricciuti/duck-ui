@@ -83,25 +83,34 @@ describe("chart axis auto-detection", () => {
   });
 });
 
-describe("single-point x range", () => {
-  /** Mirrors the padding applied when a result has exactly one row. */
-  const range = (rows: number, min: number, max: number): [number, number] =>
-    rows === 1 ? [min - 1, max + 1] : [min, max];
-
-  it("pads a one-row result so the bar is not pinned to the left edge", () => {
-    expect(range(1, 1, 1)).toEqual([0, 2]);
-  });
-
-  it("leaves a normal result's range alone", () => {
-    expect(range(5, 1, 5)).toEqual([1, 5]);
-  });
-});
-
 describe("autoDetectChartConfig", () => {
   it("applies the same axis rule as the mirrored helper", () => {
     const result = makeResult(["1", "2", "3"], [{ "1": 1, "2": 2, "3": 3 }]);
     const config = autoDetectChartConfig(result);
     expect({ xAxis: config.xAxis, yAxis: config.yAxis }).toEqual(pickAxes(result));
     expect(config.colors).toEqual(DEFAULT_CHART_COLORS);
+  });
+
+  it("skips a categorical column that holds one value in every row", () => {
+    const result = makeResult(
+      ["kind", "city", "total"],
+      [
+        { kind: "store", city: "Lisbon", total: 3 },
+        { kind: "store", city: "Porto", total: 5 },
+        { kind: "store", city: "Faro", total: 2 },
+      ]
+    );
+    expect(autoDetectChartConfig(result).xAxis).toBe("city");
+  });
+
+  it("keeps a constant column when it is the only categorical one", () => {
+    const result = makeResult(
+      ["kind", "total"],
+      [
+        { kind: "store", total: 3 },
+        { kind: "store", total: 5 },
+      ]
+    );
+    expect(autoDetectChartConfig(result).xAxis).toBe("kind");
   });
 });
