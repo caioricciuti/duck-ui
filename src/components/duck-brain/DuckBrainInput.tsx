@@ -258,6 +258,7 @@ const DuckBrainInput: React.FC<DuckBrainInputProps> = ({
             size="icon"
             onClick={onAbort}
             className="h-8 w-8 text-destructive hover:text-destructive"
+            aria-label="Stop generating"
           >
             <Square className="h-4 w-4" />
           </Button>
@@ -268,6 +269,7 @@ const DuckBrainInput: React.FC<DuckBrainInputProps> = ({
             size="icon"
             disabled={!input.trim() || disabled}
             className="h-8 w-8"
+            aria-label="Send message"
           >
             {disabled ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>

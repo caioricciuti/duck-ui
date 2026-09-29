@@ -6,8 +6,10 @@ import { ResizablePanel, ResizablePanelGroup, ResizableHandle } from "@/componen
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DuckUiTable from "@/components/table/DuckUItable";
 import ChartVisualizationPro from "@/components/charts/ChartVisualizationPro";
+import { zeroRowsMessage } from "@/lib/resultMessages";
 import {
   FileX2,
+  CheckCircle2,
   Table,
   BarChart3,
   AlertTriangle,
@@ -208,6 +210,20 @@ const SqlTab: React.FC<SqlTabProps> = ({ tabId }) => {
             )}
             {isFixing ? "Duck Brain is thinking…" : "Fix with Duck Brain"}
           </Button>
+        </div>
+      );
+    }
+
+    // A successful query with no rows is not an error: say so plainly.
+    if (currentTab.result.data.length === 0) {
+      return (
+        <div className="h-full flex items-center justify-center">
+          <div className="flex flex-col items-center">
+            <CheckCircle2 size={48} className="text-muted-foreground mb-4" />
+            <p className="text-sm text-muted-foreground">
+              {zeroRowsMessage(currentTab.result.durationMs)}
+            </p>
+          </div>
         </div>
       );
     }

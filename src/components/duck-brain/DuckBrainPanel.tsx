@@ -433,11 +433,23 @@ const Header: React.FC<HeaderProps> = ({ onClose, onClear, showClear }) => (
     </div>
     <div className="flex items-center gap-1">
       {showClear && onClear && (
-        <Button variant="ghost" size="icon" onClick={onClear} className="h-7 w-7">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onClear}
+          className="h-7 w-7"
+          aria-label="Clear chat"
+        >
           <Trash2 className="h-4 w-4" />
         </Button>
       )}
-      <Button variant="ghost" size="icon" onClick={onClose} className="h-7 w-7">
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={onClose}
+        className="h-7 w-7"
+        aria-label="Close Duck Brain"
+      >
         <X className="h-4 w-4" />
       </Button>
     </div>

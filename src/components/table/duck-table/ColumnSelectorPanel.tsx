@@ -66,7 +66,13 @@ const ColumnSelectorPanel: React.FC<ColumnSelectorPanelProps> = React.memo(
               >
                 None
               </Button>
-              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={onClose}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={onClose}
+                aria-label="Close column selector"
+              >
                 <X className="h-4 w-4" />
               </Button>
             </div>
@@ -85,6 +91,7 @@ const ColumnSelectorPanel: React.FC<ColumnSelectorPanelProps> = React.memo(
                 size="sm"
                 className="absolute right-1 top-1/2 transform -translate-y-1/2 h-5 w-5 p-0"
                 onClick={() => onFilterChange("")}
+                aria-label="Clear filter"
               >
                 <X className="h-3 w-3" />
               </Button>

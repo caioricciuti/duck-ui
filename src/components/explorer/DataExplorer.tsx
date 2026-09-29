@@ -166,6 +166,7 @@ export default function DataExplorer() {
               onClick={() => fetchDatabasesAndTablesInfo()}
               disabled={isLoadingDbTablesFetch}
               title="Refresh Schema"
+              aria-label="Refresh Schema"
             >
               <RefreshCw className={`h-4 w-4 ${isLoadingDbTablesFetch ? "animate-spin" : ""}`} />
             </Button>

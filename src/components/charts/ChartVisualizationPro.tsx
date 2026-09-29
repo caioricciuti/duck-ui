@@ -725,7 +725,7 @@ export const ChartVisualizationPro: React.FC<ChartVisualizationProProps> = ({
         {/* Settings Popover */}
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Chart Settings">
               <Settings2 className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
@@ -847,7 +847,13 @@ export const ChartVisualizationPro: React.FC<ChartVisualizationProProps> = ({
         </Popover>
 
         {/* Export */}
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleExportPNG}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={handleExportPNG}
+          aria-label="Download chart as PNG"
+        >
           <Download className="h-4 w-4" />
         </Button>
 
@@ -862,6 +868,7 @@ export const ChartVisualizationPro: React.FC<ChartVisualizationProProps> = ({
             setTimeout(() => onConfigChange?.(autoDetect()), 0);
           }}
           title="Reset chart"
+          aria-label="Reset chart"
         >
           <RotateCcw className="h-3.5 w-3.5" />
         </Button>

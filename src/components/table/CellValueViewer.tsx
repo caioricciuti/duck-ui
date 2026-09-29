@@ -117,6 +117,7 @@ export const CellValueViewer: React.FC<CellValueViewerProps> = ({
                   e.stopPropagation();
                   setIsMinimized(false);
                 }}
+                aria-label="Expand cell value"
               >
                 <ChevronUp className="h-4 w-4" />
               </Button>
@@ -128,6 +129,7 @@ export const CellValueViewer: React.FC<CellValueViewerProps> = ({
                   e.stopPropagation();
                   onClose();
                 }}
+                aria-label="Close cell value"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -158,10 +160,17 @@ export const CellValueViewer: React.FC<CellValueViewerProps> = ({
               size="sm"
               className="h-7 w-7 p-0"
               onClick={() => setIsMinimized(true)}
+              aria-label="Minimize cell value"
             >
               <ChevronDown className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={onClose}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0"
+              onClick={onClose}
+              aria-label="Close cell value"
+            >
               <X className="h-4 w-4" />
             </Button>
           </div>

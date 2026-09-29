@@ -28,7 +28,13 @@ const SpreadsheetOptionsPanel: React.FC<SpreadsheetOptionsPanelProps> = React.me
       <CardContent className="p-2">
         <div className="flex justify-between items-center mb-3">
           <h3 className="text-sm font-semibold">Spreadsheet Options</h3>
-          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={onClose}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0"
+            onClick={onClose}
+            aria-label="Close spreadsheet options"
+          >
             <X className="h-4 w-4" />
           </Button>
         </div>

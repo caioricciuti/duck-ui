@@ -9,6 +9,8 @@ interface ColumnNodeProps {
   databaseName?: string;
   tableName?: string;
   schema?: string;
+  /** Depth in the explorer tree, for aria-level. */
+  level?: number;
 }
 
 const getTypeIcon = (type: string) => {
@@ -56,6 +58,7 @@ export const ColumnNode: React.FC<ColumnNodeProps> = ({
   databaseName,
   tableName,
   schema,
+  level,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [distribution, setDistribution] = useState<ColumnDistribution | null>(null);
@@ -115,8 +118,18 @@ export const ColumnNode: React.FC<ColumnNodeProps> = ({
   return (
     <div className="ml-8">
       <div
+        role="treeitem"
+        aria-expanded={isExpanded}
+        aria-level={level}
+        tabIndex={0}
         className="flex items-center py-1.5 px-2 hover:bg-secondary/50 rounded-md cursor-pointer group"
         onClick={() => setIsExpanded(!isExpanded)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setIsExpanded(!isExpanded);
+          }
+        }}
       >
         <div className="flex-1 flex items-center gap-2 min-w-0">
           {isExpanded ? (
@@ -162,7 +175,11 @@ export const ColumnNode: React.FC<ColumnNodeProps> = ({
       </div>
 
       {isExpanded && (
-        <div className="ml-6 mt-1 mb-2 p-2 bg-muted/30 rounded-md space-y-2">
+        <div
+          role="group"
+          aria-label={`${stats.column_name} statistics`}
+          className="ml-6 mt-1 mb-2 p-2 bg-muted/30 rounded-md space-y-2"
+        >
           {/* Value distribution */}
           {distribution?.kind === "histogram" && distribution.bins.some((b) => b > 0) && (
             <div className="space-y-1">

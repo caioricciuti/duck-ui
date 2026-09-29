@@ -337,6 +337,7 @@ export default function AISettings() {
                     onClick={() =>
                       setShowKey((prev) => ({ ...prev, compatible: !prev.compatible }))
                     }
+                    aria-label={showKey.compatible ? "Hide API key" : "Show API key"}
                   >
                     {showKey.compatible ? (
                       <EyeOff className="h-4 w-4" />
@@ -397,6 +398,7 @@ export default function AISettings() {
                       onClick={() =>
                         setShowKey((prev) => ({ ...prev, [aiProvider]: !prev[aiProvider] }))
                       }
+                      aria-label={showKey[aiProvider] ? "Hide API key" : "Show API key"}
                     >
                       {showKey[aiProvider] ? (
                         <EyeOff className="h-4 w-4" />
@@ -559,6 +561,9 @@ export default function AISettings() {
                           setAIProvider("webllm");
                           await initializeDuckBrain(model.id);
                         }}
+                        aria-label={
+                          isActive ? "Model loaded" : isLoadingThis ? "Loading model" : undefined
+                        }
                       >
                         {isActive ? (
                           <Check className="h-4 w-4" />

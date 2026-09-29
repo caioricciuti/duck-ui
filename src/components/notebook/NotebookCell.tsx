@@ -321,6 +321,7 @@ export function NotebookCellComponent({
               className="h-6 w-6"
               onClick={() => onRun(cell.id)}
               disabled={isRunning}
+              aria-label="Run cell"
             >
               {isRunning ? (
                 <Loader2 className="h-3 w-3 animate-spin" />
@@ -336,6 +337,7 @@ export function NotebookCellComponent({
               size="icon"
               className="h-6 w-6"
               onClick={() => toggleCollapsed(tabId, cell.id)}
+              aria-label={cell.collapsed ? "Expand output" : "Collapse output"}
             >
               <ChevronRight
                 className={cn("h-3 w-3 transition-transform", !cell.collapsed && "rotate-90")}
@@ -349,6 +351,7 @@ export function NotebookCellComponent({
             className="h-6 w-6"
             onClick={() => moveCell(tabId, cell.id, "up")}
             disabled={cellIndex === 0}
+            aria-label="Move cell up"
           >
             <ChevronUp className="h-3 w-3" />
           </Button>
@@ -358,6 +361,7 @@ export function NotebookCellComponent({
             className="h-6 w-6"
             onClick={() => moveCell(tabId, cell.id, "down")}
             disabled={cellIndex === totalCells - 1}
+            aria-label="Move cell down"
           >
             <ChevronDown className="h-3 w-3" />
           </Button>
@@ -367,6 +371,7 @@ export function NotebookCellComponent({
             className="h-6 w-6 text-destructive hover:text-destructive"
             onClick={() => removeCell(tabId, cell.id)}
             disabled={totalCells <= 1}
+            aria-label="Delete cell"
           >
             <Trash2 className="h-3 w-3" />
           </Button>
@@ -446,6 +451,7 @@ export function NotebookCellComponent({
               variant="outline"
               size="icon"
               className="h-5 w-5 rounded-full bg-background shadow-sm"
+              aria-label="Add cell"
             >
               <Plus className="h-3 w-3" />
             </Button>

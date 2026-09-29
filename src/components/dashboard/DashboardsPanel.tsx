@@ -52,7 +52,13 @@ export default function DashboardsPanel({ onClose }: DashboardsPanelProps) {
           <LayoutDashboard className="h-4 w-4" />
           Dashboards
         </span>
-        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6"
+          onClick={onClose}
+          aria-label="Close dashboards"
+        >
           <span className="sr-only">Close</span>×
         </Button>
       </div>

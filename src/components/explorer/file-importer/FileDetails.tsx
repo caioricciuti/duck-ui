@@ -119,6 +119,7 @@ const FileDetails: React.FC<FileDetailsProps> = ({
                   size="sm"
                   onClick={onRetry}
                   className="text-gray-500 hover:text-gray-700"
+                  aria-label="Retry"
                 >
                   <RefreshCw className="w-4 h-4" />
                 </Button>
@@ -128,6 +129,7 @@ const FileDetails: React.FC<FileDetailsProps> = ({
                 size="sm"
                 onClick={onRemove}
                 className="text-gray-500 hover:text-gray-700"
+                aria-label="Remove file"
               >
                 <X className="w-4 h-4" />
               </Button>

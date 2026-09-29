@@ -20,6 +20,7 @@ const PaginationBar: React.FC<PaginationBarProps> = ({ table }) => {
           disabled={!table.getCanPreviousPage()}
           className="h-7 w-7 p-0 text-xs"
           title="First page"
+          aria-label="First page"
         >
           ««
         </Button>
@@ -30,6 +31,7 @@ const PaginationBar: React.FC<PaginationBarProps> = ({ table }) => {
           disabled={!table.getCanPreviousPage()}
           className="h-7 w-7 p-0 text-xs"
           title="Previous page"
+          aria-label="Previous page"
         >
           «
         </Button>
@@ -40,6 +42,7 @@ const PaginationBar: React.FC<PaginationBarProps> = ({ table }) => {
           disabled={!table.getCanNextPage()}
           className="h-7 w-7 p-0 text-xs"
           title="Next page"
+          aria-label="Next page"
         >
           »
         </Button>
@@ -50,6 +53,7 @@ const PaginationBar: React.FC<PaginationBarProps> = ({ table }) => {
           disabled={!table.getCanNextPage()}
           className="h-7 w-7 p-0 text-xs"
           title="Last page"
+          aria-label="Last page"
         >
           »»
         </Button>

@@ -139,7 +139,10 @@ export default function Sidebar({ isExplorerOpen, onToggleExplorer }: SidebarPro
               <Tooltip>
                 <TooltipTrigger asChild>
                   <DropdownMenuTrigger asChild>
-                    <button className="p-1.5 rounded-md hover:bg-muted transition-colors">
+                    <button
+                      className="p-1.5 rounded-md hover:bg-muted transition-colors"
+                      aria-label="Profile menu"
+                    >
                       <ProfileAvatar
                         avatarEmoji={currentProfile?.avatarEmoji || "logo"}
                         size="md"
@@ -457,6 +460,7 @@ export default function Sidebar({ isExplorerOpen, onToggleExplorer }: SidebarPro
               size="icon"
               className="h-6 w-6"
               onClick={() => setHistoryOpen(false)}
+              aria-label="Close query history"
             >
               <span className="sr-only">Close</span>×
             </Button>

@@ -85,7 +85,11 @@ export default function ProfileEditor({
         <Label>Avatar</Label>
         <Popover open={emojiOpen} onOpenChange={setEmojiOpen}>
           <PopoverTrigger asChild>
-            <Button variant="outline" className="h-14 w-14 p-0 flex items-center justify-center">
+            <Button
+              variant="outline"
+              className="h-14 w-14 p-0 flex items-center justify-center"
+              aria-label="Choose avatar"
+            >
               <ProfileAvatar avatarEmoji={avatarEmoji} size="lg" />
             </Button>
           </PopoverTrigger>

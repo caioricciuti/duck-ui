@@ -311,6 +311,7 @@ export default function ResultCompareDialog({
                 variant="ghost"
                 className="h-8 w-8 p-0"
                 title="Swap sides"
+                aria-label="Swap sides"
                 onClick={() => {
                   setLeftId(rightId);
                   setRightId(leftId);
@@ -462,6 +463,7 @@ export default function ResultCompareDialog({
                     variant="ghost"
                     className="h-6 w-6 p-0"
                     title="Remove pin"
+                    aria-label="Remove pin"
                     onClick={() => removeResultPin(pin.id)}
                   >
                     <Trash2 className="h-3.5 w-3.5" />

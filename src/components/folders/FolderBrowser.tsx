@@ -209,6 +209,7 @@ const FileNode: React.FC<FileNodeProps> = ({
                   <button
                     type="button"
                     onClick={(e) => e.stopPropagation()}
+                    aria-label={`Import ${entry.name}`}
                     className={cn(
                       "opacity-0 group-hover:opacity-100 p-1 rounded transition-opacity",
                       "hover:bg-primary/20 text-primary"
@@ -450,7 +451,13 @@ const FolderBrowser: React.FC<FolderBrowserProps> = ({ onFileSelect, onFileImpor
           </span>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={mountFolder}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={mountFolder}
+                aria-label="Add folder"
+              >
                 <FolderPlus className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
