@@ -2,7 +2,7 @@
   import { onMount, untrack } from 'svelte'
   import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter, drawSelection, placeholder as placeholderExt } from '@codemirror/view'
   import { EditorState, Compartment, Prec, type Extension } from '@codemirror/state'
-  import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
+  import { defaultKeymap, history, historyKeymap, indentWithTab, insertNewlineKeepIndent } from '@codemirror/commands'
   import { searchKeymap, highlightSelectionMatches } from '@codemirror/search'
   import { autocompletion, closeBrackets, closeBracketsKeymap, completionKeymap } from '@codemirror/autocomplete'
   import { bracketMatching, indentOnInput, indentUnit, foldGutter, foldKeymap } from '@codemirror/language'
@@ -120,7 +120,18 @@
 
   async function languageExtension(lang: EditorLanguage): Promise<Extension> {
     if (lang === 'python') return (await import('@codemirror/lang-python')).python()
-    if (lang === 'markdown') return (await import('@codemirror/lang-markdown')).markdown()
+    if (lang === 'markdown') {
+      const { markdown, insertNewlineContinueMarkup } = await import('@codemirror/lang-markdown')
+      return [
+        markdown(),
+        // Markdown embeds HTML, and its indentation treats a component tag
+        // such as <Dropdown .../> as an open element, so the default Enter
+        // indents every following line. An indented ```sql fence is no longer
+        // a fence. Enter continues lists and quotes, and otherwise keeps the
+        // indentation of the line it leaves.
+        Prec.high(keymap.of([{ key: 'Enter', run: (view) => insertNewlineContinueMarkup(view) || insertNewlineKeepIndent(view) }])),
+      ]
+    }
     const schema = toSqlSchema(untrack(() => databases))
     const config = { dialect: PostgreSQL, schema, upperCaseKeywords: true }
     return [
