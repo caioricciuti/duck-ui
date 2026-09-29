@@ -138,12 +138,7 @@ test("exports query results to CSV", async ({ page }) => {
   expect(download.suggestedFilename()).toMatch(/\.csv$/);
 });
 
-// FIXME(app): the Svelte result grid has no cell selection and no cell context
-// menu. src/lib/components/table/VirtualTable.svelte only tracks a selected
-// row (`selectedRow`, row `onclick`) and src/lib/components/table/TableCell.svelte
-// has no `oncontextmenu`; the old useCellSelection and CellContextMenu were
-// not ported. Nothing renders "1 cell selected" or a "Select Column" item.
-test.fixme("cell context menu items actually work", async ({ page }) => {
+test("cell context menu items actually work", async ({ page }) => {
   const sql = "SELECT range AS id, 'name_' || range AS name FROM range(25)";
   await page.goto(`/?query=${b64(sql)}&execute=true`);
   await ensureProfile(page);
@@ -222,9 +217,7 @@ test.describe("short viewport", () => {
   // past the bottom edge if it weren't clamped.
   test.use({ viewport: { width: 1280, height: 520 } });
 
-  // FIXME(app): same missing feature as "cell context menu items actually
-  // work": right-clicking a cell opens the browser menu, not an app menu.
-  test.fixme("cell context menu stays fully inside the viewport", async ({ page }) => {
+  test("cell context menu stays fully inside the viewport", async ({ page }) => {
     const sql = "SELECT range AS id, 'name_' || range AS name FROM range(25)";
     await page.goto(`/?query=${b64(sql)}&execute=true`);
     await ensureProfile(page);

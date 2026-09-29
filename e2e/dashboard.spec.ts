@@ -206,16 +206,7 @@ test.describe("markdown dashboards", () => {
 test.describe("inputs and sharing", () => {
   test.slow();
 
-  // FIXME(app): typing a dashboard by hand breaks it. After a line holding a
-  // component tag (`<Dropdown .../>`), Enter indents the next line by two
-  // spaces, and again after every further tag. The markdown language set up in
-  // src/lib/components/editor/CodeEditor.svelte:86 treats the self-closing tag
-  // as an open HTML element. The fence then starts with "  ```sql filtered",
-  // which the `^```sql` pattern in src/services/dashboard/markdown.ts:154 does
-  // not accept, so the document shows the SQL as code and "Unknown query
-  // "filtered"". The same source inserted in one piece (a paste) passes every
-  // assertion below, so the Dropdown itself works.
-  test.fixme("a Dropdown input filters a query, Grafana-style", async ({ page }) => {
+  test("a Dropdown input filters a query, Grafana-style", async ({ page }) => {
     await bootApp(page);
     await createDashboard(page, "Filtered");
 
