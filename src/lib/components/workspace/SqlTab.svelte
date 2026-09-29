@@ -224,7 +224,7 @@
 {#if tab && tab.type === 'sql'}
   <div bind:this={containerEl} class="flex h-full flex-col">
     <div class="flex min-h-0 flex-col" style="height: {splitPercent}%">
-      <div class="flex h-10 shrink-0 items-center gap-1 border-b border-edge-subtle px-2">
+      <div class="flex h-10 shrink-0 items-center gap-1 overflow-x-auto border-b border-edge-subtle px-2 [scrollbar-width:none]">
         {#if executing}
           <Button size="sm" variant="danger" onclick={cancel}>
             <Square size={12} />

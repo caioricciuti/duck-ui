@@ -14,7 +14,7 @@
   import { isShareLiveOpen, closeShareLive } from '../../stores/overlays.svelte'
   import { duck, duckActions } from '../../stores/duck.svelte'
   import { openCommandPalette, toggleCommandPalette } from '../../stores/command-palette.svelte'
-  import { toggleExplorer } from '../../stores/layout.svelte'
+  import { toggleExplorer, isMobile } from '../../stores/layout.svelte'
   import { hasUnsavedWork } from '@/lib/boot'
   import { initRouter, isOnWorkspace, goWorkspace, goTo } from '../../stores/router.svelte'
 
@@ -107,20 +107,20 @@
   })
 </script>
 
-<div class="flex h-full">
+<div class="flex h-full {isMobile() ? 'flex-col-reverse' : ''}">
   <Sidebar />
   <ContextPanel />
 
   <!-- Pages: full-screen product areas driven by the URL -->
   {#if !isOnWorkspace()}
-    <main class="flex min-w-0 flex-1 flex-col overflow-hidden bg-canvas">
+    <main class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-canvas">
       <PageRouter />
     </main>
   {/if}
 
   <!-- Workspace: stays mounted while a page is shown, so running queries and
        results survive navigation. -->
-  <main class="flex min-w-0 flex-1 flex-col overflow-hidden bg-canvas" hidden={!isOnWorkspace()}>
+  <main class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-canvas" hidden={!isOnWorkspace()}>
     <TabBar />
     <div class="min-h-0 flex-1">
       <TabContent />

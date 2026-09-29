@@ -2,7 +2,10 @@
   import { BookOpen, ExternalLink, Star } from 'lucide-svelte'
   import ExplorerPanel from '../explorer/ExplorerPanel.svelte'
   import { getRoute, getSection, goTo, isOnWorkspace } from '../../stores/router.svelte'
-  import { groupForRoute, PAGE_ROUTES, sectionsFor, visibleRoutes } from '@/lib/routes'
+  import { groupForRoute, PAGE_ROUTES, sectionsFor, visibleRoutes, type PageRoute } from '@/lib/routes'
+  import { isMobile, isDrawerOpen, closeDrawer } from '../../stores/layout.svelte'
+  import { fly, fade } from 'svelte/transition'
+  import { trapFocus } from '../../utils/focus-trap'
 
   // Second column. On the workspace it is the schema explorer: resizable,
   // collapsible, width remembered. On a page it is a plain sidebar for the
@@ -11,16 +14,21 @@
   const route = $derived(getRoute())
   const group = $derived(groupForRoute(route))
   const routes = $derived(visibleRoutes(group))
+  const mobile = $derived(isMobile())
+
+  function open(item: PageRoute, sectionId?: string) {
+    goTo(item, sectionId)
+    closeDrawer()
+  }
+
+  function onKeydown(e: KeyboardEvent) {
+    if (isDrawerOpen() && e.key === 'Escape') closeDrawer()
+  }
 </script>
 
-<!-- The explorer stays mounted while a page is shown, so its expanded nodes
-     and search survive a trip to Settings. -->
-<div class="h-full shrink-0" hidden={!isOnWorkspace()}>
-  <ExplorerPanel />
-</div>
+<svelte:window onkeydown={onKeydown} />
 
-{#if !isOnWorkspace()}
-  <div class="flex h-full w-56 shrink-0 flex-col overflow-hidden border-r border-edge-subtle bg-sidebar">
+{#snippet pageNav()}
     <div class="flex h-12 shrink-0 items-center pl-4 pr-2">
       <span class="text-[13px] font-semibold tracking-[-0.01em] text-fg">{group.label}</span>
     </div>
@@ -33,7 +41,7 @@
           {@const sections = sectionsFor(item)}
           <button
             class="flex h-8 w-full items-center gap-2.5 rounded-md px-2 text-[13px] transition-colors {active ? 'bg-active font-medium text-fg' : 'text-fg-2 hover:bg-hover hover:text-fg'}"
-            onclick={() => goTo(item)}
+            onclick={() => open(item)}
             aria-current={active ? 'page' : undefined}
           >
             <meta.icon size={15} strokeWidth={1.75} class="shrink-0 {active ? 'text-accent' : 'text-fg-3'}" />
@@ -45,7 +53,7 @@
               {#each sections as s (s.id)}
                 <button
                   class="flex h-7 w-full items-center rounded-md px-2 text-[12.5px] transition-colors {current === s.id ? 'bg-hover font-medium text-fg' : 'text-fg-3 hover:bg-hover hover:text-fg'}"
-                  onclick={() => goTo(item, s.id)}
+                  onclick={() => open(item, s.id)}
                   aria-current={current === s.id ? 'true' : undefined}
                 >
                   <span class="truncate">{s.label}</span>
@@ -78,5 +86,38 @@
         </div>
       {/if}
     </nav>
+{/snippet}
+
+{#if mobile}
+  <!-- On a phone the second column is a drawer over the content. -->
+  {#if isDrawerOpen()}
+    <div class="fixed inset-0 z-[60] bg-black/50" onclick={closeDrawer} role="presentation" transition:fade={{ duration: 120 }}></div>
+    <div
+      class="fixed inset-y-0 left-0 z-[61] flex w-[min(86vw,340px)] flex-col overflow-hidden border-r border-edge bg-sidebar"
+      role="dialog"
+      aria-modal="true"
+      aria-label={isOnWorkspace() ? 'Schema explorer' : `${group.label} navigation`}
+      tabindex="-1"
+      use:trapFocus
+      transition:fly={{ x: -320, duration: 160 }}
+    >
+      {#if isOnWorkspace()}
+        <ExplorerPanel drawer />
+      {:else}
+        {@render pageNav()}
+      {/if}
+    </div>
+  {/if}
+{:else}
+  <!-- The explorer stays mounted while a page is shown, so its expanded nodes
+       and search survive a trip to Settings. -->
+  <div class="h-full shrink-0" hidden={!isOnWorkspace()}>
+    <ExplorerPanel />
   </div>
+
+  {#if !isOnWorkspace()}
+    <div class="flex h-full w-56 shrink-0 flex-col overflow-hidden border-r border-edge-subtle bg-sidebar">
+      {@render pageNav()}
+    </div>
+  {/if}
 {/if}

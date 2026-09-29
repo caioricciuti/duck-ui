@@ -31,3 +31,30 @@ export function setExplorerCollapsed(collapsed: boolean): void {
 export function toggleExplorer(): void {
   setExplorerCollapsed(!explorerCollapsed);
 }
+
+// Below this width the rail moves to the bottom and the second column
+// becomes a drawer.
+const mobileQuery = window.matchMedia("(max-width: 767px)");
+let mobile = $state(mobileQuery.matches);
+let drawerOpen = $state(false);
+
+mobileQuery.addEventListener("change", (e) => {
+  mobile = e.matches;
+  if (!e.matches) drawerOpen = false;
+});
+
+export function isMobile(): boolean {
+  return mobile;
+}
+
+export function isDrawerOpen(): boolean {
+  return mobile && drawerOpen;
+}
+
+export function openDrawer(): void {
+  drawerOpen = true;
+}
+
+export function closeDrawer(): void {
+  drawerOpen = false;
+}

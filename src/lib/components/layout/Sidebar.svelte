@@ -7,7 +7,8 @@
   import { openCommandPalette } from '../../stores/command-palette.svelte'
   import { getRoute, goTo, goWorkspace } from '../../stores/router.svelte'
   import { groupForRoute, NAV_GROUPS, visibleRoutes, type NavGroup } from '@/lib/routes'
-  import { Sun, Moon, Search, SquareTerminal } from 'lucide-svelte'
+  import { Sun, Moon, Search, SquareTerminal, PanelLeft } from 'lucide-svelte'
+  import { isMobile, openDrawer } from '../../stores/layout.svelte'
 
   const profile = $derived(duck((s) => s.currentProfile))
   const connection = $derived(duck((s) => s.currentConnection))
@@ -24,20 +25,32 @@
     if (first) goTo(first)
   }
 
+  const mobile = $derived(isMobile())
+
   const railButton = 'relative inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors'
   const idle = 'text-fg-3 hover:bg-hover hover:text-fg'
 </script>
 
 {#snippet marker()}
-  <span class="absolute -left-2 top-1.5 bottom-1.5 w-0.5 rounded-full bg-accent"></span>
+  <span class="absolute rounded-full bg-accent {mobile ? '-top-2 left-1.5 right-1.5 h-0.5' : '-left-2 bottom-1.5 top-1.5 w-0.5'}"></span>
 {/snippet}
 
-<nav class="flex h-full w-12 shrink-0 flex-col items-center border-r border-edge-subtle bg-sidebar py-2" aria-label="Primary">
+<nav
+  class="flex shrink-0 items-center bg-sidebar {mobile
+    ? 'h-12 w-full flex-row justify-between gap-1 border-t border-edge-subtle px-2 pb-[env(safe-area-inset-bottom)]'
+    : 'h-full w-12 flex-col border-r border-edge-subtle py-2'}"
+  aria-label="Primary"
+>
+  {#if mobile}
+    <Button icon variant="ghost" size="sm" onclick={openDrawer} title="Open panel" aria-label="Open panel">
+      <PanelLeft size={15} />
+    </Button>
+  {/if}
   <Button icon variant="ghost" size="sm" onclick={openCommandPalette} title="Search or run a command (⌘K)" aria-label="Command menu">
     <Search size={15} />
   </Button>
 
-  <span class="my-1.5 h-px w-5 bg-edge"></span>
+  {#if !mobile}<span class="my-1.5 h-px w-5 bg-edge"></span>{/if}
 
   <button
     class="{railButton} {activeGroup.id === 'query' ? 'bg-active text-accent' : idle}"
@@ -53,7 +66,7 @@
   {#each railGroups as group (group.id)}
     {@const active = activeGroup.id === group.id}
     <button
-      class="{railButton} mt-1 {active ? 'bg-active text-fg' : idle}"
+      class="{railButton} {mobile ? '' : 'mt-1'} {active ? 'bg-active text-fg' : idle}"
       onclick={() => openGroup(group)}
       title={group.label}
       aria-label={group.label}
@@ -64,7 +77,7 @@
     </button>
   {/each}
 
-  <div class="flex-1"></div>
+  {#if !mobile}<div class="flex-1"></div>{/if}
 
   {#if settingsGroup}
     {@const active = activeGroup.id === 'settings'}
@@ -80,16 +93,18 @@
     </button>
   {/if}
 
-  <span class="my-1.5 h-px w-5 bg-edge"></span>
+  {#if !mobile}<span class="my-1.5 h-px w-5 bg-edge"></span>{/if}
 
   <SessionIndicator />
 
-  <span
-    class="my-1 h-1.5 w-1.5 rounded-full {online ? 'bg-success' : 'bg-danger'}"
-    title="{connection?.name ?? 'DuckDB'}: {online ? 'connected' : 'disconnected'}"
-    role="img"
-    aria-label={online ? 'Connected' : 'Disconnected'}
-  ></span>
+  {#if !mobile}
+    <span
+      class="my-1 h-1.5 w-1.5 rounded-full {online ? 'bg-success' : 'bg-danger'}"
+      title="{connection?.name ?? 'DuckDB'}: {online ? 'connected' : 'disconnected'}"
+      role="img"
+      aria-label={online ? 'Connected' : 'Disconnected'}
+    ></span>
+  {/if}
 
   <Button icon variant="ghost" size="sm" onclick={toggleTheme} title="Toggle theme" aria-label="Toggle theme">
     {#if getTheme() === 'dark'}<Sun size={15} />{:else}<Moon size={15} />{/if}
@@ -97,7 +112,7 @@
 
   {#if profile && settingsGroup}
     <button
-      class="mt-1 inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-hover"
+      class="{mobile ? 'hidden' : 'mt-1 inline-flex'} h-7 w-7 items-center justify-center rounded-md hover:bg-hover"
       onclick={() => goTo('settings', 'profile')}
       title={profile.name}
       aria-label="Profile: {profile.name}"

@@ -14,6 +14,13 @@
     EXPLORER_DEFAULT_WIDTH, EXPLORER_MIN_WIDTH,
   } from '../../stores/layout.svelte'
 
+  interface Props {
+    /** Inside the mobile drawer: full width, never collapsed, not resizable. */
+    drawer?: boolean
+  }
+
+  let { drawer = false }: Props = $props()
+
   const COLLAPSED_WIDTH = 32
   const NARROW_QUERY = '(max-width: 1100px)'
 
@@ -51,7 +58,7 @@
   const databases = $derived(duck((s) => s.databases))
   const loading = $derived(duck((s) => s.isLoadingDbTablesFetch))
   const fetchError = $derived(duck((s) => s.schemaFetchError))
-  const collapsed = $derived(isExplorerCollapsed() || narrow)
+  const collapsed = $derived(!drawer && (isExplorerCollapsed() || narrow))
   const width = $derived(collapsed ? COLLAPSED_WIDTH : getExplorerWidth())
 
   $effect(() => {
@@ -95,7 +102,7 @@
 <div
   bind:this={panelEl}
   class="relative flex h-full shrink-0 flex-col border-r border-edge-subtle bg-sidebar {dragging ? '' : 'transition-[width] duration-150'} {dropActive ? 'ring-1 ring-inset ring-accent' : ''}"
-  style="width: {width}px"
+  style={drawer ? 'width: 100%' : `width: ${width}px`}
   ondragover={onDragOver}
   ondragleave={() => (dropActive = false)}
   ondrop={onDrop}
@@ -118,9 +125,11 @@
         <Button icon variant="ghost" size="xs" onclick={refresh} title="Refresh schema" aria-label="Refresh schema" disabled={loading}>
           <RefreshCw size={13} class={loading ? 'animate-spin' : ''} />
         </Button>
-        <Button icon variant="ghost" size="xs" onclick={() => setExplorerCollapsed(true)} title="Hide explorer (⌘B)" aria-label="Hide explorer">
-          <PanelLeftClose size={14} />
-        </Button>
+        {#if !drawer}
+          <Button icon variant="ghost" size="xs" onclick={() => setExplorerCollapsed(true)} title="Hide explorer (⌘B)" aria-label="Hide explorer">
+            <PanelLeftClose size={14} />
+          </Button>
+        {/if}
       </div>
     </div>
 
@@ -159,6 +168,7 @@
       {/if}
     </div>
 
+    {#if !drawer}
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <div
       class="absolute -right-0.5 top-0 z-10 h-full w-1 cursor-col-resize hover:bg-accent/50 {dragging ? 'bg-accent/50' : ''}"
@@ -168,6 +178,7 @@
       onmousedown={onResizeStart}
       ondblclick={() => setExplorerWidth(EXPLORER_DEFAULT_WIDTH)}
     ></div>
+    {/if}
   {/if}
 </div>
 
