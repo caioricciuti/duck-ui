@@ -115,3 +115,29 @@ test("the command menu finds an earlier query and opens it", async ({ page }) =>
   await expect(menu).toBeHidden();
   await expect(page.locator('[role="tabpanel"]:not([hidden]) .cm-content')).toContainText("findable_from_menu");
 });
+
+test("sorting a result cut at the row limit sorts the whole answer", async ({ page }) => {
+  await bootApp(page);
+
+  // Lower the row limit so a small query is cut.
+  await page.getByRole("button", { name: "Settings", exact: true }).first().click();
+  await page.getByRole("button", { name: "Performance" }).click();
+  const limit = page.locator("#max-result-rows");
+  await limit.fill("1000");
+  await limit.locator("xpath=ancestor::*[.//button][1]").getByRole("button", { name: "Save" }).click();
+
+  await page.getByRole("button", { name: "Query", exact: true }).click();
+  const { panel } = await newQuery(page, "select range as id from range(5000)");
+  await page.keyboard.press(`${mod}+Enter`);
+  await expect(panel.getByText(/Showing the first 1,000 rows/)).toBeVisible();
+
+  // Sorted in memory, the largest id among the loaded rows would be 999.
+  // The whole answer holds ids up to 4999.
+  const grid = panel.getByRole("grid", { name: "Query result" });
+  const header = grid.getByRole("button", { name: /^id/ }).first();
+  await header.click(); // ascending
+  await header.click(); // descending
+  await expect(panel.getByText("over the full result")).toBeVisible();
+  await expect(grid.getByText("4,999", { exact: true })).toBeVisible();
+  await expect(grid.getByText("999", { exact: true })).toHaveCount(0);
+});

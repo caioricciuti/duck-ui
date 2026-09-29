@@ -11,6 +11,7 @@
   import { resultToGrid } from '@/lib/resultTable/gridData'
   import { zeroRowsMessage } from '@/lib/resultMessages'
   import type { QueryProgress, QueryResult } from '@/store/types'
+  import type { ColumnFilter, ResultSort } from '../../utils/result-filters'
 
   export interface ResultView {
     id: string
@@ -31,13 +32,15 @@
     extra?: Snippet<[string, QueryResult]>
     /** Buttons on the right of the view switcher. */
     actions?: Snippet<[QueryResult]>
+    /** Runs the query again with filters and sort, for a result cut at the row limit. */
+    requery?: (filters: ColumnFilter[], sort: ResultSort | null) => Promise<QueryResult | null>
     /** Shown under a failed query, such as an AI fix. */
     errorActions?: Snippet<[QueryResult]>
   }
 
   let {
     result, executing, progress, view, onviewchange, oncancel,
-    extraViews = [], extra, actions, errorActions,
+    extraViews = [], extra, actions, errorActions, requery,
   }: Props = $props()
 
   const grid = $derived(result && !result.error ? resultToGrid(result) : null)
@@ -119,7 +122,13 @@
       {:else if activeView === 'schema'}
         <div class="h-full overflow-auto"><SchemaPanel meta={grid.meta} /></div>
       {:else}
-        <ResultGrid meta={grid.meta} data={grid.data} rows={result.data} durationMs={result.durationMs} />
+        <ResultGrid
+          meta={grid.meta}
+          data={grid.data}
+          rows={result.data}
+          durationMs={result.durationMs}
+          requery={result.truncated ? requery : undefined}
+        />
       {/if}
     </div>
 

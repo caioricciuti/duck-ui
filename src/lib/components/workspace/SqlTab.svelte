@@ -25,6 +25,11 @@
   import { isNumericColumn } from '@/lib/chartDataTransform'
   import { collaborativeBinding } from '@/lib/editor/collaboration'
   import { locateError } from '@/lib/editor/sqlError'
+  import { buildFilteredQuery, isWrappableQuery } from '@/lib/resultTable/filterSql'
+  import { resultToGrid } from '@/lib/resultTable/gridData'
+  import { runQuery } from '@/services/engine'
+  import type { ColumnFilter, ResultSort } from '../../utils/result-filters'
+  import type { QueryResult } from '@/store/types'
   import { getCollaboration } from '@/store/slices/sessionSlice'
   import type { EditorTab } from '@/store/types'
 
@@ -150,6 +155,21 @@
       message: error.split('\n')[0],
     })
   })
+
+  /**
+   * Sorts and filters in DuckDB, for a result that was cut at the row limit.
+   * Runs on the session directly: this is a view of a result, not a query
+   * the user wrote, so it stays out of the history.
+   */
+  async function requery(filters: ColumnFilter[], sort: ResultSort | null): Promise<QueryResult | null> {
+    const session = duckActions().currentSession
+    const source = lastRun?.sql ?? sqlText
+    if (!session || !tab?.result || !isWrappableQuery(source)) return null
+    const resolved = resolveQueryParams(source, tab.queryParams)
+    if (resolved.sql === null) return null
+    const wrapped = buildFilteredQuery(resolved.sql, resultToGrid(tab.result).meta, filters, sort)
+    return runQuery(session, wrapped, 'result filter', { maxRows: duckActions().maxResultRows })
+  }
 
   function runFromToolbar() {
     const target = editor?.getRunTarget()
@@ -344,6 +364,7 @@
           view={resultView}
           onviewchange={(v) => (resultView = v)}
           oncancel={cancel}
+          {requery}
           {extraViews}
         >
           {#snippet extra(view, result)}
