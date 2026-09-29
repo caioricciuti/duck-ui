@@ -27,7 +27,17 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@codemirror/autocomplete": "6.20.2",
+    "@codemirror/commands": "6.10.3",
+    "@codemirror/lang-markdown": "6.5.2",
+    "@codemirror/lang-python": "6.2.1",
+    "@codemirror/lang-sql": "6.10.0",
+    "@codemirror/language": "6.12.3",
+    "@codemirror/search": "6.7.0",
+    "@codemirror/state": "6.6.0",
+    "@codemirror/view": "6.42.1",
     "@duckdb/duckdb-wasm": "1.33.1-dev64.0",
+    "@lezer/highlight": "1.2.3",
     "@mlc-ai/web-llm": "^0.2.84",
     "@tailwindcss/vite": "^4.3.3",
     "apache-arrow": "^17.0.0",
