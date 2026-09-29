@@ -118,23 +118,71 @@ async function persistWorkspaceState(state: DuckStoreState): Promise<void> {
 
 let autoSaveUnsubscribe: (() => void) | null = null;
 
+/** Milliseconds of quiet before a change is written. */
+const SAVE_DELAY_MS = 2000;
+
+/** A change is waiting for its debounce, or a write is in flight. */
+let savePending = false;
+let saveInFlight: Promise<void> | null = null;
+
+/**
+ * True when the two states differ in something that is persisted. Query
+ * progress, schema loads and the like change the store all the time and must
+ * not count as unsaved work.
+ */
+export function changesPersistedState(previous: DuckStoreState, next: DuckStoreState): boolean {
+  return (
+    previous.tabs !== next.tabs ||
+    previous.activeTabId !== next.activeTabId ||
+    previous.currentConnection?.id !== next.currentConnection?.id ||
+    previous.currentDatabase !== next.currentDatabase ||
+    previous.duckBrain.aiProvider !== next.duckBrain.aiProvider ||
+    previous.duckBrain.providerConfigs !== next.duckBrain.providerConfigs ||
+    previous.duckBrain.messages !== next.duckBrain.messages
+  );
+}
+
+function save(): Promise<void> {
+  clearTimeout(saveTimer);
+  savePending = false;
+  const write = (saveInFlight ?? Promise.resolve())
+    .then(() => persistWorkspaceState(useDuckStore.getState()))
+    .finally(() => {
+      if (saveInFlight === write) saveInFlight = null;
+    });
+  saveInFlight = write;
+  return write;
+}
+
 export function startAutoSave(): void {
   // Prevent duplicate subscriptions
   if (autoSaveUnsubscribe) return;
-  autoSaveUnsubscribe = useDuckStore.subscribe((state) => {
-    if (!state.isProfileLoaded) return;
+  autoSaveUnsubscribe = useDuckStore.subscribe((state, previous) => {
+    if (!state.isProfileLoaded || !changesPersistedState(previous, state)) return;
+    savePending = true;
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => persistWorkspaceState(state), 2000);
+    saveTimer = setTimeout(() => void save(), SAVE_DELAY_MS);
   });
 }
 
-// Also save on page unload
+/** True while an edit has not reached storage yet. */
+export function hasUnsavedChanges(): boolean {
+  return savePending || saveInFlight !== null;
+}
+
+/** Writes pending changes now and resolves once they are stored. */
+export function flushAutoSave(): Promise<void> {
+  if (!useDuckStore.getState().isProfileLoaded) return Promise.resolve();
+  if (!savePending) return saveInFlight ?? Promise.resolve();
+  return save();
+}
+
 if (typeof window !== "undefined") {
-  window.addEventListener("beforeunload", () => {
-    const state = useDuckStore.getState();
-    if (state.isProfileLoaded) {
-      // Best-effort sync save (may be truncated by browser)
-      persistWorkspaceState(state);
-    }
+  // Leaving the tab is the moment to write: switching away, minimising, or
+  // starting to close. By the time the page unloads there is then nothing
+  // left to lose, and nothing to ask about.
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") void flushAutoSave();
   });
+  window.addEventListener("pagehide", () => void flushAutoSave());
 }

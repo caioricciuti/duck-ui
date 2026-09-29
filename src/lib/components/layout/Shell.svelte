@@ -15,7 +15,7 @@
   import { duck, duckActions } from '../../stores/duck.svelte'
   import { openCommandPalette, toggleCommandPalette } from '../../stores/command-palette.svelte'
   import { toggleExplorer, isMobile } from '../../stores/layout.svelte'
-  import { hasUnsavedWork } from '@/lib/boot'
+  import { flushAutoSave, hasUnsavedChanges } from '@/store'
   import { initRouter, isOnWorkspace, goWorkspace, goTo } from '../../stores/router.svelte'
 
   function handleGlobalShortcuts(e: KeyboardEvent) {
@@ -91,8 +91,13 @@
     if (brainOpen) brainRequested = true
   })
 
+  // The workspace saves itself, so closing the tab is normally silent. The
+  // browser only asks when an edit from the last moments has not been stored
+  // yet, and that write is started here so the answer rarely matters.
   function handleBeforeUnload(e: BeforeUnloadEvent) {
-    if (hasUnsavedWork()) e.preventDefault()
+    if (!hasUnsavedChanges()) return
+    void flushAutoSave()
+    e.preventDefault()
   }
 
   onMount(() => {

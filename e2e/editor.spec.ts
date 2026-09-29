@@ -141,3 +141,27 @@ test("sorting a result cut at the row limit sorts the whole answer", async ({ pa
   await expect(grid.getByText("4,999", { exact: true })).toBeVisible();
   await expect(grid.getByText("999", { exact: true })).toHaveCount(0);
 });
+
+test("closing the tab does not ask once the work is stored", async ({ page }) => {
+  await bootApp(page);
+  await newQuery(page, "select 'kept across a reload' as note");
+
+  // Counts the browser's leave prompt, and answers it so a regression fails
+  // on the count instead of hanging.
+  let asked = 0;
+  page.on("dialog", (dialog) => {
+    asked++;
+    void dialog.accept();
+  });
+
+  // After the save delay there is nothing left to lose.
+  await page.waitForTimeout(3000);
+  await page.reload();
+  await expect(page.getByRole("tablist", { name: "Open tabs" })).toBeVisible({ timeout: 60_000 });
+  expect(asked).toBe(0);
+
+  // And the text is still there.
+  await expect(page.locator('[role="tabpanel"]:not([hidden]) .cm-content')).toContainText(
+    "kept across a reload"
+  );
+});

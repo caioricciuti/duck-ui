@@ -1,3 +1,4 @@
+import { flushAutoSave } from "@/store";
 import { useDuckStore } from "@/store";
 import * as toast from "@/lib/stores/toast.svelte";
 import { getUiConfig } from "@/lib/appConfig";
@@ -164,6 +165,7 @@ export function reloadOnServiceWorkerUpdate(): void {
     }
     if (reloadingForNewVersion) return;
     reloadingForNewVersion = true;
-    window.location.reload();
+    // Stored first, so the reload has nothing unsaved to ask about.
+    void flushAutoSave().finally(() => window.location.reload());
   });
 }

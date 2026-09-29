@@ -53,15 +53,6 @@ export async function createAndLoadProfile(
   return id;
 }
 
-/** True when a SQL tab holds text, which is what the unload prompt guards. */
-export function hasUnsavedWork(): boolean {
-  return useDuckStore
-    .getState()
-    .tabs.some(
-      (t) => t.type === "sql" && typeof t.content === "string" && t.content.trim().length > 0
-    );
-}
-
 /**
  * Migrate existing localStorage state to the system database.
  * One-time operation on first boot after the profile system is introduced.
