@@ -7,7 +7,12 @@
   import Input from '../common/Input.svelte'
   import Select from '../common/Select.svelte'
   import { duck, duckActions } from '../../stores/duck.svelte'
-  import { datasetsFor, getDashboardInputs, getDashboardRunner } from '@/store/slices/dashboardSlice'
+  import {
+    datasetsFor,
+    getDashboardInputs,
+    getDashboardRunner,
+    isDashboardEditing,
+  } from '@/store/slices/dashboardSlice'
   import { datasetCacheKey, type DatasetResult } from '@/services/dashboard/queryRunner'
   import { parseDashboardSource } from '@/services/dashboard/markdown'
   import type { InputValue } from '@/services/dashboard/inputs'
@@ -55,7 +60,9 @@
   const tab = $derived(duck((s) => s.tabs.find((entry) => entry.id === tabId)))
   const dashboardId = $derived(typeof tab?.content === 'string' ? tab.content : '')
   const dashboard = $derived(duck((s) => s.dashboards.find((entry) => entry.id === dashboardId)))
-  const isEditing = $derived(duck((s) => s.isDashboardEditing))
+  // Per dashboard: every open tab stays mounted, so a shared flag would put
+  // all of them in edit mode at once.
+  const isEditing = $derived(duck((s) => isDashboardEditing(s, dashboardId)))
   const engineReady = $derived(duck((s) => s.isInitialized))
   const canEdit = $derived(dashboard?.role !== 'viewer')
 
@@ -404,7 +411,7 @@
         <Button
           size="sm"
           variant={isEditing ? 'primary' : 'outline'}
-          onclick={() => duckActions().setDashboardEditing(!isEditing)}
+          onclick={() => duckActions().setDashboardEditing(!isEditing, dashboardId)}
         >
           {#if isEditing}<Eye size={13} />{:else}<Pencil size={13} />{/if}
           {isEditing ? 'Done' : 'Edit'}

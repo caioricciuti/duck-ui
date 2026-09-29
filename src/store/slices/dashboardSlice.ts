@@ -56,6 +56,23 @@ export const getDashboardRunner = (dashboardId: string): DatasetRunner => {
   return runner;
 };
 
+/**
+ * Save bookkeeping per dashboard, for `updateDashboard`.
+ *
+ * `latestUpdate` names the newest call, so an older save that finishes late
+ * cannot put its text back into the store. `saveQueues` runs the writes of
+ * one dashboard one after the other, so storage ends on the newest too.
+ */
+const latestUpdate = new Map<string, number>();
+const saveQueues = new Map<string, Promise<void>>();
+let updateCounter = 0;
+
+/** Whether one dashboard is in edit mode. Each open dashboard has its own. */
+export const isDashboardEditing = (
+  state: Pick<DashboardSlice, "dashboardEditing">,
+  dashboardId: string
+): boolean => state.dashboardEditing[dashboardId] === true;
+
 const disposeRunner = (dashboardId: string): void => {
   runners.get(dashboardId)?.dispose();
   runners.delete(dashboardId);
@@ -87,7 +104,7 @@ export const createDashboardSlice: StateCreator<DuckStoreState, [], [], Dashboar
   get
 ) => ({
   dashboards: [],
-  isDashboardEditing: false,
+  dashboardEditing: {},
   isDashboardsPanelOpen: false,
 
   loadDashboards: async (explicitProfileId?: string) => {
@@ -129,31 +146,55 @@ export const createDashboardSlice: StateCreator<DuckStoreState, [], [], Dashboar
 
   updateDashboard: async (dashboard: Dashboard) => {
     const profileId = get().currentProfileId;
+    const token = ++updateCounter;
+    latestUpdate.set(dashboard.id, token);
+    const isLatest = () => latestUpdate.get(dashboard.id) === token;
+
     // Optimistic: the editor must feel immediate. Persistence catches up.
     set((state) => ({
       dashboards: state.dashboards.map((entry) => (entry.id === dashboard.id ? dashboard : entry)),
     }));
     if (!profileId) return;
-    try {
-      const saved = await saveDashboard(profileId, dashboard);
-      set((state) => ({
-        dashboards: state.dashboards.map((entry) => (entry.id === saved.id ? saved : entry)),
-      }));
-    } catch (error) {
-      console.warn("[dashboard] failed to save:", error);
-      // The locked-storage failure names its cause; surface it as-is so the
-      // person knows which tab to close, rather than a generic shrug.
-      toast.error(
-        error instanceof Error && /another Duck-UI tab/.test(error.message)
-          ? error.message
-          : "Couldn't save the dashboard"
-      );
-    }
+
+    const save = async () => {
+      // A newer edit is waiting behind this one and carries the whole
+      // document, so writing this version would only be overwritten.
+      if (!isLatest()) return;
+      try {
+        const saved = await saveDashboard(profileId, dashboard);
+        // Edited again while this was saving: the store already holds newer
+        // text, and putting this result there would roll it back.
+        if (!isLatest()) return;
+        set((state) => ({
+          dashboards: state.dashboards.map((entry) => (entry.id === saved.id ? saved : entry)),
+        }));
+      } catch (error) {
+        console.warn("[dashboard] failed to save:", error);
+        // The locked-storage failure names its cause; surface it as-is so the
+        // person knows which tab to close, rather than a generic shrug.
+        toast.error(
+          error instanceof Error && /another Duck-UI tab/.test(error.message)
+            ? error.message
+            : "Couldn't save the dashboard"
+        );
+      }
+    };
+
+    const queued = (saveQueues.get(dashboard.id) ?? Promise.resolve()).then(save);
+    saveQueues.set(dashboard.id, queued);
+    await queued;
+    if (saveQueues.get(dashboard.id) === queued) saveQueues.delete(dashboard.id);
   },
 
   deleteDashboard: async (id: string) => {
     disposeRunner(id);
+    // Supersedes a save still in flight, which would otherwise store the
+    // dashboard again after it was deleted.
+    latestUpdate.set(id, ++updateCounter);
     set((state) => ({
+      dashboardEditing: Object.fromEntries(
+        Object.entries(state.dashboardEditing).filter(([key]) => key !== id)
+      ),
       dashboards: state.dashboards.filter((entry) => entry.id !== id),
       // A tab pointing at a deleted dashboard would render a dead end.
       tabs: state.tabs.filter((tab) => !(tab.type === "dashboard" && tab.content === id)),
@@ -170,7 +211,17 @@ export const createDashboardSlice: StateCreator<DuckStoreState, [], [], Dashboar
     return copy;
   },
 
-  setDashboardEditing: (editing: boolean) => set({ isDashboardEditing: editing }),
+  setDashboardEditing: (editing: boolean, dashboardId?: string) => {
+    // Callers that do not name a dashboard mean the one in front of them.
+    const activeTab = get().tabs.find((tab) => tab.id === get().activeTabId);
+    const id =
+      dashboardId ??
+      (activeTab?.type === "dashboard" && typeof activeTab.content === "string"
+        ? activeTab.content
+        : undefined);
+    if (!id) return;
+    set((state) => ({ dashboardEditing: { ...state.dashboardEditing, [id]: editing } }));
+  },
 
   setDashboardsPanelOpen: (open: boolean) => set({ isDashboardsPanelOpen: open }),
 
