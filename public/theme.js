@@ -3,7 +3,7 @@
 (function () {
   var saved = null;
   try {
-    saved = localStorage.getItem('duck-ui-theme');
+    saved = localStorage.getItem('vite-ui-theme');
   } catch (e) {
     saved = null;
   }

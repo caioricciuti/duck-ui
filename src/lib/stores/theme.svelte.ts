@@ -1,6 +1,8 @@
 export type ThemeMode = "dark" | "light" | "system";
 
-const STORAGE_KEY = "duck-ui-theme";
+// Same key the React app used, so an existing preference carries over and the
+// profile loader (which writes this key) needs no change.
+const STORAGE_KEY = "vite-ui-theme";
 const systemDark = window.matchMedia("(prefers-color-scheme: dark)");
 
 function readSaved(): ThemeMode {
@@ -36,6 +38,12 @@ export function setThemeMode(next: ThemeMode): void {
 
 export function toggleTheme(): void {
   setThemeMode(getTheme() === "dark" ? "light" : "dark");
+}
+
+/** Re-reads storage. The profile loader writes the saved theme there. */
+export function syncThemeFromStorage(): void {
+  mode = readSaved();
+  applyTheme();
 }
 
 function applyTheme(): void {
