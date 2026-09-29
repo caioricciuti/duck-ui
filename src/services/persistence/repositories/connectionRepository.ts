@@ -15,6 +15,12 @@ export interface SavedConnection {
 }
 
 export interface ConnectionInput {
+  /**
+   * Id of the in-memory connection this record belongs to. Pass it whenever
+   * the connection already exists in the store, so `deleteConnection(id)`
+   * finds the stored row. A fresh id is generated only when it is absent.
+   */
+  id?: string;
   name: string;
   scope: string;
   config: Record<string, unknown>;
@@ -27,7 +33,7 @@ export async function saveConnection(
   input: ConnectionInput,
   cryptoKey: CryptoKey | null
 ): Promise<SavedConnection> {
-  const id = generateUUID();
+  const id = input.id ?? generateUUID();
   const now = new Date().toISOString();
   const configJson = JSON.stringify(input.config);
   let encryptedCreds: string | null = null;

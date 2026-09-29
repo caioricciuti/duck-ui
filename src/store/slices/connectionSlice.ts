@@ -141,6 +141,9 @@ export const createConnectionSlice: StateCreator<DuckStoreState, [], [], Connect
         saveConnection(
           currentProfileId,
           {
+            // Same id as the in-memory connection, or deleting it later in
+            // this session would leave the stored row behind.
+            id: connection.id,
             name: connection.name,
             scope: connection.scope ?? "External",
             config,
