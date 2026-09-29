@@ -82,9 +82,21 @@ export const decodeDashboardShare = async (
   }
 };
 
-export const buildDashboardShareUrl = (encoded: string): string => {
+/**
+ * `refreshSeconds` rides along as `&refresh=N` for kiosk/wall displays: the
+ * imported dashboard starts with that auto-refresh interval. Outside the
+ * encoded payload so it stays human-editable in the link.
+ */
+export const buildDashboardShareUrl = (
+  encoded: string,
+  options: { refreshSeconds?: number } = {}
+): string => {
   const { origin, pathname } = window.location;
-  return `${origin}${pathname}#${DASHBOARD_SHARE_KEY}=${encoded}`;
+  const refresh =
+    options.refreshSeconds && options.refreshSeconds > 0
+      ? `&refresh=${Math.round(options.refreshSeconds)}`
+      : "";
+  return `${origin}${pathname}#${DASHBOARD_SHARE_KEY}=${encoded}${refresh}`;
 };
 
 /** Reads a dashboard share from a URL hash string. */

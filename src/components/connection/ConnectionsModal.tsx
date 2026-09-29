@@ -105,6 +105,7 @@ const ConnectionManager: React.FC<ConnectionManagerProps> = ({
     mode: "onChange",
   });
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- react-hook-form watch()
   const currentScope = form.watch("scope");
   const isLoadingExternalConnection = useDuckStore((s) => s.isLoadingExternalConnection);
 

@@ -37,3 +37,6 @@ playwright-report/
 
 # Local session notes
 WORK_LOG.md
+
+# agent worktrees
+.claude/worktrees/

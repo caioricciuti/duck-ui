@@ -7,6 +7,7 @@ import {
   type DashboardWidget,
 } from "@/services/dashboard/types";
 import { toQueryName } from "@/services/dashboard/markdown";
+import { normalizeRefreshInterval } from "@/services/dashboard/refresh";
 
 /**
  * Dashboard persistence.
@@ -45,7 +46,10 @@ const parse = (row: StoredDashboard): Dashboard | null => {
     const parsed = JSON.parse(row.payload) as Dashboard;
     if (!parsed?.id) return null;
     if (parsed.layoutVersion > DASHBOARD_LAYOUT_VERSION) return null;
-    return migrate(parsed);
+    const migrated = migrate(parsed);
+    // Optional field: a hand-edited or older record must not schedule garbage.
+    const refresh = normalizeRefreshInterval(migrated.refreshIntervalSeconds);
+    return { ...migrated, refreshIntervalSeconds: refresh > 0 ? refresh : undefined };
   } catch {
     return null;
   }

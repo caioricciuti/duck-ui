@@ -115,7 +115,7 @@ export default function InputComponent({ block, inputs, values, results }: Input
             value={scalar}
             onValueChange={(value) => inputs.set(name, { kind: "scalar", value })}
           >
-            <SelectTrigger className="h-8 w-44 text-xs">
+            <SelectTrigger className="h-8 w-44 text-xs" aria-label={title ?? undefined}>
               <SelectValue placeholder={title} />
             </SelectTrigger>
             <SelectContent>

@@ -139,6 +139,12 @@ export interface Dashboard {
    * security theatre; the role is a workflow signal, not a lock.
    */
   role?: "viewer" | "editor";
+  /**
+   * Auto-refresh interval in seconds; absent or zero is off. Optional so
+   * dashboards saved before it existed load unchanged — the payload is JSON in
+   * IndexedDB, so a new optional field needs no migration (see `refresh.ts`).
+   */
+  refreshIntervalSeconds?: number;
   /** Legacy grid widgets. Migrated into `source` on load; kept for one cycle. */
   widgets: DashboardWidget[];
   datasets: DashboardDataset[];

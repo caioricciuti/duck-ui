@@ -39,7 +39,8 @@ async function bootApp(page: Page, url = "/") {
 async function importFiles(page: Page, files: string[]) {
   await page.getByLabel("Data menu").click();
   await page.getByRole("menuitem", { name: "Import Data" }).click();
-  await page.locator('input[type="file"]').setInputFiles(files);
+  // Scoped to the importer sheet: other features keep their own hidden inputs.
+  await page.getByRole("dialog").locator('input[type="file"]').setInputFiles(files);
   await page.getByRole("button", { name: /Import \d+ File/ }).click();
   await expect(page.getByText("Successfully imported").first()).toBeVisible({
     timeout: 60_000,

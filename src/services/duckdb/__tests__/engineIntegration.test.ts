@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { createRequire } from "node:module";
 import { resultToJSON } from "../resultParser";
+import { findGeometryColumns, resultToGeoJson } from "@/lib/geoResult";
+import { LIST_EXTENSIONS_SQL, parseExtensionRows } from "@/lib/duckdbExtensions";
 
 /**
  * End-to-end regression tests running the exact repro queries from #13 and
@@ -212,5 +214,42 @@ describe("byte-backed types match DuckDB's own rendering", () => {
       (INTERVAL '1' DAY), (NULL), (INTERVAL '90' MINUTE), (NULL), (INTERVAL '2' MONTH)
     ) AS t(v)`);
     expect(result.data.map((row) => row.v)).toEqual(["1 day", null, "01:30:00", null, "2 months"]);
+  });
+});
+
+describe("map view and extension manager against the real engine", () => {
+  it("every decoded GEOMETRY parses back into GeoJSON", () => {
+    const result = run(`SELECT * FROM (VALUES
+      (1, 'POINT(3 4)'::GEOMETRY),
+      (2, 'POINT Z(1 2 3)'::GEOMETRY),
+      (3, 'LINESTRING(0 0, 1 1, 2 4)'::GEOMETRY),
+      (4, 'POLYGON((0 0,4 0,4 4,0 4,0 0),(1 1,2 1,2 2,1 2,1 1))'::GEOMETRY),
+      (5, 'MULTIPOINT(0 0, 1 1)'::GEOMETRY),
+      (6, 'MULTILINESTRING((0 0,1 1),(2 2,3 3))'::GEOMETRY),
+      (7, 'MULTIPOLYGON(((0 0,1 0,1 1,0 0)),((2 2,3 2,3 3,2 2)))'::GEOMETRY),
+      (8, 'GEOMETRYCOLLECTION(POINT(1 2),LINESTRING(0 0,1 1))'::GEOMETRY),
+      (9, NULL)
+    ) AS t(id, geom)`);
+    expect(findGeometryColumns(result)).toEqual(["geom"]);
+    const { collection, skipped } = resultToGeoJson(result.data, "geom");
+    expect(skipped).toBe(0);
+    expect(collection.features.map((f) => f.geometry.type)).toEqual([
+      "Point",
+      "Point",
+      "LineString",
+      "Polygon",
+      "MultiPoint",
+      "MultiLineString",
+      "MultiPolygon",
+      "GeometryCollection",
+    ]);
+  });
+
+  it("lists extensions in the shape the manager expects", () => {
+    const extensions = parseExtensionRows(run(LIST_EXTENSIONS_SQL).data);
+    expect(extensions.length).toBeGreaterThan(0);
+    const parquet = extensions.find((e) => e.name === "parquet");
+    expect(parquet).toBeDefined();
+    expect(typeof parquet?.loaded).toBe("boolean");
   });
 });

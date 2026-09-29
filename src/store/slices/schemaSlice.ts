@@ -7,6 +7,7 @@ import {
   type DataSession,
 } from "@/services/engine";
 import { sqlEscapeIdentifier, sqlEscapeString, qualifyTable } from "@/lib/sqlSanitize";
+import { buildExtensionSql, LIST_EXTENSIONS_SQL, parseExtensionRows } from "@/lib/duckdbExtensions";
 import type { DuckStoreState, SchemaSlice, ColumnStats, QueryResult } from "../types";
 
 /** The active session, or a clear error when nothing is connected. */
@@ -169,6 +170,25 @@ export const createSchemaSlice: StateCreator<
       });
       throw error;
     }
+  },
+
+  fetchExtensions: async () => {
+    const result = await runQuery(
+      requireSession(get().currentSession),
+      LIST_EXTENSIONS_SQL,
+      "list-extensions"
+    );
+    if (result.error) throw new Error(result.error);
+    return parseExtensionRows(result.data);
+  },
+
+  runExtensionAction: async (action, name) => {
+    const session = requireSession(get().currentSession);
+    if (session.capabilities.readonly) {
+      throw new Error("This connection is read-only.");
+    }
+    const result = await runQuery(session, buildExtensionSql(action, name), `${action}-extension`);
+    if (result.error) throw new Error(result.error);
   },
 
   importFile: async (

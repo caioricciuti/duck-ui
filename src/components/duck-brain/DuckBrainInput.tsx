@@ -5,10 +5,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { estimateTokens, formatTokenCount } from "@/lib/duckBrain/tokenEstimate";
 import type { DatabaseInfo } from "@/store";
-import SchemaAutocomplete, {
-  buildSchemaSuggestions,
-  type SchemaSuggestion,
-} from "./SchemaAutocomplete";
+import SchemaAutocomplete from "./SchemaAutocomplete";
+import { buildSchemaSuggestions, type SchemaSuggestion } from "@/lib/duckBrain/schemaSuggestions";
 
 // Render text with styled @ mentions
 const renderWithMentions = (text: string) => {

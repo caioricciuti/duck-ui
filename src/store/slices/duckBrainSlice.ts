@@ -7,6 +7,24 @@ import type { DuckStoreState, DuckBrainSlice, DuckBrainMessage, QueryResult } fr
 // Track the duckBrainService subscription to prevent leaks
 let duckBrainServiceUnsubscribe: (() => void) | null = null;
 
+/** Why the active provider can't run yet, or null when it can. */
+function getProviderSetupError(duckBrain: DuckStoreState["duckBrain"]): string | null {
+  const { aiProvider, providerConfigs } = duckBrain;
+  if (aiProvider === "webllm") {
+    return duckBrain.modelStatus === "ready"
+      ? null
+      : "Duck Brain is not ready. Please wait for the model to load.";
+  }
+  if (aiProvider === "openai-compatible") {
+    const config = providerConfigs["openai-compatible"];
+    return config?.baseUrl && config?.modelId
+      ? null
+      : "Pick a model in Settings → AI. With Ollama running it is one click.";
+  }
+  const config = providerConfigs[aiProvider];
+  return config?.apiKey ? null : `Add your ${aiProvider} API key in Settings → AI.`;
+}
+
 export const createDuckBrainSlice: StateCreator<
   DuckStoreState,
   [["zustand/devtools", never]],
@@ -77,25 +95,10 @@ export const createDuckBrainSlice: StateCreator<
     const { aiProvider, providerConfigs } = duckBrain;
     const isExternalProvider = aiProvider !== "webllm";
 
-    if (!isExternalProvider && duckBrain.modelStatus !== "ready") {
-      toast.error("Duck Brain is not ready. Please wait for the model to load.");
+    const setupError = getProviderSetupError(duckBrain);
+    if (setupError) {
+      toast.error(setupError);
       return null;
-    }
-
-    if (isExternalProvider) {
-      if (aiProvider === "openai-compatible") {
-        const config = providerConfigs["openai-compatible"];
-        if (!config?.baseUrl || !config?.modelId) {
-          toast.error("Pick a model in Settings → AI. With Ollama running it is one click.");
-          return null;
-        }
-      } else {
-        const config = providerConfigs[aiProvider as "openai" | "anthropic"];
-        if (!config?.apiKey) {
-          toast.error(`Add your ${aiProvider} API key in Settings → AI.`);
-          return null;
-        }
-      }
     }
 
     const userMessage: DuckBrainMessage = {
@@ -244,6 +247,45 @@ export const createDuckBrainSlice: StateCreator<
       }));
       toast.error(
         `Failed to generate SQL: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
+      return null;
+    }
+  },
+
+  runBrainTask: async (messages, options) => {
+    const { duckBrain } = get();
+    const { aiProvider, providerConfigs } = duckBrain;
+
+    const setupError = getProviderSetupError(duckBrain);
+    if (setupError) {
+      toast.error(setupError);
+      return null;
+    }
+
+    const generationOptions = { maxTokens: options?.maxTokens ?? 1024, temperature: 0.2 };
+
+    try {
+      if (aiProvider === "webllm") {
+        const { duckBrainService } = await import("@/lib/duckBrain");
+        return await duckBrainService.generate(messages, generationOptions);
+      }
+
+      const { createProvider } = await import("@/lib/duckBrain/providers");
+      const provider = createProvider(aiProvider);
+      const config = providerConfigs[aiProvider]!;
+      await provider.initialize({
+        apiKey: "apiKey" in config ? config.apiKey : undefined,
+        modelId: config.modelId,
+        baseUrl: "baseUrl" in config ? config.baseUrl : undefined,
+      });
+      try {
+        return await provider.generateText(messages, generationOptions);
+      } finally {
+        await provider.cleanup();
+      }
+    } catch (error) {
+      toast.error(
+        `Duck Brain request failed: ${error instanceof Error ? error.message : "Unknown error"}`
       );
       return null;
     }

@@ -6,6 +6,7 @@ import {
   type QueryExecution,
 } from "@/services/engine";
 import { updateHistory } from "@/services/duckdb";
+import { missingParamsMessage, resolveQueryParams } from "@/lib/sqlParams";
 import type { DuckStoreState, QuerySlice, QueryResult } from "../types";
 import {
   addHistoryEntry,
@@ -52,8 +53,32 @@ export const createQuerySlice: StateCreator<
 
   setMaxResultRows: (rows) => set({ maxResultRows: clampMaxResultRows(rows) }),
 
-  executeQuery: async (query, tabId?) => {
+  executeQuery: async (rawQuery, tabId?) => {
     const cancelKey = tabId ?? "__adhoc__";
+
+    // `$name` parameters substitute here, so every way of running a SQL tab
+    // (button, shortcut, selection) gets them. Ad-hoc runs without a tab are
+    // passed through: their callers resolve parameters themselves if needed.
+    let query = rawQuery;
+    const owningTab = tabId ? get().tabs.find((tab) => tab.id === tabId) : undefined;
+    if (owningTab?.type === "sql") {
+      const resolved = resolveQueryParams(rawQuery, owningTab.queryParams);
+      if (resolved.sql === null) {
+        // Not run, so not history: nothing reached the engine.
+        const errorResult: QueryResult = {
+          columns: [],
+          columnTypes: [],
+          data: [],
+          rowCount: 0,
+          error: missingParamsMessage(resolved.missing),
+        };
+        set((state) => ({
+          tabs: state.tabs.map((tab) => (tab.id === tabId ? { ...tab, result: errorResult } : tab)),
+        }));
+        return;
+      }
+      query = resolved.sql;
+    }
 
     /** Drops this tab's transient run state in one place. */
     const clearRunState = (state: DuckStoreState) => {

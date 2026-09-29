@@ -10,7 +10,8 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
-    include: ["src/**/*.test.ts"],
+    // cli/ is plain Node ESM, tested alongside the app.
+    include: ["src/**/*.test.ts", "cli/**/*.test.js"],
     // The engine drivers read Vite's build-time globals at import time, so
     // they must exist before any module in the graph is evaluated.
     setupFiles: ["./src/test/setup.ts"],

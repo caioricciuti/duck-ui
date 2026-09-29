@@ -10,6 +10,7 @@ import { createFileSystemSlice } from "./slices/fileSystemSlice";
 import { createProfileSlice } from "./slices/profileSlice";
 import { createSessionSlice } from "./slices/sessionSlice";
 import { createDashboardSlice } from "./slices/dashboardSlice";
+import { createResultPinSlice } from "./slices/resultPinSlice";
 import { saveWorkspace } from "@/services/persistence/repositories/workspaceRepository";
 import {
   saveProviderConfig,
@@ -32,6 +33,7 @@ const storeCreator: StateCreator<DuckStoreState, [["zustand/devtools", never]]> 
   ...createProfileSlice(...a),
   ...createSessionSlice(...a),
   ...createDashboardSlice(...a),
+  ...createResultPinSlice(...a),
 });
 
 export const useDuckStore = create<DuckStoreState>()(
@@ -56,7 +58,11 @@ async function persistWorkspaceState(state: DuckStoreState): Promise<void> {
         if (tab.type === "notebook" && typeof tab.content === "string") {
           try {
             const cells = JSON.parse(tab.content) as Array<Record<string, unknown>>;
-            const cleanCells = cells.map((c) => ({ ...c, result: undefined }));
+            const cleanCells = cells.map((c) => ({
+              ...c,
+              result: undefined,
+              pythonOutput: undefined,
+            }));
             return { ...tab, result: undefined, content: JSON.stringify(cleanCells) };
           } catch {
             return { ...tab, result: undefined };

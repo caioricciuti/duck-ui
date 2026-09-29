@@ -24,11 +24,14 @@ Open `http://localhost:5522`. That's the whole setup.
 ## What you get
 
 - **SQL editor** — Monaco with schema-aware autocomplete, formatting, snippets, multi-tab workspace, query history, saved queries, EXPLAIN viewer.
-- **Notebooks** — SQL + markdown cells with per-cell results and charts.
+- **Notebooks** — SQL, Python (Pyodide, with `sql()` returning pandas DataFrames) and markdown cells with per-cell results and charts.
+- **Query parameters** — `$name` placeholders get an input bar, in SQL tabs and notebooks.
+- **Compare results** — pin a result and diff it against a later run: schema, row counts, changed cells.
+- **Maps and extensions** — GEOMETRY results render on a map; install/load DuckDB extensions from Settings.
 - **Import anything** — CSV, JSON, Parquet, Arrow, XLSX, and `.duckdb` files. Drag-drop, from URL, or straight from S3/GCS/Azure/R2/MinIO.
 - **Results grid** — virtualized scrolling, sorting, filtering, cell inspector, exports to CSV, JSON, XLSX, and Parquet.
 - **Charts** — 16 chart types with per-series config, transforms, annotations, and PNG/SVG export.
-- **Duck Brain (AI)** — text-to-SQL and one-click error fixing with your choice of provider: WebLLM fully in-browser (no API key, works offline), OpenAI, Anthropic, Chrome built-in AI, or any OpenAI-compatible endpoint (Ollama, DeepSeek, ...). Only your schema is ever sent, never your data — and with WebLLM, not even that.
+- **Duck Brain (AI)** — text-to-SQL and one-click error fixing with your choice of provider: WebLLM fully in-browser (no API key, works offline), OpenAI, Anthropic, Chrome built-in AI, or any OpenAI-compatible endpoint (Ollama, DeepSeek, ...). By default only your schema is sent, never your data; the optional "Explain results" action sends a small row sample and asks for consent every time. With WebLLM nothing leaves the browser. It can also explain results, suggest a faster query from the `EXPLAIN` plan, and pick a chart.
 - **Share and embed** — encode a whole analysis (query, notebook, chart config) into a URL. No server involved. Embed live, runnable queries in any page with an iframe or the `<duck-embed>` web component.
 - **Persistence** — OPFS-backed local databases that survive reloads, profiles, encrypted credential storage (AES-256-GCM in your browser).
 - **Connections** — in-memory WASM, persistent OPFS, external [DuckDB httpserver](https://github.com/quackscience/duckdb-extension-httpserver) instances. DuckLake catalogs attach via the embedded-database manifest, `?load=ducklake:` links, or plain ATTACH SQL.
@@ -62,7 +65,19 @@ Openers see exactly what will load and what will run, confirm once, and get a li
 
 [![Open in Duck-UI](./public/badge.svg)](https://demo.duckui.com/)
 
-The data host needs CORS enabled — see [hosting your data](docs/hosting-data.md) for a free R2/GitHub Pages setup.
+The data host needs CORS enabled — see [hosting your data](docs/hosting-data.md) for a free R2/GitHub Pages setup. More examples in the [gallery](docs/gallery.md).
+
+## Run locally from the command line
+
+The `cli/` launcher serves the built app on `127.0.0.1` and opens it with your local files already queued to load, using the same `?load=` links as above:
+
+```bash
+bun run build                                   # once; the CLI serves dist/
+node cli/duck-ui.js sales.csv events.parquet    # or: npx duck-ui … once published
+node cli/duck-ui.js db.duckdb --port 6000 --no-open --sql "SHOW ALL TABLES"
+```
+
+CSV/TSV, Parquet, JSON/NDJSON and `.duckdb` files are supported. Only `dist/` and the exact files you name are served (no directory listing or traversal), and requests must come from the local machine. The package is `"private": true`, so `npx duck-ui` works only after that flag is removed and the package (with a built `dist/`) is published.
 
 ## Publish a dataset with kiosk mode
 
@@ -94,6 +109,9 @@ Runtime environment variables (Docker):
 | `DUCK_UI_ALLOW_UNSIGNED_EXTENSIONS` | Allow unsigned DuckDB extensions | false |
 | `DUCK_UI_DUCKDB_WASM_USE_CDN` | Load DuckDB WASM from CDN | false |
 | `DUCK_UI_DUCKDB_WASM_BASE_URL` | Custom CDN base URL (the origin is added to the CSP automatically at container start) | auto jsDelivr |
+| `DUCK_UI_PYODIDE_BASE_URL` | Where Python notebook cells load Pyodide from: a URL or same-origin path (e.g. `/pyodide/`) of a Pyodide 0.29.5 "full" distribution folder. A cross-origin URL's origin is added to the CSP at container start | `https://cdn.jsdelivr.net/pyodide/v0.29.5/full/` |
+
+**Python cells.** Notebooks can hold Python cells, run by [Pyodide](https://pyodide.org) in a Web Worker that is only started (and only downloads Pyodide, ~10 MB plus packages) when the first Python cell runs. `sql("SELECT …")` returns a pandas DataFrame from the notebook's active connection (Arrow IPC via pyarrow; columnar JSON as a fallback); `await sql_async(…)` works where the page is not cross-origin isolated. Imported packages that ship with Pyodide (numpy, pandas, matplotlib, …) load on demand; open matplotlib figures render as PNGs. **Interrupt** terminates the worker, so variables from earlier cells are lost; runs also stop after 5 minutes. For air-gapped deployments, download the matching `pyodide-0.29.5.tar.bz2` release, serve its `pyodide/` folder (e.g. at `/pyodide/`) and set `DUCK_UI_PYODIDE_BASE_URL`. CSP: the shipped policy already allows the default source (`script-src https://cdn.jsdelivr.net`, `'wasm-unsafe-eval'`, `connect-src https:`); behind your own proxy, keep those (or your mirror's origin) in `script-src`/`connect-src`. `'unsafe-eval'` is not granted — a third-party package whose native code relies on `eval` will fail to load under the policy.
 
 Build-time: `DUCK_UI_BASEPATH=/subpath/` for subpath deploys, `DUCK_UI_DUCKDB_WASM_CDN_ONLY=true` for CDN-only artifacts.
 

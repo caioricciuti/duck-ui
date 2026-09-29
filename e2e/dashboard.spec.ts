@@ -225,7 +225,7 @@ test.describe("inputs and sharing", () => {
     await expect(panel.getByText(/<TimeSeries/)).toHaveCount(0);
 
     // Switching the input re-runs the query with the new binding.
-    await panel.getByRole("combobox").first().click();
+    await panel.getByRole("combobox", { name: "Region" }).click();
     await page.getByRole("option", { name: "south" }).click();
     await expect(panel.getByText("222").first()).toBeVisible({ timeout: 60_000 });
     await expect(panel.getByText("111")).toHaveCount(0);

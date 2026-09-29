@@ -15,18 +15,24 @@ const envVars = {
   DUCK_UI_ALLOW_UNSIGNED_EXTENSIONS: process.env.DUCK_UI_ALLOW_UNSIGNED_EXTENSIONS === "true" || false,
   DUCK_UI_DUCKDB_WASM_USE_CDN: process.env.DUCK_UI_DUCKDB_WASM_USE_CDN === "true" || false,
   DUCK_UI_DUCKDB_WASM_BASE_URL: process.env.DUCK_UI_DUCKDB_WASM_BASE_URL || "",
+  DUCK_UI_PYODIDE_BASE_URL: process.env.DUCK_UI_PYODIDE_BASE_URL || "",
 };
 
 const envJsPath = path.join(__dirname, "env.js");
 fs.writeFileSync(envJsPath, `window.env = ${JSON.stringify(envVars)};\n`);
 
 // A custom WASM CDN origin must be allowed by the CSP's script-src, or the
-// blob worker's importScripts is blocked and DuckDB never initializes.
-// jsDelivr (the default CDN) is already in the baked-in policy.
-const wasmBaseUrl = envVars.DUCK_UI_DUCKDB_WASM_BASE_URL;
-if (/^https?:\/\//i.test(wasmBaseUrl)) {
+// worker's importScripts is blocked and DuckDB (or Pyodide, for Python
+// cells) never initializes. jsDelivr (the default CDN for both) is already in
+// the baked-in policy; a same-origin self-hosted copy needs nothing.
+const cdnBaseUrls = [
+  ["WASM CDN", envVars.DUCK_UI_DUCKDB_WASM_BASE_URL],
+  ["Pyodide", envVars.DUCK_UI_PYODIDE_BASE_URL],
+];
+for (const [label, baseUrl] of cdnBaseUrls) {
+  if (!/^https?:\/\//i.test(baseUrl)) continue;
   try {
-    const origin = new URL(wasmBaseUrl).origin;
+    const origin = new URL(baseUrl).origin;
     const servePath = path.join(__dirname, "serve.json");
     const serveConfig = JSON.parse(fs.readFileSync(servePath, "utf8"));
     for (const rule of serveConfig.headers ?? []) {
@@ -37,9 +43,9 @@ if (/^https?:\/\//i.test(wasmBaseUrl)) {
       }
     }
     fs.writeFileSync(servePath, JSON.stringify(serveConfig, null, 2));
-    console.log(`CSP widened for WASM CDN origin ${origin}`);
+    console.log(`CSP widened for ${label} origin ${origin}`);
   } catch (error) {
-    console.warn("Could not widen CSP for the WASM CDN origin:", error.message);
+    console.warn(`Could not widen CSP for the ${label} origin:`, error.message);
   }
 }
 

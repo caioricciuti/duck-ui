@@ -2,7 +2,8 @@ import type { StateCreator } from "zustand";
 import { toast } from "sonner";
 import { generateUUID } from "@/lib/utils";
 import { isGatedTabHidden } from "@/lib/appConfig";
-import type { DuckStoreState, TabSlice, EditorTab, NotebookCell } from "../types";
+import { disposePythonKernel } from "@/services/python/kernel";
+import type { DuckStoreState, TabSlice, EditorTab, NotebookCell, NotebookCellType } from "../types";
 
 function parseNotebookCells(tab: EditorTab): NotebookCell[] {
   if (tab.type !== "notebook" || typeof tab.content !== "string") return [];
@@ -19,8 +20,15 @@ function serializeCells(cells: NotebookCell[]): string {
   );
 }
 
-function createDefaultCell(type: "sql" | "markdown" = "sql"): NotebookCell {
+function createDefaultCell(type: NotebookCellType = "sql"): NotebookCell {
   return { id: generateUUID(), type, content: "" };
+}
+
+/** Badge-click cycle: SQL → Python → Markdown → SQL. Unknown types become SQL. */
+function nextCellType(type: string): NotebookCellType {
+  if (type === "sql") return "python";
+  if (type === "python") return "markdown";
+  return "sql";
 }
 
 function updateNotebookContent(
@@ -78,6 +86,8 @@ export const createTabSlice: StateCreator<
   },
 
   closeTab: (tabId) => {
+    // A notebook's Python kernel dies with its tab.
+    disposePythonKernel(tabId);
     set((state) => {
       const updatedTabs = state.tabs.filter((tab) => tab.id !== tabId);
       let newActiveTabId = state.activeTabId;
@@ -127,6 +137,14 @@ export const createTabSlice: StateCreator<
     }));
   },
 
+  updateTabQueryParams: (tabId, updater) => {
+    set((state) => ({
+      tabs: state.tabs.map((tab) =>
+        tab.id === tabId ? { ...tab, queryParams: updater(tab.queryParams ?? { values: {} }) } : tab
+      ),
+    }));
+  },
+
   moveTab: (oldIndex, newIndex) => {
     set((state) => {
       const newTabs = [...state.tabs];
@@ -155,6 +173,12 @@ export const createTabSlice: StateCreator<
   getNotebookCells: (tabId) => {
     const tab = get().tabs.find((t) => t.id === tabId);
     return tab ? parseNotebookCells(tab) : [];
+  },
+
+  replaceNotebookCells: (tabId, cells) => {
+    set((state) => ({
+      tabs: updateNotebookContent(state.tabs, tabId, () => cells),
+    }));
   },
 
   addNotebookCell: (tabId, afterCellId, cellType = "sql") => {
@@ -196,6 +220,14 @@ export const createTabSlice: StateCreator<
     }));
   },
 
+  updateNotebookCellPythonOutput: (tabId, cellId, pythonOutput) => {
+    set((state) => ({
+      tabs: updateNotebookContent(state.tabs, tabId, (cells) =>
+        cells.map((c) => (c.id === cellId ? { ...c, pythonOutput } : c))
+      ),
+    }));
+  },
+
   updateNotebookCellChartConfig: (tabId, cellId, chartConfig) => {
     set((state) => ({
       tabs: updateNotebookContent(state.tabs, tabId, (cells) =>
@@ -233,8 +265,9 @@ export const createTabSlice: StateCreator<
           c.id === cellId
             ? {
                 ...c,
-                type: c.type === "sql" ? "markdown" : "sql",
+                type: nextCellType(c.type),
                 result: null,
+                pythonOutput: null,
                 chartConfig: undefined,
               }
             : c

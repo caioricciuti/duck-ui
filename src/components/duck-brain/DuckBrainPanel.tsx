@@ -125,7 +125,7 @@ const DuckBrainPanel: React.FC<DuckBrainPanelProps> = React.memo(({ tabId }) => 
     }
 
     return providers;
-  }, [modelStatus, duckBrain.currentModel, providerConfigs, aiProvider]);
+  }, [modelStatus, duckBrain.currentModel, providerConfigs]);
 
   const handleSend = useCallback(
     async (message: string) => {

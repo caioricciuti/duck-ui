@@ -111,7 +111,7 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(
         }
         toast.success(`Querying table "${tableName}"`);
       },
-      [createTab, executeQuery, toast]
+      [createTab, executeQuery]
     );
 
     const handleDeleteTable = useCallback(
@@ -129,7 +129,7 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(
           );
         }
       },
-      [deleteTable, toast, fetchDatabasesAndTablesInfo, refreshData]
+      [deleteTable, fetchDatabasesAndTablesInfo, refreshData]
     );
 
     const handleShowSchema = useCallback(
@@ -144,7 +144,7 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(
         }
         toast.success(`Showing schema for table "${tableName}"`);
       },
-      [createTab, executeQuery, toast]
+      [createTab, executeQuery]
     );
 
     const contextMenuOptions = useMemo(

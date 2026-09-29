@@ -12,12 +12,20 @@ import {
   BarChart3,
   Table,
   Plus,
+  Square,
+  SquareTerminal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useDuckStore } from "@/store";
-import type { NotebookCell as NotebookCellType, QueryResult, ChartConfig } from "@/store/types";
+import type {
+  NotebookCell as NotebookCellType,
+  NotebookCellType as CellKind,
+  PythonCellOutput,
+  QueryResult,
+  ChartConfig,
+} from "@/store/types";
 import { useTheme } from "@/components/theme/theme-provider";
 import {
   createCellEditor,
@@ -47,15 +55,28 @@ const CellErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => (
   </div>
 );
 
+/** Streamed state of a Python cell while it runs. */
+export interface PythonLiveState {
+  status: string;
+  stdout: string;
+  stderr: string;
+}
+
 interface NotebookCellProps {
   cell: NotebookCellType;
   tabId: string;
   cellIndex: number;
   totalCells: number;
   isRunning: boolean;
+  pythonLive?: PythonLiveState;
   onRun: (cellId: string) => void;
-  onAddCell: (afterCellId: string, type: "sql" | "markdown") => void;
+  onInterrupt: (cellId: string) => void;
+  onAddCell: (afterCellId: string, type: CellKind) => void;
 }
+
+/** Cell types this build can edit; anything else came from a newer peer. */
+const isKnownCellType = (type: string): type is CellKind =>
+  type === "sql" || type === "markdown" || type === "python";
 
 export function NotebookCellComponent({
   cell,
@@ -63,10 +84,13 @@ export function NotebookCellComponent({
   cellIndex,
   totalCells,
   isRunning,
+  pythonLive,
   onRun,
+  onInterrupt,
   onAddCell,
 }: NotebookCellProps) {
-  const [isEditing, setIsEditing] = useState(cell.type === "sql" || !cell.content);
+  const isCode = cell.type === "sql" || cell.type === "python";
+  const [isEditing, setIsEditing] = useState(isCode || !cell.content);
   const [isFocused, setIsFocused] = useState(false);
   const editorRef = useRef<HTMLDivElement>(null);
   const editorInstanceRef = useRef<EditorInstance | null>(null);
@@ -81,9 +105,12 @@ export function NotebookCellComponent({
   const toggleCollapsed = useDuckStore((s) => s.toggleNotebookCellCollapsed);
   const toggleCellType = useDuckStore((s) => s.toggleNotebookCellType);
 
+  const pythonOutput = cell.type === "python" ? cell.pythonOutput : null;
   const hasResult =
-    cell.type === "sql" && cell.result && !cell.result.error && cell.result.data.length > 0;
-  const hasError = cell.type === "sql" && cell.result?.error;
+    (cell.type === "sql" && cell.result && !cell.result.error && cell.result.data.length > 0) ||
+    (!!pythonOutput && !pythonOutput.error);
+  const hasError = (cell.type === "sql" && cell.result?.error) || !!pythonOutput?.error;
+  const hasPythonOutput = cell.type === "python" && (!!pythonOutput || !!pythonLive);
 
   // Status indicator
   const statusColor = useMemo(() => {
@@ -105,9 +132,9 @@ export function NotebookCellComponent({
     [tabId, cell.id, updateCellContent]
   );
 
-  // SQL cell: Monaco editor
+  // SQL/Python cell: Monaco editor
   useEffect(() => {
-    if (cell.type !== "sql" || !editorRef.current) return;
+    if ((cell.type !== "sql" && cell.type !== "python") || !editorRef.current) return;
 
     const compactConfig = {
       ...monacoConfig,
@@ -123,7 +150,8 @@ export function NotebookCellComponent({
       compactConfig,
       cell.content,
       executeCallback,
-      contentChangeCallback
+      contentChangeCallback,
+      cell.type
     );
 
     // Auto-resize editor height based on content
@@ -150,6 +178,9 @@ export function NotebookCellComponent({
         editorInstanceRef.current = null;
       }
     };
+    // cell.content only seeds the editor; including it would rebuild the
+    // editor on every keystroke.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cell.type, cell.id, monacoConfig, executeCallback, contentChangeCallback]);
 
   // Sync content if changed externally — applied as a MINIMAL edit rather
@@ -158,7 +189,7 @@ export function NotebookCellComponent({
   // caret to wherever the restored position lands; a targeted edit leaves
   // both alone unless the change overlaps the caret itself.
   useEffect(() => {
-    if (cell.type !== "sql") return;
+    if (cell.type !== "sql" && cell.type !== "python") return;
     const editor = editorInstanceRef.current?.editor;
     const model = editor?.getModel();
     if (!editor || !model) return;
@@ -241,22 +272,49 @@ export function NotebookCellComponent({
               <Code className="h-3 w-3 mr-1" />
               SQL
             </>
-          ) : (
+          ) : cell.type === "python" ? (
+            <>
+              <SquareTerminal className="h-3 w-3 mr-1" />
+              PY
+            </>
+          ) : cell.type === "markdown" ? (
             <>
               <Type className="h-3 w-3 mr-1" />
               MD
             </>
+          ) : (
+            String(cell.type).toUpperCase()
           )}
         </Badge>
+
+        {isRunning && pythonLive?.status && (
+          <span className="text-[10px] text-muted-foreground ml-1 truncate">
+            {pythonLive.status}
+          </span>
+        )}
 
         <span className="text-[10px] text-muted-foreground ml-1">[{cellIndex + 1}]</span>
 
         {/* Spacer */}
         <div className="flex-1" />
 
+        {/* Interrupt stays visible for as long as Python runs, not only on hover */}
+        {cell.type === "python" && isRunning && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 gap-1 text-[10px] text-destructive hover:text-destructive"
+            onClick={() => onInterrupt(cell.id)}
+            title="Stop this run. Restarts the Python kernel; variables are lost."
+          >
+            <Square className="h-3 w-3" />
+            Interrupt
+          </Button>
+        )}
+
         {/* Cell actions */}
         <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-          {cell.type === "sql" && (
+          {isCode && (
             <Button
               variant="ghost"
               size="icon"
@@ -272,7 +330,7 @@ export function NotebookCellComponent({
             </Button>
           )}
 
-          {cell.type === "sql" && hasResult && (
+          {((cell.type === "sql" && hasResult) || (cell.type === "python" && pythonOutput)) && (
             <Button
               variant="ghost"
               size="icon"
@@ -317,8 +375,16 @@ export function NotebookCellComponent({
 
       {/* Cell body */}
       <div className="min-h-[40px]">
-        {cell.type === "sql" ? (
+        {isCode ? (
           <div ref={editorRef} className="w-full" style={{ minHeight: 60 }} />
+        ) : !isKnownCellType(cell.type) ? (
+          <div className="p-3">
+            <p className="text-xs text-muted-foreground mb-2">
+              Unsupported cell type &ldquo;{String(cell.type)}&rdquo; (likely from a newer Duck-UI).
+              Shown read-only.
+            </p>
+            <pre className="text-xs font-mono whitespace-pre-wrap break-words">{cell.content}</pre>
+          </div>
         ) : isEditing ? (
           <textarea
             ref={textareaRef}
@@ -360,6 +426,18 @@ export function NotebookCellComponent({
         </div>
       )}
 
+      {/* Python cell output */}
+      {hasPythonOutput && !cell.collapsed && (
+        <div className="border-t">
+          <PythonOutputView
+            output={isRunning ? null : (pythonOutput ?? null)}
+            live={isRunning ? pythonLive : undefined}
+            chartConfig={cell.chartConfig}
+            onChartConfigChange={handleChartConfigChange}
+          />
+        </div>
+      )}
+
       {/* Add cell button between cells */}
       <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
         <DropdownMenu>
@@ -376,6 +454,10 @@ export function NotebookCellComponent({
             <DropdownMenuItem onClick={() => onAddCell(cell.id, "sql")}>
               <Code className="h-4 w-4 mr-2" />
               SQL Cell
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onAddCell(cell.id, "python")}>
+              <SquareTerminal className="h-4 w-4 mr-2" />
+              Python Cell
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onAddCell(cell.id, "markdown")}>
               <Type className="h-4 w-4 mr-2" />
@@ -429,5 +511,90 @@ function CellResults({
         </div>
       </TabsContent>
     </Tabs>
+  );
+}
+
+// Python output: streams, then the last expression (table or repr), then figures
+function PythonOutputView({
+  output,
+  live,
+  chartConfig,
+  onChartConfigChange,
+}: {
+  output: PythonCellOutput | null;
+  live?: PythonLiveState;
+  chartConfig?: ChartConfig;
+  onChartConfigChange: (config: ChartConfig | undefined) => void;
+}) {
+  const stdout = live?.stdout ?? output?.stdout ?? "";
+  const stderr = live?.stderr ?? output?.stderr ?? "";
+  const isEmpty =
+    !live &&
+    !!output &&
+    !stdout &&
+    !stderr &&
+    !output.error &&
+    output.text === undefined &&
+    !output.table &&
+    !output.images?.length;
+
+  return (
+    <div className="text-xs">
+      {stdout && (
+        <pre className="px-3 py-2 font-mono whitespace-pre-wrap break-words max-h-[300px] overflow-auto">
+          {stdout}
+        </pre>
+      )}
+      {stderr && (
+        <pre className="px-3 py-2 font-mono whitespace-pre-wrap break-words max-h-[200px] overflow-auto text-amber-700 dark:text-amber-400 bg-amber-500/5">
+          {stderr}
+        </pre>
+      )}
+      {output?.error && (
+        <pre className="px-3 py-2 font-mono whitespace-pre-wrap break-words text-destructive bg-destructive/5">
+          {output.error}
+        </pre>
+      )}
+      {output?.text !== undefined && (
+        <pre className="px-3 py-2 font-mono whitespace-pre-wrap break-words max-h-[300px] overflow-auto">
+          {output.text}
+        </pre>
+      )}
+      {output?.table &&
+        (output.table.data.length > 0 ? (
+          <>
+            <CellResults
+              result={output.table}
+              chartConfig={chartConfig}
+              onChartConfigChange={onChartConfigChange}
+            />
+            {output.table.truncated && (
+              <div className="px-3 py-1 text-muted-foreground">
+                Showing first {output.table.data.length.toLocaleString()} of{" "}
+                {output.table.rowCount.toLocaleString()} rows.
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="px-3 py-2 text-muted-foreground">
+            Empty DataFrame ({output.table.columns.length} columns).
+          </div>
+        ))}
+      {output?.images?.map((image, index) => (
+        <div key={index} className="px-3 py-2 bg-white">
+          <img
+            src={`data:image/png;base64,${image}`}
+            alt={`Figure ${index + 1}`}
+            className="max-w-full h-auto"
+          />
+        </div>
+      ))}
+      {isEmpty && (
+        <div className="px-3 py-2 text-muted-foreground">
+          Ran successfully
+          {output?.durationMs !== undefined ? ` in ${output.durationMs} ms` : ""}.
+        </div>
+      )}
+    </div>
   );
 }

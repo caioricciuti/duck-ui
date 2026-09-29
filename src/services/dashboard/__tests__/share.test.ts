@@ -1,5 +1,7 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+import { parseRefreshParam } from "../refresh";
 import {
+  buildDashboardShareUrl,
   decodeDashboardShare,
   encodeDashboardShare,
   parseDashboardShareHash,
@@ -70,5 +72,18 @@ describe("dashboard share URL watching", () => {
     target.location.hash = "#dash=late";
     for (const handler of [...listeners]) handler();
     expect(seen).toEqual(["late"]);
+  });
+});
+
+describe("buildDashboardShareUrl", () => {
+  it("appends refresh only when an interval is set", () => {
+    vi.stubGlobal("window", { location: { origin: "https://duck.test", pathname: "/" } });
+    expect(buildDashboardShareUrl("abc")).toMatch(/#dash=abc$/);
+    expect(buildDashboardShareUrl("abc", { refreshSeconds: 0 })).toMatch(/#dash=abc$/);
+    const url = buildDashboardShareUrl("abc", { refreshSeconds: 300 });
+    expect(url).toMatch(/#dash=abc&refresh=300$/);
+    expect(parseDashboardShareHash(new URL(url).hash)).toBe("abc");
+    expect(parseRefreshParam(new URL(url).hash)).toBe(300);
+    vi.unstubAllGlobals();
   });
 });

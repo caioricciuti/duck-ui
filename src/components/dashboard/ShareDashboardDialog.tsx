@@ -52,16 +52,17 @@ export default function ShareDashboardDialog({
         )
       );
       if (!cancelled) {
+        const options = { refreshSeconds: dashboard.refreshIntervalSeconds };
         setLinks({
-          viewer: buildDashboardShareUrl(viewer),
-          editor: buildDashboardShareUrl(editor),
+          viewer: buildDashboardShareUrl(viewer, options),
+          editor: buildDashboardShareUrl(editor, options),
         });
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [open, dashboard.name, dashboard.source]);
+  }, [open, dashboard.name, dashboard.source, dashboard.refreshIntervalSeconds]);
 
   const copy = async (mode: string, value: string) => {
     await navigator.clipboard.writeText(value);

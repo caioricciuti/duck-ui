@@ -9,6 +9,7 @@ import {
   subscribeToDashboardShares,
   type DashboardSharePayload,
 } from "@/services/dashboard/share";
+import { formatRefreshInterval, parseRefreshParam } from "@/services/dashboard/refresh";
 import { saveDashboard } from "@/services/persistence/repositories/dashboardRepository";
 import {
   Dialog,
@@ -37,6 +38,8 @@ export default function DashboardShareLoader() {
   const currentConnection = useDuckStore((s) => s.currentConnection);
 
   const [payload, setPayload] = useState<DashboardSharePayload | null>(null);
+  // `&refresh=N` beside `dash=` — read with the share, before the hash clears.
+  const [refreshSeconds, setRefreshSeconds] = useState<number | null>(null);
   const [importing, setImporting] = useState(false);
 
   useEffect(() => {
@@ -50,6 +53,7 @@ export default function DashboardShareLoader() {
           clearDashboardShareHash();
           return;
         }
+        setRefreshSeconds(parseRefreshParam(window.location.hash));
         setPayload(decoded);
       })();
     });
@@ -83,6 +87,7 @@ export default function DashboardShareLoader() {
         // from their browser. Never against the sender's.
         execution: { mode: "local" as const, connectionId },
         role: payload.mode,
+        refreshIntervalSeconds: refreshSeconds || undefined,
       };
       await saveDashboard(currentProfileId, dashboard);
       await loadDashboards();
@@ -107,6 +112,7 @@ export default function DashboardShareLoader() {
             {isViewer ? <Eye className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
             Shared {isViewer ? "read-only" : "as editable"} · {queryCount}{" "}
             {queryCount === 1 ? "query" : "queries"}
+            {refreshSeconds ? ` · refreshes every ${formatRefreshInterval(refreshSeconds)}` : ""}
           </DialogDescription>
         </DialogHeader>
 
