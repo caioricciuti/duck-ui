@@ -25,7 +25,7 @@
 
   async function updateConnection(values: ConnectionFormValues) {
     if (!editingId) return
-    duckActions().updateConnection(toConnectionProvider(values, editingId))
+    await duckActions().updateConnection(toConnectionProvider(values, editingId))
   }
 
   async function connect(connectionId: string) {

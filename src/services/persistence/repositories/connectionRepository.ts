@@ -1,7 +1,7 @@
 import { generateUUID } from "@/lib/utils";
 import { isUsingOpfs, getSystemConnection, sqlQuote } from "../systemDb";
 import { encrypt, decrypt } from "../crypto";
-import { fallbackPut, fallbackGetAll, fallbackDelete } from "../fallback";
+import { fallbackPut, fallbackGet, fallbackGetAll, fallbackDelete } from "../fallback";
 
 export interface SavedConnection {
   id: string;
@@ -71,6 +71,95 @@ export async function saveConnection(
     environment: input.environment ?? "APP",
     created_at: now,
   };
+}
+
+export interface ConnectionUpdate {
+  name: string;
+  scope: string;
+  config: Record<string, unknown>;
+  /**
+   * Omitted keeps the stored credentials untouched, `null` removes them, a
+   * record replaces them (encrypted like `saveConnection` does).
+   */
+  credentials?: Record<string, unknown> | null;
+  /** Omitted keeps the stored value. */
+  environment?: string;
+}
+
+const readStoredConnection = async (id: string): Promise<SavedConnection | null> => {
+  if (isUsingOpfs()) {
+    const conn = getSystemConnection();
+    const result = await conn.query(`SELECT * FROM connections WHERE id = ${sqlQuote(id)}`);
+    const row = result.toArray()[0]?.toJSON();
+    if (!row) return null;
+    return {
+      id: String(row.id),
+      profile_id: String(row.profile_id),
+      name: String(row.name),
+      scope: String(row.scope),
+      config: String(row.config),
+      encrypted_credentials: row.encrypted_credentials ? String(row.encrypted_credentials) : null,
+      environment: String(row.environment),
+      created_at: String(row.created_at),
+    };
+  }
+  return ((await fallbackGet("connections", id)) as SavedConnection | null) ?? null;
+};
+
+/**
+ * Rewrites a stored connection in place, keeping its id and creation date.
+ *
+ * A connection that was never stored is saved as new, so an edit is never
+ * lost just because the first save failed.
+ */
+export async function updateConnection(
+  profileId: string,
+  id: string,
+  input: ConnectionUpdate,
+  cryptoKey: CryptoKey | null
+): Promise<SavedConnection> {
+  const existing = await readStoredConnection(id);
+  if (!existing) {
+    return saveConnection(
+      profileId,
+      { ...input, id, credentials: input.credentials ?? undefined },
+      cryptoKey
+    );
+  }
+
+  let encryptedCreds = existing.encrypted_credentials;
+  if (input.credentials !== undefined) {
+    encryptedCreds =
+      input.credentials && cryptoKey
+        ? await encrypt(JSON.stringify(input.credentials), cryptoKey)
+        : null;
+  }
+
+  const updated: SavedConnection = {
+    ...existing,
+    name: input.name,
+    scope: input.scope,
+    config: JSON.stringify(input.config),
+    encrypted_credentials: encryptedCreds,
+    environment: input.environment ?? existing.environment,
+  };
+
+  if (isUsingOpfs()) {
+    const conn = getSystemConnection();
+    await conn.query(`
+      UPDATE connections
+      SET name = ${sqlQuote(updated.name)},
+          scope = ${sqlQuote(updated.scope)},
+          config = ${sqlQuote(updated.config)},
+          encrypted_credentials = ${encryptedCreds ? sqlQuote(encryptedCreds) : "NULL"},
+          environment = ${sqlQuote(updated.environment)}
+      WHERE id = ${sqlQuote(id)}
+    `);
+  } else {
+    await fallbackPut("connections", { ...updated });
+  }
+
+  return updated;
 }
 
 export async function getConnections(

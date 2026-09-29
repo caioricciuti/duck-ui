@@ -19,6 +19,7 @@ import type {
 } from "../types";
 import {
   saveConnection,
+  updateConnection as updateConnectionRepo,
   deleteConnection as deleteConnectionRepo,
 } from "@/services/persistence/repositories/connectionRepository";
 
@@ -165,14 +166,62 @@ export const createConnectionSlice: StateCreator<DuckStoreState, [], [], Connect
     }
   },
 
-  updateConnection: (connection) => {
+  updateConnection: async (connection) => {
+    const existing = get().connectionList.connections.find((c) => c.id === connection.id);
+    if (!existing) return;
+
+    // The form carries only the fields of its scope and always says "APP".
+    // Whatever it does not edit keeps its value. A scope change starts clean,
+    // so an OPFS database does not inherit the host of the server it replaced.
+    const merged: ConnectionProvider = {
+      ...(existing.scope === connection.scope ? existing : {}),
+      ...connection,
+      environment: existing.environment,
+    };
+
     set((state) => ({
       connectionList: {
-        connections: state.connectionList.connections.map((c) =>
-          c.id === connection.id ? connection : c
-        ),
+        connections: state.connectionList.connections.map((c) => (c.id === merged.id ? merged : c)),
       },
     }));
+
+    const { currentProfileId, encryptionKey } = get();
+    if (!currentProfileId) return;
+
+    const credentialRecord: Record<string, unknown> = {};
+    if (merged.password) credentialRecord.password = merged.password;
+    if (merged.apiKey) credentialRecord.apiKey = merged.apiKey;
+
+    try {
+      await updateConnectionRepo(
+        currentProfileId,
+        merged.id,
+        {
+          name: merged.name,
+          scope: merged.scope,
+          config: {
+            host: merged.host,
+            port: merged.port,
+            database: merged.database,
+            user: merged.user,
+            path: merged.path,
+            authMode: merged.authMode,
+          },
+          // Without a key nothing can be encrypted. Leaving the stored value
+          // alone beats wiping credentials over a rename.
+          credentials: !encryptionKey
+            ? undefined
+            : Object.keys(credentialRecord).length > 0
+              ? credentialRecord
+              : null,
+          environment: merged.environment,
+        },
+        encryptionKey
+      );
+    } catch (error) {
+      console.warn("[Connection] Failed to persist update:", error);
+      toast.error(`Connection "${merged.name}" was changed but could not be saved.`);
+    }
   },
 
   deleteConnection: (id) => {
