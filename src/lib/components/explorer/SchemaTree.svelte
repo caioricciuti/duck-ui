@@ -1,13 +1,14 @@
 <script lang="ts">
-  import { ChevronRight, Database, Table, Columns3, SquareTerminal, FileText, Trash2 } from 'lucide-svelte'
+  import { ChevronRight, Database, Table, SquareTerminal, FileText, Trash2 } from 'lucide-svelte'
   import ContextMenu, { type ContextMenuItem } from '../common/ContextMenu.svelte'
   import ConfirmDialog from '../common/ConfirmDialog.svelte'
+  import ColumnNode from './ColumnNode.svelte'
   import { duck, duckActions } from '../../stores/duck.svelte'
   import * as toast from '../../stores/toast.svelte'
   import { qualifyTable } from '@/lib/sqlSanitize'
   import { getUiConfig } from '@/lib/appConfig'
   import { formatCompactNumber } from '../../utils/format'
-  import type { DatabaseInfo, TableInfo } from '@/store/types'
+  import type { ColumnStats, DatabaseInfo, TableInfo } from '@/store/types'
 
   interface Props {
     search?: string
@@ -39,6 +40,29 @@
       }))
       .filter((db) => db.tables.length > 0 || db.name.toLowerCase().includes(needle))
   })
+
+  // SUMMARIZE scans the table, so it runs once per table and only when a
+  // column is opened, not when the table is expanded.
+  const statsCache = new Map<string, Promise<ColumnStats[]>>()
+
+  // A refreshed catalog may describe changed data.
+  $effect(() => {
+    void databases
+    statsCache.clear()
+  })
+
+  function statsLoader(database: string, table: TableInfo): () => Promise<ColumnStats[]> {
+    const key = tableKey(database, table)
+    return () => {
+      let pending = statsCache.get(key)
+      if (!pending) {
+        pending = duckActions().fetchTableColumnStats(database, table.name, table.schema)
+        pending.catch(() => statsCache.delete(key))
+        statsCache.set(key, pending)
+      }
+      return pending
+    }
+  }
 
   function tableKey(database: string, table: TableInfo): string {
     return `${database}\u0000${table.schema}\u0000${table.name}`
@@ -132,11 +156,7 @@
               {#if tableOpen}
                 <ul role="group" class="ml-3 border-l border-edge-subtle pl-1.5">
                   {#each table.columns as column (column.name)}
-                    <li role="treeitem" aria-selected="false" class="flex h-6 items-center gap-1.5 px-1.5 text-xs text-fg-3">
-                      <Columns3 size={12} class="shrink-0 text-fg-4" />
-                      <span class="truncate text-fg-2">{column.name}</span>
-                      <span class="ml-auto shrink-0 font-mono text-[11px] text-fg-4">{column.type}</span>
-                    </li>
+                    <ColumnNode {column} database={db.name} table={table.name} schema={table.schema} loadStats={statsLoader(db.name, table)} />
                   {/each}
                 </ul>
               {/if}

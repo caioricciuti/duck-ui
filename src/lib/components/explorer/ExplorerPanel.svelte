@@ -6,6 +6,7 @@
   import SchemaTree from './SchemaTree.svelte'
   import FileImporter from '../importer/FileImporter.svelte'
   import FolderBrowser from '../folders/FolderBrowser.svelte'
+  import ConnectionSwitcher from '../connections/ConnectionSwitcher.svelte'
   import { getUiConfig } from '@/lib/appConfig'
   import { duck, duckActions } from '../../stores/duck.svelte'
   import {
@@ -50,7 +51,6 @@
   const databases = $derived(duck((s) => s.databases))
   const loading = $derived(duck((s) => s.isLoadingDbTablesFetch))
   const fetchError = $derived(duck((s) => s.schemaFetchError))
-  const connection = $derived(duck((s) => s.currentConnection))
   const collapsed = $derived(isExplorerCollapsed() || narrow)
   const width = $derived(collapsed ? COLLAPSED_WIDTH : getExplorerWidth())
 
@@ -107,8 +107,8 @@
       </Button>
     </div>
   {:else}
-    <div class="flex h-9 shrink-0 items-center gap-1 border-b border-edge-subtle pl-3 pr-1.5">
-      <span class="truncate text-xs font-medium text-fg-2">{connection?.name ?? 'Explorer'}</span>
+    <div class="flex h-9 shrink-0 items-center gap-1 border-b border-edge-subtle pl-1.5 pr-1.5">
+      <ConnectionSwitcher class="min-w-0" />
       <div class="ml-auto flex items-center">
         {#if canImport}
           <Button icon variant="ghost" size="xs" onclick={() => (importerOpen = true)} title="Import data" aria-label="Import data">
