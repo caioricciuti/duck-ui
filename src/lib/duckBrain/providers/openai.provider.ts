@@ -6,6 +6,7 @@ import type {
   GenerationOptions,
   ProviderStatus,
 } from "./types";
+import { linkAbortSignal } from "./abort";
 
 /**
  * OpenAI API Provider
@@ -92,7 +93,9 @@ export class OpenAIProvider implements AIProvider {
       throw new Error("OpenAI provider not initialized");
     }
 
-    this.abortController = new AbortController();
+    const controller = new AbortController();
+    this.abortController = controller;
+    const unlink = linkAbortSignal(controller, options?.signal);
     let fullText = "";
 
     try {
@@ -117,7 +120,7 @@ export class OpenAIProvider implements AIProvider {
           temperature: options?.temperature || 0.7,
           stop: options?.stopSequences,
         }),
-        signal: this.abortController.signal,
+        signal: controller.signal,
       });
 
       if (!response.ok) {
@@ -134,6 +137,11 @@ export class OpenAIProvider implements AIProvider {
 
       while (true) {
         const { done, value } = await reader.read();
+        // A chunk can already be buffered when the stop arrives.
+        if (controller.signal.aborted) {
+          await reader.cancel().catch(() => {});
+          return;
+        }
         if (done) break;
 
         const chunk = decoder.decode(value, { stream: true });
@@ -160,15 +168,17 @@ export class OpenAIProvider implements AIProvider {
 
       callbacks.onComplete?.(fullText);
     } catch (err) {
-      if (err instanceof Error && err.name === "AbortError") {
-        callbacks.onComplete?.(fullText || "");
+      // Stopped on purpose: the partial text is not a finished answer, so it
+      // is not reported as one.
+      if (controller.signal.aborted || (err instanceof Error && err.name === "AbortError")) {
         return;
       }
       const error = err instanceof Error ? err : new Error("Generation failed");
       callbacks.onError?.(error);
       throw error;
     } finally {
-      this.abortController = null;
+      unlink();
+      if (this.abortController === controller) this.abortController = null;
     }
   }
 
@@ -201,6 +211,7 @@ export class OpenAIProvider implements AIProvider {
         temperature: options?.temperature || 0.7,
         stop: options?.stopSequences,
       }),
+      signal: options?.signal,
     });
 
     if (!response.ok) {

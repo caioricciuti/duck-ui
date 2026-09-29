@@ -7,6 +7,12 @@ import type { DuckStoreState, DuckBrainSlice, DuckBrainMessage, QueryResult } fr
 // Track the duckBrainService subscription to prevent leaks
 let duckBrainServiceUnsubscribe: (() => void) | null = null;
 
+/**
+ * The generation Stop should reach. A live handle, not state, so it stays
+ * outside the store.
+ */
+let activeGeneration: AbortController | null = null;
+
 /** Why the active provider can't run yet, or null when it can. */
 function getProviderSetupError(duckBrain: DuckStoreState["duckBrain"]): string | null {
   const { aiProvider, providerConfigs } = duckBrain;
@@ -106,12 +112,22 @@ export const createDuckBrainSlice: StateCreator<DuckStoreState, [], [], DuckBrai
       timestamp: new Date(),
     };
 
+    // A request still running would keep writing into the new one's stream.
+    activeGeneration?.abort();
+    const generation = new AbortController();
+    activeGeneration = generation;
+    const stopped = () => generation.signal.aborted;
+    // Set once a failure has been shown, so it is not reported twice.
+    let failureReported = false;
+
     set((state) => ({
       duckBrain: {
         ...state.duckBrain,
         messages: [...state.duckBrain.messages, userMessage],
         isGenerating: true,
         streamingContent: "",
+        // The last request's failure says nothing about this one.
+        error: null,
       },
     }));
 
@@ -136,10 +152,14 @@ export const createDuckBrainSlice: StateCreator<DuckStoreState, [], [], DuckBrai
           baseUrl: "baseUrl" in config ? config.baseUrl : undefined,
         });
 
+        // Stopped while the provider was connecting: nothing to generate.
+        if (stopped()) return null;
+
         await provider.generateStreaming(
           messages,
           {
             onToken: (token) => {
+              if (stopped()) return;
               fullResponse += token;
               set((state) => ({
                 duckBrain: {
@@ -149,6 +169,7 @@ export const createDuckBrainSlice: StateCreator<DuckStoreState, [], [], DuckBrai
               }));
             },
             onComplete: (finalText) => {
+              if (stopped()) return;
               const parsed = extractSQLFromResponse(finalText);
 
               const assistantMessage: DuckBrainMessage = {
@@ -169,6 +190,8 @@ export const createDuckBrainSlice: StateCreator<DuckStoreState, [], [], DuckBrai
               }));
             },
             onError: (error) => {
+              if (stopped()) return;
+              failureReported = true;
               set((state) => ({
                 duckBrain: {
                   ...state.duckBrain,
@@ -180,7 +203,7 @@ export const createDuckBrainSlice: StateCreator<DuckStoreState, [], [], DuckBrai
               toast.error(`Generation failed: ${error.message}`);
             },
           },
-          { maxTokens: 512, temperature: 0.2 }
+          { maxTokens: 512, temperature: 0.2, signal: generation.signal }
         );
 
         await provider.cleanup();
@@ -189,6 +212,7 @@ export const createDuckBrainSlice: StateCreator<DuckStoreState, [], [], DuckBrai
           messages,
           {
             onToken: (_token, fullText) => {
+              if (stopped()) return;
               fullResponse = fullText;
               set((state) => ({
                 duckBrain: {
@@ -198,6 +222,7 @@ export const createDuckBrainSlice: StateCreator<DuckStoreState, [], [], DuckBrai
               }));
             },
             onComplete: (finalText) => {
+              if (stopped()) return;
               const parsed = extractSQLFromResponse(finalText);
 
               const assistantMessage: DuckBrainMessage = {
@@ -218,6 +243,8 @@ export const createDuckBrainSlice: StateCreator<DuckStoreState, [], [], DuckBrai
               }));
             },
             onError: (error) => {
+              if (stopped()) return;
+              failureReported = true;
               set((state) => ({
                 duckBrain: {
                   ...state.duckBrain,
@@ -233,9 +260,15 @@ export const createDuckBrainSlice: StateCreator<DuckStoreState, [], [], DuckBrai
         );
       }
 
+      // A stopped answer is partial. Handing its SQL to the caller would
+      // present half a query as the result.
+      if (stopped()) return null;
+
       const parsed = extractSQLFromResponse(fullResponse);
       return parsed.sql;
     } catch (error) {
+      // Stop already reset the state, and a newer request may own it by now.
+      if (stopped()) return null;
       set((state) => ({
         duckBrain: {
           ...state.duckBrain,
@@ -243,10 +276,14 @@ export const createDuckBrainSlice: StateCreator<DuckStoreState, [], [], DuckBrai
           streamingContent: "",
         },
       }));
-      toast.error(
-        `Failed to generate SQL: ${error instanceof Error ? error.message : "Unknown error"}`
-      );
+      if (!failureReported) {
+        toast.error(
+          `Failed to generate SQL: ${error instanceof Error ? error.message : "Unknown error"}`
+        );
+      }
       return null;
+    } finally {
+      if (activeGeneration === generation) activeGeneration = null;
     }
   },
 
@@ -299,8 +336,10 @@ export const createDuckBrainSlice: StateCreator<DuckStoreState, [], [], DuckBrai
   },
 
   abortGeneration: async () => {
-    const { duckBrainService } = await import("@/lib/duckBrain");
-    duckBrainService.abort();
+    // Before anything is awaited: from here on no token or message of the
+    // stopped request reaches the store, whichever provider is answering.
+    activeGeneration?.abort();
+    activeGeneration = null;
     set((state) => ({
       duckBrain: {
         ...state.duckBrain,
@@ -308,6 +347,9 @@ export const createDuckBrainSlice: StateCreator<DuckStoreState, [], [], DuckBrai
         streamingContent: "",
       },
     }));
+    if (get().duckBrain.aiProvider !== "webllm") return;
+    const { duckBrainService } = await import("@/lib/duckBrain");
+    duckBrainService.abort();
   },
 
   clearBrainMessages: () => {

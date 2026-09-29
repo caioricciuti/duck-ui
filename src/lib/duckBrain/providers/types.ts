@@ -18,6 +18,11 @@ export interface GenerationOptions {
   maxTokens?: number;
   temperature?: number;
   stopSequences?: string[];
+  /**
+   * Cancels the request. After it fires the provider reports nothing more:
+   * no token, no completion, no error.
+   */
+  signal?: AbortSignal;
 }
 
 export interface ProviderStatus {

@@ -6,6 +6,7 @@ import type {
   GenerationOptions,
   ProviderStatus,
 } from "./types";
+import { linkAbortSignal } from "./abort";
 
 /**
  * Anthropic (Claude) API Provider
@@ -54,7 +55,9 @@ export class AnthropicProvider implements AIProvider {
       throw new Error("Anthropic provider not initialized");
     }
 
-    this.abortController = new AbortController();
+    const controller = new AbortController();
+    this.abortController = controller;
+    const unlink = linkAbortSignal(controller, options?.signal);
 
     // Convert messages to Anthropic format
     const systemMessage = messages.find((m) => m.role === "system");
@@ -79,7 +82,7 @@ export class AnthropicProvider implements AIProvider {
           })),
           stream: true,
         }),
-        signal: this.abortController.signal,
+        signal: controller.signal,
       });
 
       if (!response.ok) {
@@ -97,6 +100,11 @@ export class AnthropicProvider implements AIProvider {
 
       while (true) {
         const { done, value } = await reader.read();
+        // A chunk can already be buffered when the stop arrives.
+        if (controller.signal.aborted) {
+          await reader.cancel().catch(() => {});
+          return;
+        }
         if (done) break;
 
         const chunk = decoder.decode(value, { stream: true });
@@ -138,14 +146,15 @@ export class AnthropicProvider implements AIProvider {
 
       callbacks.onComplete?.(fullText);
     } catch (err) {
-      if (err instanceof Error && err.name === "AbortError") {
+      if (controller.signal.aborted || (err instanceof Error && err.name === "AbortError")) {
         return;
       }
       const error = err instanceof Error ? err : new Error("Generation failed");
       callbacks.onError?.(error);
       throw error;
     } finally {
-      this.abortController = null;
+      unlink();
+      if (this.abortController === controller) this.abortController = null;
     }
   }
 
@@ -178,6 +187,7 @@ export class AnthropicProvider implements AIProvider {
           content: m.content,
         })),
       }),
+      signal: options?.signal,
     });
 
     if (!response.ok) {
