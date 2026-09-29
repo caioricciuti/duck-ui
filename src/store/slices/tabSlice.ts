@@ -1,5 +1,5 @@
-import type { StateCreator } from "zustand";
-import { toast } from "sonner";
+import type { StateCreator } from "@/store/createStore";
+import { toast } from "svelte-sonner";
 import { generateUUID } from "@/lib/utils";
 import { isGatedTabHidden } from "@/lib/appConfig";
 import { disposePythonKernel } from "@/services/python/kernel";
@@ -43,12 +43,7 @@ function updateNotebookContent(
   });
 }
 
-export const createTabSlice: StateCreator<
-  DuckStoreState,
-  [["zustand/devtools", never]],
-  [],
-  TabSlice
-> = (set, get) => ({
+export const createTabSlice: StateCreator<DuckStoreState, [], [], TabSlice> = (set, get) => ({
   tabs: [
     {
       id: "home",

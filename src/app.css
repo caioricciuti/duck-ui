@@ -1,0 +1,586 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ─── Fonts (self-hosted, see public/fonts/README.md) ─────────────────── */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/InterVariable.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/JetBrainsMono-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/JetBrainsMono-Medium.woff2") format("woff2");
+}
+
+/* ─── Design tokens ────────────────────────────────────────────────────
+   Semantic tokens live on :root / .dark and are exposed to Tailwind via
+   @theme inline, so `bg-surface`, `text-fg-3`, `border-edge` etc. work.
+   Rules: spacing and surface contrast before borders; borders are
+   low-alpha neutrals; yellow is an accent (rails, primary CTA, focus,
+   important status), never a fill for whole rows. */
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Brand */
+  --color-duck-yellow: #fff100;
+
+  /* Neutral ramp, true neutral (no blue cast). Still used by legacy
+     `gray-*` utilities during the migration; new code uses semantic tokens. */
+  --color-gray-50: #f7f7f8;
+  --color-gray-100: #f0f0f2;
+  --color-gray-200: #e2e2e6;
+  --color-gray-300: #cdcdd3;
+  --color-gray-400: #a0a1a9;
+  --color-gray-500: #8a8a8a;
+  --color-gray-600: #666666;
+  --color-gray-700: #404040;
+  --color-gray-800: #262626;
+  --color-gray-900: #141414;
+  --color-gray-950: #0a0a0a;
+
+  /* Radii: tighter than Tailwind defaults; a dev tool, not a marketing site */
+  --radius-xs: 2px;
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
+  --radius-2xl: 10px;
+
+  /* Elevation: only floating things cast shadows */
+  --shadow-popover: 0 4px 16px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-modal: 0 16px 48px rgba(0, 0, 0, 0.18), 0 2px 6px rgba(0, 0, 0, 0.08);
+
+  --ease-out-quick: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-sidebar: var(--sidebar);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-elevated: var(--elevated);
+  --color-hover: var(--hover);
+  --color-active: var(--active);
+
+  --color-fg: var(--fg);
+  --color-fg-2: var(--fg-2);
+  --color-fg-3: var(--fg-3);
+  --color-fg-4: var(--fg-4);
+
+  --color-edge-subtle: var(--edge-subtle);
+  --color-edge: var(--edge);
+  --color-edge-strong: var(--edge-strong);
+
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-ring: var(--accent-ring);
+
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+
+  /* Compatibility aliases for the shadcn-style names still in use */
+  --color-background: var(--canvas);
+  --color-foreground: var(--fg);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--fg);
+  --color-popover: var(--elevated);
+  --color-popover-foreground: var(--fg);
+  --color-primary: var(--accent);
+  --color-primary-foreground: var(--accent-fg);
+  --color-secondary: var(--surface-2);
+  --color-secondary-foreground: var(--fg-2);
+  --color-muted: var(--surface-2);
+  --color-muted-foreground: var(--fg-3);
+  --color-accent-foreground: var(--fg);
+  --color-destructive: var(--danger);
+  --color-border: var(--edge);
+  --color-input: var(--edge);
+  --color-ring: var(--accent-ring);
+}
+
+:root {
+  color-scheme: light;
+
+  --canvas: #f6f6f7;
+  --sidebar: #f0f0f2;
+  --surface: #ffffff;
+  --surface-2: #f3f3f5;
+  --elevated: #ffffff;
+  --hover: rgba(0, 0, 0, 0.045);
+  --active: rgba(0, 0, 0, 0.08);
+
+  --fg: #18181b;
+  --fg-2: #3f3f46;
+  --fg-3: #6b6c76;
+  --fg-4: #a0a1a9;
+
+  --edge-subtle: rgba(0, 0, 0, 0.06);
+  --edge: rgba(0, 0, 0, 0.11);
+  --edge-strong: rgba(0, 0, 0, 0.2);
+
+  --accent: #ca8a04;
+  --accent-fg: #0a0a0a;
+  --accent-soft: rgba(202, 138, 4, 0.14);
+  --accent-ring: rgba(202, 138, 4, 0.5);
+
+  --success: #15803d;
+  --success-soft: rgba(22, 163, 74, 0.12);
+  --warning: #b45309;
+  --warning-soft: rgba(217, 119, 6, 0.14);
+  --danger: #dc2626;
+  --danger-soft: rgba(220, 38, 38, 0.1);
+  --info: #2563eb;
+  --info-soft: rgba(37, 99, 235, 0.1);
+
+  /* legacy names still referenced by a few components */
+  --radius: 6px;
+  --background: var(--canvas);
+  --foreground: var(--fg);
+  --card: var(--surface);
+  --card-foreground: var(--fg);
+  --popover: var(--elevated);
+  --popover-foreground: var(--fg);
+  --primary: var(--accent);
+  --primary-foreground: var(--accent-fg);
+  --secondary: var(--surface-2);
+  --secondary-foreground: var(--fg-2);
+  --muted: var(--surface-2);
+  --muted-foreground: var(--fg-3);
+  --destructive: var(--danger);
+  --border: var(--edge);
+  --input: var(--edge);
+  --ring: var(--accent-ring);
+}
+
+.dark {
+  color-scheme: dark;
+
+  --canvas: #000000;
+  --sidebar: #000000;
+  --surface: #0a0a0a;
+  --surface-2: #141414;
+  --elevated: #111111;
+  --hover: rgba(255, 255, 255, 0.06);
+  --active: rgba(255, 255, 255, 0.11);
+
+  --fg: #ededed;
+  --fg-2: #c8c8c8;
+  --fg-3: #8f8f8f;
+  --fg-4: #5c5c5c;
+
+  --edge-subtle: rgba(255, 255, 255, 0.08);
+  --edge: rgba(255, 255, 255, 0.13);
+  --edge-strong: rgba(255, 255, 255, 0.22);
+
+  --accent: #fff100;
+  --accent-fg: #0a0a0a;
+  --accent-soft: rgba(255, 241, 0, 0.14);
+  --accent-ring: rgba(255, 241, 0, 0.5);
+
+  --success: #4ade80;
+  --success-soft: rgba(34, 197, 94, 0.14);
+  --warning: #fbbf24;
+  --warning-soft: rgba(245, 158, 11, 0.16);
+  --danger: #f87171;
+  --danger-soft: rgba(239, 68, 68, 0.14);
+  --info: #60a5fa;
+  --info-soft: rgba(59, 130, 246, 0.14);
+
+  --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-modal: 0 24px 64px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* ─── Base ─────────────────────────────────────────────────────────────── */
+
+html,
+body {
+  overflow: hidden;
+}
+
+* {
+  border-color: var(--edge);
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--fg-4), transparent 40%) transparent;
+}
+
+body {
+  background: var(--canvas);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 400;
+  font-feature-settings:
+    "liga" 1,
+    "calt" 1,
+    "cv11" 1;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3 {
+  letter-spacing: -0.012em;
+  font-weight: 600;
+}
+
+code,
+pre,
+kbd,
+.font-mono {
+  font-family: var(--font-mono);
+  font-feature-settings:
+    "liga" 0,
+    "calt" 0;
+}
+
+/* Data columns line up when numbers are tabular by default in mono text */
+.font-mono,
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* One focus treatment for everything: visible, keyboard only */
+:focus {
+  outline: none;
+}
+:focus-visible:not(input):not(textarea):not(select):not([contenteditable]):not(.cm-content) {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: 1px;
+  border-radius: var(--radius-sm);
+}
+
+::selection {
+  background: color-mix(in oklab, var(--accent), transparent 70%);
+  color: inherit;
+}
+
+/* Chrome paints autofilled fields blue; keep them on our surface */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--surface) inset;
+  -webkit-text-fill-color: var(--fg);
+  caret-color: var(--fg);
+  transition: background-color 9999s ease-out 0s;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: color-mix(in oklab, var(--fg-4), transparent 40%);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in oklab, var(--fg-4), transparent 15%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Bare `rounded` is a fixed 4px in Tailwind; keep it on our scale. Same
+   layer as the generated utilities and later in source, so it wins. */
+@layer utilities {
+  .rounded {
+    border-radius: var(--radius-sm);
+  }
+}
+
+/* Floating surfaces: popovers, menus, palette, modals */
+.surface-card {
+  background: var(--elevated);
+  border: 1px solid var(--edge);
+  box-shadow: var(--shadow-popover);
+}
+
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.animate-spin-slow {
+  animation: spin-slow 3s linear infinite;
+}
+
+/* ─── Shared component classes (ds-*) ─────────────────────────────────
+   What is left here is the table system (ds-table-*, ds-td-*), the native
+   checkbox/radio styles, and the base classes the primitives in
+   lib/components/common reuse (ds-input, ds-select, ds-segment, ds-badge).
+   Pages compose the primitives; they do not add new ds-* classes. */
+@layer components {
+  /* Forms */
+  .ds-input {
+    @apply h-8 w-full rounded-md border border-edge bg-surface px-2.5 text-[13px] text-fg placeholder:text-fg-4 transition-colors duration-100;
+    @apply hover:border-edge-strong focus:border-accent focus:outline-none;
+  }
+  .ds-input-sm {
+    @apply h-7 w-full rounded-md border border-edge bg-surface px-2 text-xs text-fg placeholder:text-fg-4 transition-colors duration-100;
+    @apply hover:border-edge-strong focus:border-accent focus:outline-none;
+  }
+  .ds-select {
+    @apply h-7 rounded-md border border-edge bg-surface px-2 text-xs text-fg transition-colors duration-100;
+    @apply hover:border-edge-strong focus:border-accent focus:outline-none;
+  }
+
+  /* Segmented control: the active segment is a raised surface, not yellow */
+  .ds-segment {
+    @apply inline-flex items-center rounded-md bg-surface-2 p-0.5;
+  }
+  .ds-segment-btn {
+    @apply h-6 rounded-[5px] px-2.5 text-xs font-medium text-fg-3 transition-colors duration-100 hover:text-fg;
+  }
+  .ds-segment-btn-active {
+    @apply bg-surface text-fg;
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.08),
+      0 0 0 1px var(--edge-subtle);
+  }
+
+  /* Tables */
+  .ds-table-wrap {
+    @apply overflow-x-auto;
+  }
+  .ds-table {
+    @apply w-full text-[13px];
+  }
+  .ds-table-head-row {
+    @apply border-b border-edge;
+  }
+  .ds-table-th {
+    @apply h-8 text-left px-3 text-xs font-medium text-fg-3 whitespace-nowrap;
+  }
+  .ds-table-th-right {
+    @apply h-8 text-right px-3 text-xs font-medium text-fg-3 whitespace-nowrap;
+  }
+  .ds-table-th-compact {
+    @apply h-7 text-left px-2 text-[11px] font-medium text-fg-3 whitespace-nowrap;
+  }
+  .ds-table-th-right-compact {
+    @apply h-7 text-right px-2 text-[11px] font-medium text-fg-3 whitespace-nowrap;
+  }
+  .ds-table-row {
+    @apply border-b border-edge-subtle transition-colors duration-75 hover:bg-hover;
+  }
+  .ds-table-row-static {
+    @apply border-b border-edge-subtle;
+  }
+  .ds-td {
+    @apply py-1.5 px-3 text-fg-2;
+  }
+  .ds-td-strong {
+    @apply py-1.5 px-3 text-fg font-medium;
+  }
+  .ds-td-right {
+    @apply py-1.5 px-3 text-right text-fg-2 tabular-nums;
+  }
+  .ds-td-mono {
+    @apply py-1.5 px-3 text-xs text-fg-2 font-mono;
+  }
+  .ds-td-compact {
+    @apply py-1 px-2 text-xs text-fg-2;
+  }
+  .ds-td-compact-strong {
+    @apply py-1 px-2 text-xs text-fg font-medium;
+  }
+
+  /* Badges */
+  .ds-badge {
+    @apply inline-flex h-5 items-center gap-1 rounded px-1.5 text-[11px] font-medium leading-none whitespace-nowrap bg-surface-2 text-fg-2;
+  }
+
+  .ds-checkbox {
+    @apply h-4 w-4 rounded-[3px] border border-edge-strong bg-surface accent-accent;
+  }
+  .ds-checkbox-sm {
+    @apply h-3.5 w-3.5;
+  }
+  .ds-checkbox-label {
+    @apply inline-flex items-center gap-2 text-[13px] text-fg-2 select-none;
+  }
+  .ds-radio {
+    @apply h-4 w-4 border border-edge-strong bg-surface accent-accent;
+  }
+
+  /* Brain chat markdown output styling */
+  .prose-brain h1 {
+    @apply text-lg font-bold mt-4 mb-2;
+  }
+  .prose-brain h2 {
+    @apply text-base font-bold mt-3 mb-1.5;
+  }
+  .prose-brain h3 {
+    @apply text-sm font-semibold mt-3 mb-1;
+  }
+  .prose-brain h4,
+  .prose-brain h5,
+  .prose-brain h6 {
+    @apply text-sm font-semibold mt-2 mb-1;
+  }
+  .prose-brain p {
+    @apply my-1.5 leading-relaxed;
+  }
+  .prose-brain ul {
+    @apply list-disc pl-5 my-1.5 space-y-0.5;
+  }
+  .prose-brain ol {
+    @apply list-decimal pl-5 my-1.5 space-y-0.5;
+  }
+  .prose-brain li {
+    @apply leading-relaxed;
+  }
+  .prose-brain a {
+    @apply text-accent hover:underline;
+  }
+  .prose-brain blockquote {
+    @apply border-l-2 border-edge-strong pl-3 my-2 text-fg-3 italic;
+  }
+  .prose-brain pre {
+    @apply bg-surface-2 rounded-md p-3 my-2 overflow-x-auto text-xs font-mono;
+  }
+  .prose-brain code {
+    @apply bg-surface-2 px-1 py-0.5 rounded text-xs font-mono;
+  }
+  .prose-brain pre code {
+    @apply bg-transparent p-0;
+  }
+  .prose-brain table {
+    @apply min-w-full text-xs my-2 border border-edge rounded;
+  }
+  .prose-brain th {
+    @apply px-2 py-1 text-left bg-surface-2 border-b border-edge font-semibold;
+  }
+  .prose-brain td {
+    @apply px-2 py-1 border-b border-edge-subtle;
+  }
+  .prose-brain hr {
+    @apply my-3 border-edge;
+  }
+  .prose-brain strong {
+    @apply font-semibold;
+  }
+  .prose-brain em {
+    @apply italic;
+  }
+
+  /* Dashboard markdown panel styling */
+  .prose-panel h1 {
+    @apply text-xl font-bold mt-4 mb-2;
+  }
+  .prose-panel h2 {
+    @apply text-lg font-bold mt-3 mb-1.5;
+  }
+  .prose-panel h3 {
+    @apply text-base font-semibold mt-3 mb-1;
+  }
+  .prose-panel h4,
+  .prose-panel h5,
+  .prose-panel h6 {
+    @apply text-sm font-semibold mt-2 mb-1;
+  }
+  .prose-panel p {
+    @apply my-1.5 leading-relaxed;
+  }
+  .prose-panel ul {
+    @apply list-disc pl-5 my-1.5 space-y-0.5;
+  }
+  .prose-panel ol {
+    @apply list-decimal pl-5 my-1.5 space-y-0.5;
+  }
+  .prose-panel li {
+    @apply leading-relaxed;
+  }
+  .prose-panel a {
+    @apply text-accent hover:underline;
+  }
+  .prose-panel blockquote {
+    @apply border-l-2 border-edge-strong pl-3 my-2 text-fg-3 italic;
+  }
+  .prose-panel pre {
+    @apply bg-surface-2 rounded-md p-3 my-2 overflow-x-auto text-xs font-mono;
+  }
+  .prose-panel code {
+    @apply bg-surface-2 px-1 py-0.5 rounded text-xs font-mono;
+  }
+  .prose-panel pre code {
+    @apply bg-transparent p-0;
+  }
+  .prose-panel table {
+    @apply min-w-full text-xs my-2 border border-edge rounded;
+  }
+  .prose-panel th {
+    @apply px-2 py-1 text-left bg-surface-2 border-b border-edge font-semibold;
+  }
+  .prose-panel td {
+    @apply px-2 py-1 border-b border-edge-subtle;
+  }
+  .prose-panel hr {
+    @apply my-3 border-edge;
+  }
+  .prose-panel strong {
+    @apply font-semibold;
+  }
+  .prose-panel em {
+    @apply italic;
+  }
+  .prose-panel img {
+    @apply rounded-lg max-w-full my-2;
+  }
+}
+
+/* Indeterminate query-progress sweep: used while a running query reports no
+   total row estimate, so the bar cannot show a real percentage. */
+@keyframes query-sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
+
+.animate-query-sweep {
+  animation: query-sweep 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-query-sweep {
+    animation: none;
+    width: 100%;
+    opacity: 0.5;
+  }
+}

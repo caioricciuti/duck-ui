@@ -1,4 +1,4 @@
-import type { StateCreator } from "zustand";
+import type { StateCreator } from "@/store/createStore";
 import { generateUUID } from "@/lib/utils";
 import { createResultSnapshot } from "@/lib/resultDiff";
 import type { DuckStoreState, ResultPin, ResultPinSlice } from "../types";
@@ -12,12 +12,9 @@ import type { DuckStoreState, ResultPin, ResultPinSlice } from "../types";
  */
 export const MAX_RESULT_PINS = 20;
 
-export const createResultPinSlice: StateCreator<
-  DuckStoreState,
-  [["zustand/devtools", never]],
-  [],
-  ResultPinSlice
-> = (set) => ({
+export const createResultPinSlice: StateCreator<DuckStoreState, [], [], ResultPinSlice> = (
+  set
+) => ({
   resultPins: [],
 
   pinResult: (tabId, query, result) => {

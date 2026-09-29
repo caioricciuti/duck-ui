@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { create } from "zustand";
+import { create } from "@/store/createStore";
 import { PIN_ROW_LIMIT } from "@/lib/resultDiff";
 import { createResultPinSlice, MAX_RESULT_PINS } from "../resultPinSlice";
 import type { QueryResult, ResultPinSlice } from "../../types";

@@ -1,0 +1,5 @@
+[install]
+# No caret ranges: a malicious patch release cannot drift in.
+exact = true
+# Seconds. Nothing published in the last 7 days can install.
+minimumReleaseAge = 604800

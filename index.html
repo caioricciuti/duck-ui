@@ -1,32 +1,32 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="en" class="h-full">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/logo-padding.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Duck-UI — DuckDB in your browser</title>
+    <title>Duck-UI: DuckDB in your browser</title>
     <meta
       name="description"
-      content="A fast, local-first DuckDB interface that runs entirely in your browser. Query CSV/Parquet/JSON, build charts, and share a link that reproduces the whole analysis — no backend, no signup."
+      content="A fast, local-first DuckDB interface that runs entirely in your browser. Query CSV/Parquet/JSON, build charts, and share a link that reproduces the whole analysis. No backend, no signup."
     />
 
     <!-- Open Graph (Facebook, Slack, Discord, LinkedIn) -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Duck-UI" />
-    <meta property="og:title" content="Duck-UI — DuckDB in your browser" />
+    <meta property="og:title" content="Duck-UI: DuckDB in your browser" />
     <meta
       property="og:description"
-      content="Query data and build charts with DuckDB, entirely in your browser. Share a link that reproduces the whole analysis — no backend, no signup."
+      content="Query data and build charts with DuckDB, entirely in your browser. Share a link that reproduces the whole analysis. No backend, no signup."
     />
     <meta property="og:url" content="https://duckui.com/" />
     <meta property="og:image" content="https://demo.duckui.com/screenshot.png" />
 
     <!-- Twitter / X -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Duck-UI — DuckDB in your browser" />
+    <meta name="twitter:title" content="Duck-UI: DuckDB in your browser" />
     <meta
       name="twitter:description"
-      content="Query data and build charts with DuckDB, entirely in your browser. Share a link that reproduces the whole analysis — no backend, no signup."
+      content="Query data and build charts with DuckDB, entirely in your browser. Share a link that reproduces the whole analysis. No backend, no signup."
     />
     <meta name="twitter:image" content="https://demo.duckui.com/screenshot.png" />
 
@@ -43,13 +43,14 @@
         "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
       }
     </script>
+    <script src="/theme.js"></script>
   </head>
-  <body>
-    <div id="root"></div>
+  <body class="h-full antialiased">
+    <div id="app" class="h-full"></div>
     <!-- Runtime env (overwritten by the Docker entrypoint; empty default otherwise).
          An external file instead of an injected inline script so the CSP can
          stay free of 'unsafe-inline'. -->
     <script src="/env.js"></script>
-    <script type="module" src="/src/main.tsx"></script>
+    <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

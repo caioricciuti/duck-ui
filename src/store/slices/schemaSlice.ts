@@ -1,5 +1,5 @@
-import type { StateCreator } from "zustand";
-import { toast } from "sonner";
+import type { StateCreator } from "@/store/createStore";
+import { toast } from "svelte-sonner";
 import {
   catalogToDatabaseInfo,
   requireLocalDuckSession,
@@ -16,12 +16,7 @@ const requireSession = (session: DataSession | null): DataSession => {
   return session;
 };
 
-export const createSchemaSlice: StateCreator<
-  DuckStoreState,
-  [["zustand/devtools", never]],
-  [],
-  SchemaSlice
-> = (set, get) => ({
+export const createSchemaSlice: StateCreator<DuckStoreState, [], [], SchemaSlice> = (set, get) => ({
   databases: [],
   isLoadingDbTablesFetch: true,
   schemaFetchError: null,

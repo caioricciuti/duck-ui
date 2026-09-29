@@ -1,5 +1,5 @@
-import type { StateCreator } from "zustand";
-import { toast } from "sonner";
+import type { StateCreator } from "@/store/createStore";
+import { toast } from "svelte-sonner";
 import {
   GuestLiveSession,
   HostLiveSession,
@@ -84,12 +84,10 @@ export const getCollaboration = (): {
   return { document: session.document, presence: session.presence };
 };
 
-export const createSessionSlice: StateCreator<
-  DuckStoreState,
-  [["zustand/devtools", never]],
-  [],
-  SessionSlice
-> = (set, get) => ({
+export const createSessionSlice: StateCreator<DuckStoreState, [], [], SessionSlice> = (
+  set,
+  get
+) => ({
   session: {
     role: null,
     status: "idle",

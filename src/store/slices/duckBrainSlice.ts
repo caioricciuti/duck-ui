@@ -1,5 +1,5 @@
-import type { StateCreator } from "zustand";
-import { toast } from "sonner";
+import type { StateCreator } from "@/store/createStore";
+import { toast } from "svelte-sonner";
 import { generateUUID } from "@/lib/utils";
 import { runQuery } from "@/services/engine";
 import type { DuckStoreState, DuckBrainSlice, DuckBrainMessage, QueryResult } from "../types";
@@ -25,12 +25,10 @@ function getProviderSetupError(duckBrain: DuckStoreState["duckBrain"]): string |
   return config?.apiKey ? null : `Add your ${aiProvider} API key in Settings → AI.`;
 }
 
-export const createDuckBrainSlice: StateCreator<
-  DuckStoreState,
-  [["zustand/devtools", never]],
-  [],
-  DuckBrainSlice
-> = (set, get) => ({
+export const createDuckBrainSlice: StateCreator<DuckStoreState, [], [], DuckBrainSlice> = (
+  set,
+  get
+) => ({
   duckBrain: {
     modelStatus: "idle",
     downloadProgress: 0,

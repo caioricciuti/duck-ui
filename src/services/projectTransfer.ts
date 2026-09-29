@@ -1,4 +1,4 @@
-import { toast } from "sonner";
+import { toast } from "svelte-sonner";
 import { generateUUID } from "@/lib/utils";
 import {
   buildBundleFiles,

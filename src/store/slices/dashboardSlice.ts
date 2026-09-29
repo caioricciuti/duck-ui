@@ -1,5 +1,5 @@
-import type { StateCreator } from "zustand";
-import { toast } from "sonner";
+import type { StateCreator } from "@/store/createStore";
+import { toast } from "svelte-sonner";
 import { getSession } from "@/services/engine";
 import { DatasetRunner } from "@/services/dashboard/queryRunner";
 import { parseDashboardSource, starterSource, toQueryName } from "@/services/dashboard/markdown";
@@ -82,12 +82,10 @@ export const datasetsFor = (
     execution: dashboard.execution,
   }));
 
-export const createDashboardSlice: StateCreator<
-  DuckStoreState,
-  [["zustand/devtools", never]],
-  [],
-  DashboardSlice
-> = (set, get) => ({
+export const createDashboardSlice: StateCreator<DuckStoreState, [], [], DashboardSlice> = (
+  set,
+  get
+) => ({
   dashboards: [],
   isDashboardEditing: false,
   isDashboardsPanelOpen: false,

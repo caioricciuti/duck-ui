@@ -1,4 +1,4 @@
-import type { StateCreator } from "zustand";
+import type { StateCreator } from "@/store/createStore";
 import {
   builtInWasmConnection,
   closeAllSessions,
@@ -11,16 +11,11 @@ import { localHandles, toCurrentConnection } from "./connectionSlice";
 import { getSetting } from "@/services/persistence/repositories/settingsRepository";
 import { clampMaxResultRows, DEFAULT_MAX_RESULT_ROWS } from "./querySlice";
 import { loadAppConfig } from "@/lib/appConfig";
-import { toast } from "sonner";
+import { toast } from "svelte-sonner";
 
 export const DEFAULT_DUCKDB_MEMORY_LIMIT_MB = 4096;
 
-export const createDuckdbSlice: StateCreator<
-  DuckStoreState,
-  [["zustand/devtools", never]],
-  [],
-  DuckdbSlice
-> = (set, get) => ({
+export const createDuckdbSlice: StateCreator<DuckStoreState, [], [], DuckdbSlice> = (set, get) => ({
   db: null,
   connection: null,
   isInitialized: false,

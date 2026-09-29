@@ -1,5 +1,4 @@
-import { create, type StateCreator } from "zustand";
-import { devtools } from "zustand/middleware";
+import { create, type StateCreator } from "@/store/createStore";
 import { createDuckdbSlice } from "./slices/duckdbSlice";
 import { createConnectionSlice } from "./slices/connectionSlice";
 import { createQuerySlice } from "./slices/querySlice";
@@ -22,7 +21,7 @@ import type { DuckStoreState } from "./types";
 // Re-export all types from the centralized types file
 export * from "./types";
 
-const storeCreator: StateCreator<DuckStoreState, [["zustand/devtools", never]]> = (...a) => ({
+const storeCreator: StateCreator<DuckStoreState> = (...a) => ({
   ...createDuckdbSlice(...a),
   ...createConnectionSlice(...a),
   ...createQuerySlice(...a),
@@ -36,9 +35,7 @@ const storeCreator: StateCreator<DuckStoreState, [["zustand/devtools", never]]> 
   ...createResultPinSlice(...a),
 });
 
-export const useDuckStore = create<DuckStoreState>()(
-  devtools(storeCreator, { enabled: import.meta.env.DEV })
-);
+export const useDuckStore = create<DuckStoreState>()(storeCreator);
 
 // ─── Auto-save: debounced writes to system DB ────────────────────────────────
 

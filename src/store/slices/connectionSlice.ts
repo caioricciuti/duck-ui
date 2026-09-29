@@ -1,5 +1,5 @@
-import type { StateCreator } from "zustand";
-import { toast } from "sonner";
+import type { StateCreator } from "@/store/createStore";
+import { toast } from "svelte-sonner";
 import {
   asLocalDuckSession,
   closeSession,
@@ -80,12 +80,10 @@ const closeOtherOpfsSessions = async (keepConnectionId: string): Promise<void> =
   );
 };
 
-export const createConnectionSlice: StateCreator<
-  DuckStoreState,
-  [["zustand/devtools", never]],
-  [],
-  ConnectionSlice
-> = (set, get) => ({
+export const createConnectionSlice: StateCreator<DuckStoreState, [], [], ConnectionSlice> = (
+  set,
+  get
+) => ({
   currentConnection: null,
   currentSession: null,
   connectionList: {

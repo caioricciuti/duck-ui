@@ -1,4 +1,4 @@
-import type { StateCreator } from "zustand";
+import type { StateCreator } from "@/store/createStore";
 import {
   collectExecution,
   materializeCollected,
@@ -40,12 +40,7 @@ export const MAX_MAX_RESULT_ROWS = 50_000_000;
 export const clampMaxResultRows = (rows: number): number =>
   Math.max(MIN_MAX_RESULT_ROWS, Math.min(MAX_MAX_RESULT_ROWS, Math.floor(rows)));
 
-export const createQuerySlice: StateCreator<
-  DuckStoreState,
-  [["zustand/devtools", never]],
-  [],
-  QuerySlice
-> = (set, get) => ({
+export const createQuerySlice: StateCreator<DuckStoreState, [], [], QuerySlice> = (set, get) => ({
   queryHistory: [],
   executingTabs: {},
   queryProgress: {},

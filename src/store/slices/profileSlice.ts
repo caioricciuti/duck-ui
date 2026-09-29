@@ -1,4 +1,4 @@
-import { StateCreator } from "zustand";
+import type { StateCreator } from "@/store/createStore";
 import type { DuckStoreState, ProfileSlice, Profile } from "../types";
 import {
   createProfile as createProfileRepo,
@@ -37,12 +37,10 @@ import type {
 
 const VERIFY_TOKEN_PLAINTEXT = "duck-ui-profile-verify";
 
-export const createProfileSlice: StateCreator<
-  DuckStoreState,
-  [["zustand/devtools", never]],
-  [],
-  ProfileSlice
-> = (set, get) => ({
+export const createProfileSlice: StateCreator<DuckStoreState, [], [], ProfileSlice> = (
+  set,
+  get
+) => ({
   currentProfileId: null,
   currentProfile: null,
   profiles: [],

@@ -1,8 +1,8 @@
 import {
   CreateWebWorkerMLCEngine,
   WebWorkerMLCEngine,
-  InitProgressReport,
-  ChatCompletionMessageParam,
+  type InitProgressReport,
+  type ChatCompletionMessageParam,
 } from "@mlc-ai/web-llm";
 import { DEFAULT_MODEL } from "./models.config";
 
