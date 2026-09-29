@@ -7,6 +7,7 @@ import {
   type DataSession,
 } from "@/services/engine";
 import { sqlEscapeIdentifier, sqlEscapeString, qualifyTable } from "@/lib/sqlSanitize";
+import { buildCsvReadOptions } from "@/lib/fileImporter/importSql";
 import { buildExtensionSql, LIST_EXTENSIONS_SQL, parseExtensionRows } from "@/lib/duckdbExtensions";
 import type { DuckStoreState, SchemaSlice, ColumnStats, QueryResult } from "../types";
 
@@ -225,25 +226,7 @@ export const createSchemaSlice: StateCreator<DuckStoreState, [], [], SchemaSlice
       const createType = importMode === "view" ? "VIEW" : "TABLE";
 
       if (fileType.toLowerCase() === "csv") {
-        const csvOptions = options.csv || {};
-        const headerOption = csvOptions.header !== undefined ? csvOptions.header : true;
-        const autoDetectOption = csvOptions.autoDetect !== undefined ? csvOptions.autoDetect : true;
-        const ignoreErrorsOption =
-          csvOptions.ignoreErrors !== undefined ? csvOptions.ignoreErrors : true;
-        const nullPaddingOption =
-          csvOptions.nullPadding !== undefined ? csvOptions.nullPadding : true;
-        const allVarcharOption =
-          csvOptions.allVarchar !== undefined ? csvOptions.allVarchar : false;
-        const delimiterOption = csvOptions.delimiter || ",";
-
-        const optionsString = `
-          header=${headerOption},
-          auto_detect=${autoDetectOption},
-          all_varchar=${allVarcharOption},
-          ignore_errors=${ignoreErrorsOption},
-          null_padding=${nullPaddingOption},
-          delim='${sqlEscapeString(delimiterOption)}'
-        `;
+        const optionsString = buildCsvReadOptions(options.csv || {});
 
         await connection.query(`
           CREATE OR REPLACE ${createType} ${sqlEscapeIdentifier(tableName)} AS

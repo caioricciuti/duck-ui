@@ -9,6 +9,7 @@ import {
   toUploadError,
   type ImporterContext,
 } from "./context";
+import { buildColumnSelection, buildCreateAs, buildReadExpression } from "./importSql";
 import type { SchemaColumn } from "./types";
 
 const extensionOfUrl = (url: string): string | undefined =>
@@ -77,18 +78,10 @@ export function createUrlImport(ctx: ImporterContext) {
       const extension = extensionOfUrl(url);
       const source = await resolveUrlSource(url, extension);
 
-      let previewQuery = "";
-      if (extension === "csv") {
-        previewQuery = `SELECT * FROM read_csv('${source}', auto_detect=true, header=true) LIMIT ${PREVIEW_ROW_LIMIT}`;
-      } else if (extension === "json") {
-        previewQuery = `SELECT * FROM read_json('${source}', auto_detect=true) LIMIT ${PREVIEW_ROW_LIMIT}`;
-      } else if (extension === "parquet") {
-        previewQuery = `SELECT * FROM read_parquet('${source}') LIMIT ${PREVIEW_ROW_LIMIT}`;
-      } else {
-        throw new Error(`Unsupported file type for preview: .${extension}`);
-      }
+      const read = buildReadExpression(source, extension);
+      if (!read) throw new Error(`Unsupported file type for preview: .${extension}`);
 
-      const result = await runImportQuery(previewQuery);
+      const result = await runImportQuery(`SELECT * FROM ${read} LIMIT ${PREVIEW_ROW_LIMIT}`);
       previewData = result;
       previewSource = "url";
       previewFileName = url;
@@ -99,6 +92,7 @@ export function createUrlImport(ctx: ImporterContext) {
         originalName: col,
         newName: col,
         type: result.columnTypes[idx] || "VARCHAR",
+        originalType: result.columnTypes[idx] || "VARCHAR",
         included: true,
       }));
     } catch (e) {
@@ -136,36 +130,19 @@ export function createUrlImport(ctx: ImporterContext) {
         const url = previewFileName;
         const extension = extensionOfUrl(url);
 
-        const includedColumns = schemaColumns.filter((col) => col.included);
-        const hasSchemaChanges = schemaColumns.some(
-          (col) => col.newName !== col.originalName || !col.included
-        );
-
-        let columnSelection = "*";
-        if (hasSchemaChanges && includedColumns.length > 0) {
-          columnSelection = includedColumns
-            .map((col) =>
-              col.newName !== col.originalName
-                ? `"${col.originalName}" AS "${col.newName}"`
-                : `"${col.originalName}"`
-            )
-            .join(", ");
-        }
+        const columnSelection = buildColumnSelection($state.snapshot(schemaColumns));
 
         const importMode = ctx.getImportMode();
         const createType = importMode === "view" ? "VIEW" : "TABLE";
         const resultType = importMode === "view" ? "view" : "table";
 
-        let query = "";
-        if (extension === "csv") {
-          query = `CREATE OR REPLACE ${createType} ${previewTableName} AS SELECT ${columnSelection} FROM read_csv('${url}', auto_detect=true, ignore_errors=true, header=true)`;
-        } else if (extension === "json") {
-          query = `CREATE OR REPLACE ${createType} ${previewTableName} AS SELECT ${columnSelection} FROM read_json('${url}', auto_detect=true, ignore_errors=true)`;
-        } else if (extension === "parquet") {
-          query = `CREATE OR REPLACE ${createType} ${previewTableName} AS SELECT ${columnSelection} FROM read_parquet('${url}')`;
-        } else {
-          throw new Error(`Unsupported file type: .${extension}`);
-        }
+        const read = buildReadExpression(url, extension, { ignoreErrors: true });
+        if (!read) throw new Error(`Unsupported file type: .${extension}`);
+        const query = buildCreateAs(
+          createType,
+          previewTableName,
+          `SELECT ${columnSelection} FROM ${read}`
+        );
 
         await runImportQuery(query);
         toast.success(`Successfully created ${resultType} '${previewTableName}'`);
@@ -217,18 +194,12 @@ export function createUrlImport(ctx: ImporterContext) {
 
       const source = await resolveUrlSource(url, extension);
 
-      let query = "";
-      if (extension === "csv") {
-        query = `CREATE OR REPLACE ${createType} ${urlTableName} AS SELECT * FROM read_csv('${source}', auto_detect=true, ignore_errors=true, header=true)`;
-      } else if (extension === "json") {
-        query = `CREATE OR REPLACE ${createType} ${urlTableName} AS SELECT * FROM read_json('${source}', auto_detect=true, ignore_errors=true)`;
-      } else if (extension === "parquet") {
-        query = `CREATE OR REPLACE ${createType} ${urlTableName} AS SELECT * FROM read_parquet('${source}')`;
-      } else {
+      const read = buildReadExpression(source, extension, { ignoreErrors: true });
+      if (!read) {
         throw new Error(`Unsupported file type: .${extension}. Supported: CSV, JSON, Parquet`);
       }
 
-      await runImportQuery(query);
+      await runImportQuery(buildCreateAs(createType, urlTableName, `SELECT * FROM ${read}`));
 
       toast.success(`Successfully created ${resultType} '${urlTableName}' from URL`);
       urlInput = "";

@@ -6,6 +6,7 @@ import {
   toUploadError,
   type ImporterContext,
 } from "./context";
+import { buildCreateAs } from "./importSql";
 
 /** State and handlers for the "From Query" tab. */
 export function createQueryImport(ctx: ImporterContext) {
@@ -39,7 +40,7 @@ export function createQueryImport(ctx: ImporterContext) {
       const createType = importMode === "view" ? "VIEW" : "TABLE";
       const resultType = importMode === "view" ? "view" : "table";
 
-      await runImportQuery(`CREATE OR REPLACE ${createType} ${queryTableName} AS ${userQuery}`);
+      await runImportQuery(buildCreateAs(createType, queryTableName, userQuery));
 
       toast.success(`Successfully created ${resultType} '${queryTableName}' from query result`);
       queryInput = "";

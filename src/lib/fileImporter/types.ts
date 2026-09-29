@@ -44,6 +44,8 @@ export interface SchemaColumn {
   originalName: string;
   newName: string;
   type: string;
+  /** The type the file was read with. A `type` that differs is a requested cast. */
+  originalType?: string;
   included: boolean;
 }
 
