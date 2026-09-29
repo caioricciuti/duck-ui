@@ -5,7 +5,13 @@
   import TableHeader from './TableHeader.svelte'
   import TableCell from './TableCell.svelte'
   import FilterPopover from './FilterPopover.svelte'
-  import { SearchX } from 'lucide-svelte'
+  import { SearchX, Copy, MousePointer2, Rows3, Columns3, Download } from 'lucide-svelte'
+  import ContextMenu, { type ContextMenuItem } from '../common/ContextMenu.svelte'
+  import * as toast from '../../stores/toast.svelte'
+  import {
+    countCells, isSelected, rangeBetween, selectionToTsv, singleCell, toggleCell,
+    type CellPoint, type CellRange,
+  } from '@/lib/resultTable/cellSelection'
   import { getFormatNumbers } from '../../stores/number-format.svelte'
   import { getDisplayType, cellText } from '../../utils/column-types'
 
@@ -24,9 +30,16 @@
     onsort?: (column: string) => void
     filters?: ColumnFilter[]
     onfilterchange?: (column: string, filter: ColumnFilter | null) => void
+    /** Number of selected cells, for the footer. */
+    onselectionchange?: (count: number) => void
+    /** Offered as "Export" in the cell menu when given. */
+    onexport?: () => void
   }
 
-  let { meta, data, sortColumn = '', sortDir = 'asc', onsort, filters = [], onfilterchange }: Props = $props()
+  let {
+    meta, data, sortColumn = '', sortDir = 'asc', onsort, filters = [], onfilterchange,
+    onselectionchange, onexport,
+  }: Props = $props()
 
   let filterPopover = $state<{ column: string; x: number; y: number } | null>(null)
 
@@ -44,7 +57,107 @@
   let widths = $state<number[]>([])
   let baseWidths = $state<number[]>([])
   let manualTouched = $state<boolean[]>([])
-  let selectedRow = $state<number | null>(null)
+  let selection = $state.raw<CellRange[]>([])
+  /** Where a shift-click or a drag extends from. */
+  let anchor: CellPoint | null = null
+  let dragging = false
+  let menu = $state<{ x: number; y: number } | null>(null)
+
+  const selectedCount = $derived(countCells(selection))
+  $effect(() => {
+    onselectionchange?.(selectedCount)
+  })
+
+  const isMac = /Mac/.test(navigator.platform)
+
+  function onCellMouseDown(e: MouseEvent, row: number, col: number) {
+    if (e.button !== 0) return
+    const point = { row, col }
+    if (e.shiftKey && anchor) {
+      selection = [rangeBetween(anchor, point)]
+    } else if (isMac ? e.metaKey : e.ctrlKey) {
+      selection = toggleCell(selection, point)
+      anchor = point
+    } else {
+      selection = [singleCell(point)]
+      anchor = point
+      dragging = true
+    }
+    container.focus({ preventScroll: true })
+  }
+
+  function onCellMouseEnter(row: number, col: number) {
+    if (dragging && anchor) selection = [rangeBetween(anchor, { row, col })]
+  }
+
+  function onCellContextMenu(e: MouseEvent, row: number, col: number) {
+    e.preventDefault()
+    // A right-click outside the selection moves it, like a spreadsheet does.
+    if (!isSelected(selection, row, col)) {
+      selection = [singleCell({ row, col })]
+      anchor = { row, col }
+    }
+    menu = { x: e.clientX, y: e.clientY }
+  }
+
+  function selectRow(row: number) {
+    if (meta.length === 0) return
+    selection = [{ row0: row, row1: row, col0: 0, col1: meta.length - 1 }]
+    anchor = { row, col: 0 }
+    container.focus({ preventScroll: true })
+  }
+
+  function selectAll() {
+    if (data.length === 0 || meta.length === 0) return
+    selection = [{ row0: 0, row1: data.length - 1, col0: 0, col1: meta.length - 1 }]
+  }
+
+  async function copySelection() {
+    if (selection.length === 0) return
+    try {
+      await navigator.clipboard.writeText(selectionToTsv(selection, data, meta.length, cellText))
+      toast.success(`Copied ${selectedCount.toLocaleString()} ${selectedCount === 1 ? 'cell' : 'cells'}`, 1500)
+    } catch {
+      toast.error('Could not copy to the clipboard')
+    }
+  }
+
+  const menuItems = $derived.by((): ContextMenuItem[] => {
+    const first = selection[0]
+    return [
+      { id: 'copy', label: 'Copy', icon: Copy, shortcut: isMac ? '⌘C' : 'Ctrl+C', onSelect: () => void copySelection() },
+      { id: 'all', label: 'Select All', icon: MousePointer2, shortcut: isMac ? '⌘A' : 'Ctrl+A', onSelect: selectAll },
+      { id: 'row', label: 'Select Row', icon: Rows3, disabled: !first, onSelect: () => first && selectRow(first.row0) },
+      {
+        id: 'column',
+        label: 'Select Column',
+        icon: Columns3,
+        disabled: !first,
+        onSelect: () => {
+          if (first) selection = [{ row0: 0, row1: data.length - 1, col0: first.col0, col1: first.col0 }]
+        },
+      },
+      ...(onexport
+        ? [{ id: 'sep', separator: true }, { id: 'export', label: 'Export as CSV', icon: Download, onSelect: onexport }]
+        : []),
+    ]
+  })
+
+  // Shortcuts belong to the grid while it has focus. They must not take
+  // select-all or copy away from the editor above it.
+  function onGridKeydown(e: KeyboardEvent) {
+    const mod = isMac ? e.metaKey : e.ctrlKey
+    if (mod && e.key.toLowerCase() === 'c' && selection.length > 0) {
+      e.preventDefault()
+      void copySelection()
+    } else if (mod && e.key.toLowerCase() === 'a') {
+      e.preventDefault()
+      selectAll()
+    } else if (e.key === 'Escape' && selection.length > 0) {
+      e.preventDefault()
+      selection = []
+    }
+  }
 
   function estimateTextWidth(text: string): number {
     return Math.max(0, Math.ceil(text.length * 7.4))
@@ -203,11 +316,13 @@
     filterPopover = null
   })
 
-  // Row selection is positional, so it's meaningless once sorting/filtering
-  // rearranges the rows, so drop it whenever the data array is replaced.
+  // The selection is positional, so it is meaningless once sorting or
+  // filtering rearranges the rows. Drop it whenever the data is replaced.
   $effect(() => {
     data
-    selectedRow = null
+    selection = []
+    anchor = null
+    menu = null
   })
 
   const rowCount = $derived(data.length)
@@ -255,7 +370,20 @@
   })
 </script>
 
-<div bind:this={container} class="relative flex-1 overflow-auto bg-canvas" onscroll={handleScroll}>
+<svelte:window onmouseup={() => (dragging = false)} />
+
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+<div
+  bind:this={container}
+  class="relative flex-1 overflow-auto bg-canvas focus:outline-none"
+  role="grid"
+  tabindex="0"
+  aria-label="Query result"
+  aria-rowcount={rowCount}
+  aria-colcount={meta.length}
+  onscroll={handleScroll}
+  onkeydown={onGridKeydown}
+>
   <table class="text-sm border-collapse table-fixed" style="width:{tableWidth}px;min-width:{tableWidth}px">
     <colgroup>
       <col style="width:{ROW_NUMBER_WIDTH}px;min-width:{ROW_NUMBER_WIDTH}px;max-width:{ROW_NUMBER_WIDTH}px" />
@@ -284,22 +412,25 @@
           {@const absIdx = startIdx + vi}
           <tr
             class="group h-[34px] border-b border-edge-subtle hover:bg-hover cursor-default
-              {absIdx % 2 === 1 ? 'bg-surface' : 'bg-canvas'}
-              {selectedRow === absIdx ? 'bg-accent-soft' : ''}"
-            onclick={() => selectedRow = absIdx}
+              {absIdx % 2 === 1 ? 'bg-surface' : 'bg-canvas'}"
           >
             <td
               class="sticky left-0 z-[2] px-2.5 text-right text-xs font-semibold text-fg-2 border-r border-edge-subtle tabular-nums select-none
                 {absIdx % 2 === 1 ? 'bg-surface' : 'bg-canvas'}
-                {selectedRow === absIdx ? 'bg-accent-soft' : ''}
                 group-hover:bg-hover"
               style="width:{ROW_NUMBER_WIDTH}px;max-width:{ROW_NUMBER_WIDTH}px;min-width:{ROW_NUMBER_WIDTH}px"
+              title="Select row"
+              onmousedown={() => selectRow(absIdx)}
             >{absIdx + 1}</td>
             {#each meta as col, ci}
               <TableCell
                 value={row[ci]}
                 type={col.type}
                 width={effectiveWidths[ci] ?? 120}
+                selected={selection.length > 0 && isSelected(selection, absIdx, ci)}
+                onmousedown={(e) => onCellMouseDown(e, absIdx, ci)}
+                onmouseenter={() => onCellMouseEnter(absIdx, ci)}
+                oncontextmenu={(e) => onCellContextMenu(e, absIdx, ci)}
               />
             {/each}
           </tr>
@@ -343,3 +474,5 @@
     />
   {/if}
 </div>
+
+<ContextMenu open={menu !== null} x={menu?.x ?? 0} y={menu?.y ?? 0} items={menuItems} onclose={() => (menu = null)} />

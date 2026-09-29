@@ -10,6 +10,7 @@
     cycleSort, filterRows, sortRows, type ColumnFilter, type ResultSort,
   } from '../../utils/result-filters'
   import { gridToRows } from '@/lib/resultTable/gridData'
+  import { createTableExporters } from '@/lib/resultTable/tableExport'
   import { formatQueryTime } from '@/lib/resultMessages'
   import type { ColumnMeta } from '@/lib/types/query'
   import type { DataRow } from '@/lib/resultTable/types'
@@ -29,6 +30,7 @@
   let sort = $state<ResultSort | null>(null)
   let filters = $state<ColumnFilter[]>([])
   let search = $state('')
+  let selectedCells = $state(0)
 
   // A new result set has different columns; stale sort and filters would
   // point at names that no longer exist.
@@ -53,6 +55,13 @@
     filters = filter ? [...rest, filter] : rest
   }
 
+  function exportCsv() {
+    createTableExporters(rows, {
+      getVisibleColumnIds: () => meta.map((c) => c.name),
+      getFilteredRows: () => gridToRows(meta, shown),
+    }).exportToCSV()
+  }
+
   function clearAll() {
     filters = []
     search = ''
@@ -68,6 +77,8 @@
     onsort={(column) => (sort = cycleSort(sort, column))}
     {filters}
     onfilterchange={onFilterChange}
+    onselectionchange={(count) => (selectedCells = count)}
+    onexport={compact ? undefined : exportCsv}
   />
 
   <div class="flex h-8 shrink-0 items-center gap-2 border-t border-edge-subtle bg-sidebar px-2 text-xs text-fg-3">
@@ -83,6 +94,13 @@
     {#if durationMs !== undefined}
       <span class="text-fg-4">·</span>
       <span class="tabular-nums">{formatQueryTime(durationMs)}</span>
+    {/if}
+
+    {#if selectedCells > 0}
+      <span class="text-fg-4">·</span>
+      <span class="tabular-nums text-accent">
+        {formatNumber(selectedCells)} {selectedCells === 1 ? 'cell' : 'cells'} selected
+      </span>
     {/if}
 
     {#if narrowed}

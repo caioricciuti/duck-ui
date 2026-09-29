@@ -6,9 +6,13 @@
     value: unknown
     type: string
     width: number
+    selected?: boolean
+    onmousedown?: (e: MouseEvent) => void
+    onmouseenter?: (e: MouseEvent) => void
+    oncontextmenu?: (e: MouseEvent) => void
   }
 
-  let { value, type, width }: Props = $props()
+  let { value, type, width, selected = false, onmousedown, onmouseenter, oncontextmenu }: Props = $props()
 
   const displayType = $derived(getDisplayType(type))
 
@@ -46,10 +50,14 @@
 </script>
 
 <td
-  class="px-2.5 truncate border-r border-edge-subtle {align}"
+  class="px-2.5 truncate border-r border-edge-subtle select-none {align} {selected ? 'bg-accent-soft shadow-[inset_0_0_0_1px_var(--accent-ring)]' : ''}"
   style="width:{width}px;max-width:{width}px;min-width:{width}px"
   title={isNull ? 'NULL' : `${rawValue}\n\nDouble-click to copy`}
+  aria-selected={selected}
   ondblclick={handleCopyCell}
+  {onmousedown}
+  {onmouseenter}
+  {oncontextmenu}
 >
   {#if isNull}
     <span class="inline-flex items-center rounded-sm px-1 py-0.5 text-[10px] font-medium uppercase tracking-wide bg-surface-2 text-fg-3">Null</span>
