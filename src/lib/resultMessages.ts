@@ -8,5 +8,5 @@ export function formatQueryTime(durationMs: number): string {
 /** Message for a query that succeeded but returned no rows. */
 export function zeroRowsMessage(durationMs?: number): string {
   const took = durationMs === undefined ? "" : ` (took ${formatQueryTime(durationMs)})`;
-  return `Query ran fine — 0 rows returned${took}.`;
+  return `Query ran fine, 0 rows returned${took}.`;
 }

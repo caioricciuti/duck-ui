@@ -204,7 +204,7 @@
   })
 
   // Row selection is positional, so it's meaningless once sorting/filtering
-  // rearranges the rows — drop it whenever the data array is replaced.
+  // rearranges the rows, so drop it whenever the data array is replaced.
   $effect(() => {
     data
     selectedRow = null

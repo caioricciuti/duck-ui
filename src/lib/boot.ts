@@ -112,6 +112,8 @@ export async function migrateFromLocalStorage(profileId: string): Promise<void> 
       await saveConnection(
         profileId,
         {
+          // Same id as the in-memory connection, so a delete in this session finds the row.
+          id: conn.id,
           name: conn.name ?? "Untitled",
           scope: conn.scope ?? "External",
           config,

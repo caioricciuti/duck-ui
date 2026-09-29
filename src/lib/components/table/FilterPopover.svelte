@@ -97,7 +97,7 @@
         onkeydown={(e) => { if (e.key === 'Enter') apply() }}
       />
       {#if valueInvalid}
-        <p class="text-[11px] text-danger">This column is numeric — enter a number.</p>
+        <p class="text-[11px] text-danger">This column is numeric. Enter a number.</p>
       {/if}
     {/if}
 
@@ -109,7 +109,7 @@
         >Clear</button>
       {/if}
       <button
-        class="px-2.5 py-1 text-xs bg-accent text-white rounded hover:bg-accent/80 disabled:opacity-50"
+        class="px-2.5 py-1 text-xs bg-accent text-accent-fg rounded hover:bg-accent/80 disabled:opacity-50"
         onclick={apply}
         disabled={!canApply}
       >Apply</button>

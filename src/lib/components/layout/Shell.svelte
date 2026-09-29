@@ -5,6 +5,7 @@
   import TabContent from './TabContent.svelte'
   import CommandPalette from './CommandPalette.svelte'
   import ExplorerPanel from '../explorer/ExplorerPanel.svelte'
+  import DuckBrainSheet from '../duck-brain/DuckBrainSheet.svelte'
   import { duckActions } from '../../stores/duck.svelte'
   import { openCommandPalette, toggleCommandPalette } from '../../stores/command-palette.svelte'
   import { toggleExplorer } from '../../stores/layout.svelte'
@@ -83,3 +84,4 @@
 </div>
 
 <CommandPalette />
+<DuckBrainSheet />

@@ -1,10 +1,11 @@
 <script lang="ts">
   import { tick } from 'svelte'
+  import type { Info } from 'lucide-svelte'
 
   export interface ContextMenuItem {
     id: string
     label?: string
-    icon?: any
+    icon?: typeof Info
     shortcut?: string
     disabled?: boolean
     danger?: boolean

@@ -8,8 +8,8 @@
     open: boolean
     title?: string
     description?: string
-    /** sm 400 px, md 520 px, lg 720 px */
-    size?: 'sm' | 'md' | 'lg'
+    /** sm 400 px, md 520 px, lg 720 px, xl 1100 px */
+    size?: 'sm' | 'md' | 'lg' | 'xl'
     onclose: () => void
     children: Snippet
     footer?: Snippet
@@ -17,7 +17,7 @@
 
   let { open, title = '', description = '', size = 'md', onclose, children, footer }: Props = $props()
 
-  const sizes: Record<string, string> = { sm: 'max-w-[400px]', md: 'max-w-[520px]', lg: 'max-w-[720px]' }
+  const sizes: Record<string, string> = { sm: 'max-w-[400px]', md: 'max-w-[520px]', lg: 'max-w-[720px]', xl: 'max-w-[1100px]' }
   const titleId = `modal-title-${Math.random().toString(36).slice(2, 8)}`
 
   function handleKeydown(e: KeyboardEvent) {
