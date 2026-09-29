@@ -33,6 +33,11 @@
     autoHeight?: { min: number; max: number }
     /** Extra extensions, such as a collaborative binding or custom completion. */
     extensions?: Extension[]
+    /**
+     * Apply outside changes of `value` to the document. Off while a shared
+     * document owns the text, where a stale value would overwrite remote edits.
+     */
+    syncValue?: boolean
     ariaLabel?: string
     class?: string
   }
@@ -49,6 +54,7 @@
     placeholder = '',
     autoHeight,
     extensions = [],
+    syncValue = true,
     ariaLabel = 'Code editor',
     class: cls = '',
   }: Props = $props()
@@ -256,7 +262,7 @@
     const next = value
     if (next === lastSeenValue) return
     lastSeenValue = next
-    if (!view || next === lastEmitted || next === view.state.doc.toString()) return
+    if (!syncValue || !view || next === lastEmitted || next === view.state.doc.toString()) return
     // A pending local edit is newer than what the store just echoed back.
     if (changeTimer !== undefined) return
     setValue(next)

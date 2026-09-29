@@ -6,12 +6,18 @@
   import Shell from './lib/components/layout/Shell.svelte'
   import ProfilePicker from './lib/components/profile/ProfilePicker.svelte'
   import ProfileAvatar from './lib/components/profile/ProfileAvatar.svelte'
+  import EmbedView from './lib/components/embed/EmbedView.svelte'
+  import { isEmbedPath } from './lib/urlLoaders'
   import { duck, duckActions } from './lib/stores/duck.svelte'
   import { syncThemeFromStorage } from './lib/stores/theme.svelte'
   import { bootProfile, selectProfile, createAndLoadProfile } from './lib/boot'
   import type { Profile } from './store/types'
 
   type Stage = 'profile' | 'picker' | 'engine'
+
+  // The embed viewer is a public, profile-free widget: it starts the engine
+  // but skips the profile (no picker, no persistence, no autosave).
+  const embed = isEmbedPath()
 
   let stage = $state<Stage>('profile')
   let pickerProfiles = $state<Profile[]>([])
@@ -28,6 +34,7 @@
   }
 
   onMount(async () => {
+    if (embed) return
     try {
       const boot = await bootProfile()
       if (boot.kind === 'picker') {
@@ -56,7 +63,9 @@
 
 <Toast />
 
-{#if stage === 'picker'}
+{#if embed}
+  <EmbedView />
+{:else if stage === 'picker'}
   <ProfilePicker profiles={pickerProfiles} onselect={onSelectProfile} oncreate={onCreateProfile} />
 {:else if stage === 'engine' && initialized && !engineLoading}
   <Shell />
