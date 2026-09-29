@@ -102,6 +102,7 @@ export async function migrateFromLocalStorage(profileId: string): Promise<void> 
         host: conn.host,
         port: conn.port,
         database: conn.database,
+        user: conn.user,
         path: conn.path,
         authMode: conn.authMode,
       };

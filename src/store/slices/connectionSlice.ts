@@ -132,6 +132,9 @@ export const createConnectionSlice: StateCreator<DuckStoreState, [], [], Connect
           host: connection.host,
           port: connection.port,
           database: connection.database,
+          // Without it a password connection comes back after a reload with
+          // no username, and every request is refused.
+          user: connection.user,
           path: connection.path,
           authMode: connection.authMode,
         };
@@ -184,6 +187,15 @@ export const createConnectionSlice: StateCreator<DuckStoreState, [], [], Connect
         connections: state.connectionList.connections.map((c) => (c.id === merged.id ? merged : c)),
       },
     }));
+
+    // The open session was built from the old settings. Reopen it, or the
+    // edit would only take effect after switching away and back.
+    if (get().currentConnection?.id === merged.id) {
+      await closeSession(merged.id).catch((error) =>
+        console.warn("[Connection] Failed to close session before reconnecting:", error)
+      );
+      await get().setCurrentConnection(merged.id);
+    }
 
     const { currentProfileId, encryptionKey } = get();
     if (!currentProfileId) return;

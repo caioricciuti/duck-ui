@@ -30,6 +30,7 @@ vi.mock("@/services/persistence/repositories/connectionRepository", () => ({
 }));
 
 import { toast } from "svelte-sonner";
+import { closeSession } from "@/services/engine";
 import { createConnectionSlice } from "../connectionSlice";
 import type { ConnectionProvider } from "../../types";
 
@@ -167,4 +168,46 @@ describe("updateConnection", () => {
     expect(connections()).toEqual([external]);
     expect(updateConnectionRepo).not.toHaveBeenCalled();
   });
+
+  it("reopens the session when the edited connection is the active one", async () => {
+    const setCurrentConnection = vi.fn().mockResolvedValue(undefined);
+    const harness = setupActive(external, setCurrentConnection);
+    await harness.slice.updateConnection({ ...external, host: "http://localhost:1234" });
+
+    expect(closeSession).toHaveBeenCalledWith("c1");
+    expect(setCurrentConnection).toHaveBeenCalledWith("c1");
+  });
+
+  it("leaves the session alone when another connection is active", async () => {
+    const setCurrentConnection = vi.fn().mockResolvedValue(undefined);
+    const harness = setupActive({ ...external, id: "other" }, setCurrentConnection, [external]);
+    await harness.slice.updateConnection({ ...external, name: "Renamed" });
+
+    expect(setCurrentConnection).not.toHaveBeenCalled();
+  });
 });
+
+function setupActive(
+  active: ConnectionProvider,
+  setCurrentConnection: ReturnType<typeof vi.fn>,
+  connections: ConnectionProvider[] = [active]
+) {
+  vi.mocked(closeSession).mockReset().mockResolvedValue(undefined);
+  let state: Record<string, unknown> = {};
+  const get = () => state as never;
+  const set = (partial: unknown) => {
+    const next = typeof partial === "function" ? partial(state) : partial;
+    state = { ...state, ...(next as object) };
+  };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const slice = createConnectionSlice(set as any, get as any, undefined as any);
+  state = {
+    ...slice,
+    currentProfileId: "p1",
+    encryptionKey: KEY,
+    connectionList: { connections },
+    currentConnection: { id: active.id },
+    setCurrentConnection,
+  };
+  return { slice };
+}
