@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv } from 'vite'
 import { svelte } from '@sveltejs/vite-plugin-svelte'
 import tailwindcss from '@tailwindcss/vite'
+import { VitePWA } from 'vite-plugin-pwa'
 import { fileURLToPath } from 'node:url'
 import pkg from './package.json' with { type: 'json' }
 
@@ -46,7 +47,115 @@ export default defineConfig(({ mode }) => {
   return {
     appType: 'spa',
     base: process.env.DUCK_UI_BASEPATH ?? '/',
-    plugins: [svelte(), tailwindcss()],
+    plugins: [
+      svelte(),
+      tailwindcss(),
+      VitePWA({
+        registerType: 'autoUpdate',
+        includeAssets: ['logo.png', 'logo-light.png', 'logo-padding.png', 'logo-192.png', 'badge.svg'],
+        manifest: {
+          name: 'Duck-UI',
+          short_name: 'Duck-UI',
+          description:
+            'DuckDB in your browser: SQL editor, notebooks, charts, and AI, fully local.',
+          theme_color: '#000000',
+          background_color: '#000000',
+          display: 'standalone',
+          start_url: '.',
+          icons: [
+            { src: 'logo-192.png', sizes: '192x192', type: 'image/png' },
+            { src: 'logo-padding.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+            { src: 'logo-padding.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          ],
+        },
+        workbox: {
+          // Precache only the app shell. Precaching every chunk would push
+          // tens of megabytes to first-time visitors (exceljs, both DuckDB
+          // workers, the map). Hashed /assets/* chunks, the WASM binaries and
+          // AI models are cached at runtime on first use instead, so after
+          // one session the app works fully offline.
+          globPatterns: [
+            'index.html',
+            'registerSW.js',
+            'manifest.webmanifest',
+            '*.{svg,png,ico}',
+            'theme.js',
+            'fonts/*.woff2',
+            'assets/index-*.{js,css}',
+          ],
+          globIgnores: ['**/env.js', '**/screenshot.png'],
+          maximumFileSizeToCacheInBytes: 20 * 1024 * 1024,
+          navigateFallback: 'index.html',
+          runtimeCaching: [
+            {
+              // Hashed build chunks (immutable filenames), cached as the app
+              // loads them.
+              urlPattern: /\/assets\/.+\.(js|css)$/,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'duckui-chunks',
+                expiration: { maxEntries: 300 },
+                cacheableResponse: { statuses: [0, 200] },
+              },
+            },
+            {
+              // Same-origin WASM (DuckDB engine bundles)
+              urlPattern: /\.wasm$/,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'duckui-wasm',
+                expiration: { maxEntries: 12 },
+                cacheableResponse: { statuses: [0, 200] },
+              },
+            },
+            {
+              urlPattern: /^https:\/\/(community-)?extensions\.duckdb\.org\/.*/i,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'duckdb-extensions',
+                expiration: { maxEntries: 60 },
+                cacheableResponse: { statuses: [0, 200] },
+              },
+            },
+            {
+              // Pyodide (Python cells): a pinned, versioned path whose files
+              // never change, and large enough (runtime + wheels) that it
+              // must not evict the DuckDB bundles from the jsdelivr cache.
+              urlPattern: /^https:\/\/cdn\.jsdelivr\.net\/pyodide\/.*/i,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'pyodide',
+                expiration: { maxEntries: 80, maxAgeSeconds: 30 * 24 * 60 * 60 },
+                cacheableResponse: { statuses: [0, 200] },
+              },
+            },
+            {
+              // StaleWhileRevalidate (not CacheFirst): this route caches
+              // opaque no-cors responses, so a poisoned/failed entry must be
+              // able to self-heal from the network.
+              urlPattern: /^https:\/\/cdn\.jsdelivr\.net\/.*/i,
+              handler: 'StaleWhileRevalidate',
+              options: {
+                cacheName: 'jsdelivr-cdn',
+                expiration: { maxEntries: 40, maxAgeSeconds: 7 * 24 * 60 * 60 },
+                cacheableResponse: { statuses: [0, 200] },
+              },
+            },
+            {
+              // Runtime config: fresh from the server when online, last-seen
+              // value when offline (env.js is excluded from the precache).
+              urlPattern: /\/env\.js$/,
+              handler: 'NetworkFirst',
+              options: {
+                cacheName: 'duckui-env',
+                expiration: { maxEntries: 1 },
+                cacheableResponse: { statuses: [0, 200] },
+              },
+            },
+          ],
+        },
+      }),
+    ],
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url)),
