@@ -37,6 +37,8 @@ import {
 import { toast } from "sonner";
 import ProfileEditor from "@/components/profile/ProfileEditor";
 import AISettings from "@/components/workspace/AISettings";
+import ProjectTransfer from "@/components/workspace/ProjectTransfer";
+import ExtensionsSettings from "@/components/workspace/ExtensionsSettings";
 import ProfileAvatar from "@/components/profile/ProfileAvatar";
 import PasswordDialog from "@/components/profile/PasswordDialog";
 import type { Profile } from "@/store/types";
@@ -64,6 +66,9 @@ export default function SettingsTab() {
   const [maxResultRowsDraft, setMaxResultRowsDraft] = useState<number | null>(null);
   const maxResultRows = maxResultRowsDraft ?? storedMaxResultRows;
   const [isSavingPerformance, setIsSavingPerformance] = useState(false);
+  // Remount the extension list when the active connection changes — each
+  // connection has its own set of installed/loaded extensions.
+  const currentSessionId = useDuckStore((s) => s.currentSession?.id);
 
   useEffect(() => {
     if (!currentProfileId) return;
@@ -224,6 +229,8 @@ export default function SettingsTab() {
               <TabsTrigger value="ai">AI</TabsTrigger>
               <TabsTrigger value="general">General</TabsTrigger>
               <TabsTrigger value="performance">Performance</TabsTrigger>
+              <TabsTrigger value="project">Project</TabsTrigger>
+              <TabsTrigger value="extensions">Extensions</TabsTrigger>
             </TabsList>
 
             <TabsContent value="ai" className="mt-0 space-y-6">
@@ -372,6 +379,14 @@ export default function SettingsTab() {
                   bypass the limit and always write the complete result.
                 </p>
               </div>
+            </TabsContent>
+
+            <TabsContent value="project" className="mt-0 space-y-6">
+              <ProjectTransfer />
+            </TabsContent>
+
+            <TabsContent value="extensions" className="mt-0 space-y-6">
+              <ExtensionsSettings key={currentSessionId ?? "none"} />
             </TabsContent>
 
             <TabsContent value="general" className="mt-0 space-y-6">

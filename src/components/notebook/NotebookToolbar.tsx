@@ -1,4 +1,4 @@
-import { Play, Loader2, Plus, Code, Type } from "lucide-react";
+import { Play, Loader2, Plus, Code, Type, SquareTerminal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -6,10 +6,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import type { NotebookCellType } from "@/store/types";
 
 interface NotebookToolbarProps {
   onRunAll: () => void;
-  onAddCell: (type: "sql" | "markdown") => void;
+  onAddCell: (type: NotebookCellType) => void;
   isRunning: boolean;
   cellCount: number;
 }
@@ -42,6 +43,10 @@ export function NotebookToolbar({
           <DropdownMenuItem onClick={() => onAddCell("sql")}>
             <Code className="h-4 w-4 mr-2" />
             SQL Cell
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onAddCell("python")}>
+            <SquareTerminal className="h-4 w-4 mr-2" />
+            Python Cell
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => onAddCell("markdown")}>
             <Type className="h-4 w-4 mr-2" />

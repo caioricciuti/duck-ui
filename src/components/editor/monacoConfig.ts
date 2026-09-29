@@ -162,10 +162,13 @@ export const createCellEditor = (
   config: EditorConfig,
   initialContent: string,
   executeQueryFn: () => Promise<void>,
-  onContentChange: (value: string) => void
+  onContentChange: (value: string) => void,
+  // Omitted: keep config.language (the dashboard editor passes "markdown").
+  language?: "sql" | "python"
 ): EditorInstance => {
   const editor = monaco.editor.create(container, {
     ...config,
+    ...(language ? { language } : {}),
     value: initialContent,
     wordBasedSuggestions: config.wordBasedSuggestions ? "allDocuments" : "off",
     bracketPairColorization: { enabled: true },
@@ -212,31 +215,34 @@ export const createCellEditor = (
     }
   });
 
-  editor.addCommand(monaco.KeyMod.Alt | monaco.KeyCode.KeyF, () => {
-    const formatAction = editor.getAction("editor.action.formatDocument");
-    formatAction?.run();
-  });
+  // SQL formatting only — it would mangle Python.
+  if (language !== "python") {
+    editor.addCommand(monaco.KeyMod.Alt | monaco.KeyCode.KeyF, () => {
+      const formatAction = editor.getAction("editor.action.formatDocument");
+      formatAction?.run();
+    });
 
-  editor.addAction({
-    id: "format-sql",
-    label: "Format SQL",
-    keybindings: [monaco.KeyMod.Alt | monaco.KeyCode.KeyF],
-    contextMenuGroupId: "modification",
-    run: (ed) => {
-      const text = ed.getValue();
-      try {
-        const formatted = format(text, {
-          language: "sql",
-          keywordCase: "upper",
-          indentStyle: "standard",
-          linesBetweenQueries: 2,
-        });
-        ed.setValue(formatted);
-      } catch {
-        toast.error("Failed to format SQL");
-      }
-    },
-  });
+    editor.addAction({
+      id: "format-sql",
+      label: "Format SQL",
+      keybindings: [monaco.KeyMod.Alt | monaco.KeyCode.KeyF],
+      contextMenuGroupId: "modification",
+      run: (ed) => {
+        const text = ed.getValue();
+        try {
+          const formatted = format(text, {
+            language: "sql",
+            keywordCase: "upper",
+            indentStyle: "standard",
+            linesBetweenQueries: 2,
+          });
+          ed.setValue(formatted);
+        } catch {
+          toast.error("Failed to format SQL");
+        }
+      },
+    });
+  }
 
   // Content change listener — calls provided callback instead of updateTabQuery
   let timeoutId: number;

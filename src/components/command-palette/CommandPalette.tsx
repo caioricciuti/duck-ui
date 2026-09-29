@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import {
   CommandDialog,
   CommandEmpty,
@@ -22,6 +22,8 @@ import {
   Database,
   Table,
   Bookmark,
+  Download,
+  Upload,
 } from "lucide-react";
 import type { EditorTabType } from "@/store";
 import { getUiConfig } from "@/lib/appConfig";
@@ -30,6 +32,8 @@ import {
   getSavedQueries,
   type SavedQuery,
 } from "@/services/persistence/repositories/savedQueryRepository";
+import { downloadProjectExport } from "@/services/projectTransfer";
+import { ProjectFileInput, ProjectImportDialog } from "@/components/workspace/ProjectTransfer";
 
 export default function CommandPalette() {
   const [open, setOpen] = useState(false);
@@ -49,6 +53,8 @@ export default function CommandPalette() {
   const savedQueriesVersion = useDuckStore((s) => s.savedQueriesVersion);
 
   const [savedQueries, setSavedQueries] = useState<SavedQuery[]>([]);
+  const projectInputRef = useRef<HTMLInputElement>(null);
+  const [projectFile, setProjectFile] = useState<File | null>(null);
 
   // Load saved queries when palette opens
   useEffect(() => {
@@ -94,154 +100,180 @@ export default function CommandPalette() {
   }, [databases]);
 
   return (
-    <CommandDialog open={open} onOpenChange={setOpen}>
-      <CommandInput placeholder="Search commands, tabs, tables..." />
-      <CommandList>
-        <CommandEmpty>No results found.</CommandEmpty>
+    <>
+      <CommandDialog open={open} onOpenChange={setOpen}>
+        <CommandInput placeholder="Search commands, tabs, tables..." />
+        <CommandList>
+          <CommandEmpty>No results found.</CommandEmpty>
 
-        {/* Quick Actions */}
-        <CommandGroup heading="Quick Actions">
-          <CommandItem
-            onSelect={() => {
-              createTab("sql", "");
-              setOpen(false);
-            }}
-          >
-            <Terminal className="mr-2 h-4 w-4" />
-            New SQL Tab
-          </CommandItem>
-          <CommandItem onSelect={() => openOrFocusTab("home", "Home")}>
-            <Home className="mr-2 h-4 w-4" />
-            Home
-          </CommandItem>
-          {!ui.hideConnections && (
-            <CommandItem onSelect={() => openOrFocusTab("connections", "Connections")}>
-              <Cable className="mr-2 h-4 w-4" />
-              Connections
-            </CommandItem>
-          )}
-          {!ui.hideSettings && (
-            <CommandItem onSelect={() => openOrFocusTab("settings", "Settings")}>
-              <Settings className="mr-2 h-4 w-4" />
-              Settings
-            </CommandItem>
-          )}
-          {!ui.hideBrain && (
+          {/* Quick Actions */}
+          <CommandGroup heading="Quick Actions">
             <CommandItem
               onSelect={() => {
-                toggleBrainPanel();
+                createTab("sql", "");
                 setOpen(false);
               }}
             >
-              <Brain className="mr-2 h-4 w-4" />
-              Toggle AI Panel
+              <Terminal className="mr-2 h-4 w-4" />
+              New SQL Tab
             </CommandItem>
-          )}
-          <CommandItem
-            onSelect={() => {
-              setTheme(theme === "dark" ? "light" : "dark");
-              setOpen(false);
-            }}
-          >
-            {theme === "dark" ? (
-              <Sun className="mr-2 h-4 w-4" />
-            ) : (
-              <Moon className="mr-2 h-4 w-4" />
+            <CommandItem onSelect={() => openOrFocusTab("home", "Home")}>
+              <Home className="mr-2 h-4 w-4" />
+              Home
+            </CommandItem>
+            {!ui.hideConnections && (
+              <CommandItem onSelect={() => openOrFocusTab("connections", "Connections")}>
+                <Cable className="mr-2 h-4 w-4" />
+                Connections
+              </CommandItem>
             )}
-            {theme === "dark" ? "Light Theme" : "Dark Theme"}
-          </CommandItem>
-        </CommandGroup>
+            {!ui.hideSettings && (
+              <CommandItem onSelect={() => openOrFocusTab("settings", "Settings")}>
+                <Settings className="mr-2 h-4 w-4" />
+                Settings
+              </CommandItem>
+            )}
+            {!ui.hideBrain && (
+              <CommandItem
+                onSelect={() => {
+                  toggleBrainPanel();
+                  setOpen(false);
+                }}
+              >
+                <Brain className="mr-2 h-4 w-4" />
+                Toggle AI Panel
+              </CommandItem>
+            )}
+            <CommandItem
+              onSelect={() => {
+                setTheme(theme === "dark" ? "light" : "dark");
+                setOpen(false);
+              }}
+            >
+              {theme === "dark" ? (
+                <Sun className="mr-2 h-4 w-4" />
+              ) : (
+                <Moon className="mr-2 h-4 w-4" />
+              )}
+              {theme === "dark" ? "Light Theme" : "Dark Theme"}
+            </CommandItem>
+            {currentProfileId && (
+              <CommandItem
+                onSelect={() => {
+                  setOpen(false);
+                  void downloadProjectExport(currentProfileId);
+                }}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Export Project (.zip)
+              </CommandItem>
+            )}
+            {currentProfileId && (
+              <CommandItem
+                onSelect={() => {
+                  setOpen(false);
+                  projectInputRef.current?.click();
+                }}
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                Import Project (.zip)
+              </CommandItem>
+            )}
+          </CommandGroup>
 
-        {/* Open Tabs */}
-        {openTabs.length > 0 && (
-          <>
-            <CommandSeparator />
-            <CommandGroup heading="Open Tabs">
-              {openTabs.map((tab) => (
-                <CommandItem
-                  key={tab.id}
-                  onSelect={() => {
-                    setActiveTab(tab.id);
-                    setOpen(false);
-                  }}
-                >
-                  <Terminal className="mr-2 h-4 w-4" />
-                  {tab.title || tab.type}
-                  <CommandShortcut>{tab.type}</CommandShortcut>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </>
-        )}
-
-        {/* Connections */}
-        {connectionList.connections.length > 1 && (
-          <>
-            <CommandSeparator />
-            <CommandGroup heading="Connections">
-              {connectionList.connections
-                .filter((c) => c.id !== currentConnection?.id)
-                .map((conn) => (
+          {/* Open Tabs */}
+          {openTabs.length > 0 && (
+            <>
+              <CommandSeparator />
+              <CommandGroup heading="Open Tabs">
+                {openTabs.map((tab) => (
                   <CommandItem
-                    key={conn.id}
-                    onSelect={async () => {
-                      await setCurrentConnection(conn.id);
+                    key={tab.id}
+                    onSelect={() => {
+                      setActiveTab(tab.id);
                       setOpen(false);
                     }}
                   >
-                    <Database className="mr-2 h-4 w-4" />
-                    Switch to {conn.name}
-                    <CommandShortcut>{conn.scope}</CommandShortcut>
+                    <Terminal className="mr-2 h-4 w-4" />
+                    {tab.title || tab.type}
+                    <CommandShortcut>{tab.type}</CommandShortcut>
                   </CommandItem>
                 ))}
-            </CommandGroup>
-          </>
-        )}
+              </CommandGroup>
+            </>
+          )}
 
-        {/* Saved Queries */}
-        {savedQueries.length > 0 && (
-          <>
-            <CommandSeparator />
-            <CommandGroup heading="Saved Queries">
-              {savedQueries.map((query) => (
-                <CommandItem
-                  key={query.id}
-                  onSelect={() => {
-                    createTab("sql", query.sql_text, query.name);
-                    setOpen(false);
-                  }}
-                >
-                  <Bookmark className="mr-2 h-4 w-4" />
-                  {query.name}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </>
-        )}
+          {/* Connections */}
+          {connectionList.connections.length > 1 && (
+            <>
+              <CommandSeparator />
+              <CommandGroup heading="Connections">
+                {connectionList.connections
+                  .filter((c) => c.id !== currentConnection?.id)
+                  .map((conn) => (
+                    <CommandItem
+                      key={conn.id}
+                      onSelect={async () => {
+                        await setCurrentConnection(conn.id);
+                        setOpen(false);
+                      }}
+                    >
+                      <Database className="mr-2 h-4 w-4" />
+                      Switch to {conn.name}
+                      <CommandShortcut>{conn.scope}</CommandShortcut>
+                    </CommandItem>
+                  ))}
+              </CommandGroup>
+            </>
+          )}
 
-        {/* Tables */}
-        {tableEntries.length > 0 && (
-          <>
-            <CommandSeparator />
-            <CommandGroup heading="Tables">
-              {tableEntries.map(({ database, schema, table }) => (
-                <CommandItem
-                  key={`${database}.${schema}.${table}`}
-                  onSelect={() => {
-                    const query = `SELECT * FROM ${qualifyTable(database, schema, table)} LIMIT 100`;
-                    createTab("sql", query, table);
-                    setOpen(false);
-                  }}
-                >
-                  <Table className="mr-2 h-4 w-4" />
-                  {database}.{schema === "main" ? table : `${schema}.${table}`}
-                  <CommandShortcut>SELECT</CommandShortcut>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </>
-        )}
-      </CommandList>
-    </CommandDialog>
+          {/* Saved Queries */}
+          {savedQueries.length > 0 && (
+            <>
+              <CommandSeparator />
+              <CommandGroup heading="Saved Queries">
+                {savedQueries.map((query) => (
+                  <CommandItem
+                    key={query.id}
+                    onSelect={() => {
+                      createTab("sql", query.sql_text, query.name);
+                      setOpen(false);
+                    }}
+                  >
+                    <Bookmark className="mr-2 h-4 w-4" />
+                    {query.name}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </>
+          )}
+
+          {/* Tables */}
+          {tableEntries.length > 0 && (
+            <>
+              <CommandSeparator />
+              <CommandGroup heading="Tables">
+                {tableEntries.map(({ database, schema, table }) => (
+                  <CommandItem
+                    key={`${database}.${schema}.${table}`}
+                    onSelect={() => {
+                      const query = `SELECT * FROM ${qualifyTable(database, schema, table)} LIMIT 100`;
+                      createTab("sql", query, table);
+                      setOpen(false);
+                    }}
+                  >
+                    <Table className="mr-2 h-4 w-4" />
+                    {database}.{schema === "main" ? table : `${schema}.${table}`}
+                    <CommandShortcut>SELECT</CommandShortcut>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </>
+          )}
+        </CommandList>
+      </CommandDialog>
+      <ProjectFileInput inputRef={projectInputRef} onFile={setProjectFile} />
+      <ProjectImportDialog file={projectFile} onClose={() => setProjectFile(null)} />
+    </>
   );
 }

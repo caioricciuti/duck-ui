@@ -5,6 +5,14 @@ import { datasetCacheKey } from "@/services/dashboard/queryRunner";
 import { parseDashboardSource } from "@/services/dashboard/markdown";
 import type { DatasetResult } from "@/services/dashboard/queryRunner";
 import type { InputValue } from "@/services/dashboard/inputs";
+import {
+  decideRefresh,
+  formatRefreshInterval,
+  formatRelativeTime,
+  latestFetchedAt,
+  parseRefreshParam,
+  REFRESH_INTERVAL_OPTIONS,
+} from "@/services/dashboard/refresh";
 import { enableDashboardCompletions } from "./dashboardCompletions";
 import {
   createCellEditor,
@@ -15,7 +23,14 @@ import { useTheme } from "@/components/theme/theme-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
-import { Copy, Eye, Loader2, Pencil, RefreshCw, Share2 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Copy, Eye, Loader2, Pencil, RefreshCw, Share2, Timer } from "lucide-react";
 import ShareDashboardDialog from "./ShareDashboardDialog";
 import ShareLiveDialog from "@/components/collaboration/ShareLiveDialog";
 import MarkdownDashboard from "./MarkdownDashboard";
@@ -33,6 +48,12 @@ interface DashboardTabProps {
 /** Shared empty snapshots — a fresh Map per read would loop the subscription. */
 const EMPTY_RESULTS: ReadonlyMap<string, DatasetResult> = new Map();
 const EMPTY_INPUTS: ReadonlyMap<string, InputValue> = new Map();
+
+const subscribeVisibility = (onChange: () => void) => {
+  document.addEventListener("visibilitychange", onChange);
+  return () => document.removeEventListener("visibilitychange", onChange);
+};
+const isDocumentHidden = () => document.visibilityState === "hidden";
 
 /**
  * A dashboard document, as a workspace tab.
@@ -130,6 +151,89 @@ export default function DashboardTab({ tabId }: DashboardTabProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dashboardId, querySignature, engineReady, inputValues]);
 
+  // ── Auto-refresh ──────────────────────────────────────────────────────
+  // `?refresh=<seconds>` on the page URL is a kiosk override: it applies to
+  // every dashboard opened in this page load and is never persisted. Picking
+  // an interval in the toolbar drops the override and saves the choice.
+  const [urlRefresh, setUrlRefresh] = useState(() =>
+    typeof window === "undefined" ? null : parseRefreshParam(window.location.search)
+  );
+  const intervalSeconds =
+    parsed.queries.length === 0 || !engineReady
+      ? 0
+      : (urlRefresh ?? dashboard?.refreshIntervalSeconds ?? 0);
+  const hidden = useSyncExternalStore(subscribeVisibility, isDocumentHidden, () => false);
+  const anyLoading = useMemo(
+    () => [...results.values()].some((result) => result.status === "loading"),
+    [results]
+  );
+  const inFlight = refreshing || anyLoading;
+  // Completed-refresh time, including ones where every query failed (those
+  // carry no fetchedAt, but still count as "we tried" for scheduling).
+  const [lastAttemptAt, setLastAttemptAt] = useState<number | null>(null);
+  const lastFetchedAt = useMemo(() => latestFetchedAt(results.values()), [results]);
+  const lastRefreshedAt =
+    lastAttemptAt === null
+      ? lastFetchedAt
+      : lastFetchedAt === null
+        ? lastAttemptAt
+        : Math.max(lastAttemptAt, lastFetchedAt);
+
+  const refreshAll = useCallback(async () => {
+    if (!dashboardId) return;
+    setRefreshing(true);
+    try {
+      await runDashboard(dashboardId, true);
+    } finally {
+      setRefreshing(false);
+      setLastAttemptAt(Date.now());
+    }
+  }, [dashboardId, runDashboard]);
+
+  // One timer at a time, re-armed whenever any input to the decision changes.
+  // `wake` bumps when a wait elapses so the decision is re-evaluated.
+  const [wake, setWake] = useState(0);
+  useEffect(() => {
+    const decision = decideRefresh({
+      intervalSeconds,
+      // Enabling the interval before anything has loaded anchors on "now".
+      lastRefreshedAt,
+      now: Date.now(),
+      hidden,
+      inFlight,
+    });
+    if (decision.action === "idle") return;
+    const timer = setTimeout(
+      () => {
+        if (decision.action === "refresh") void refreshAll();
+        else setWake((count) => count + 1);
+      },
+      decision.action === "refresh" ? 0 : decision.delayMs
+    );
+    return () => clearTimeout(timer);
+  }, [intervalSeconds, lastRefreshedAt, hidden, inFlight, refreshAll, wake]);
+
+  // Anchor the first scheduled run when the interval turns on with nothing
+  // loaded yet, so it fires one interval later rather than never.
+  useEffect(() => {
+    if (intervalSeconds <= 0 || lastRefreshedAt !== null) return;
+    const timer = setTimeout(() => setLastAttemptAt(Date.now()), 0);
+    return () => clearTimeout(timer);
+  }, [intervalSeconds, lastRefreshedAt]);
+
+  // Keeps the "updated … ago" label moving without re-rendering per second.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (lastRefreshedAt === null) return;
+    const update = () => setNow(Date.now());
+    const timer = setInterval(update, 15_000);
+    const initial = setTimeout(update, 0);
+    return () => {
+      clearInterval(timer);
+      clearTimeout(initial);
+    };
+  }, [lastRefreshedAt]);
+
   if (!dashboard) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-1">
@@ -139,14 +243,20 @@ export default function DashboardTab({ tabId }: DashboardTabProps) {
     );
   }
 
-  const handleRefreshAll = async () => {
-    setRefreshing(true);
-    try {
-      await runDashboard(dashboard.id, true);
-    } finally {
-      setRefreshing(false);
-    }
+  const handleIntervalChange = (value: string) => {
+    setUrlRefresh(null);
+    const seconds = Number(value);
+    void updateDashboard({
+      ...dashboard,
+      refreshIntervalSeconds: seconds > 0 ? seconds : undefined,
+    });
   };
+  const selectedInterval = urlRefresh ?? dashboard.refreshIntervalSeconds ?? 0;
+  const intervalOptions = REFRESH_INTERVAL_OPTIONS.some(
+    (option) => option.seconds === selectedInterval
+  )
+    ? REFRESH_INTERVAL_OPTIONS
+    : [...REFRESH_INTERVAL_OPTIONS, { seconds: selectedInterval, label: "" }];
 
   return (
     <div className="flex h-full flex-col">
@@ -164,10 +274,40 @@ export default function DashboardTab({ tabId }: DashboardTabProps) {
           )}
         </div>
 
+        {lastRefreshedAt !== null && parsed.queries.length > 0 && (
+          <span
+            className="text-xs text-muted-foreground"
+            title={new Date(lastRefreshedAt).toLocaleString()}
+          >
+            {hidden && intervalSeconds > 0 ? "Paused · " : ""}
+            Updated {formatRelativeTime(lastRefreshedAt, Math.max(now, lastRefreshedAt))}
+          </span>
+        )}
+
+        <Select value={String(selectedInterval)} onValueChange={handleIntervalChange}>
+          <SelectTrigger
+            className="h-7 w-auto gap-1.5 px-2 text-xs"
+            aria-label="Auto-refresh interval"
+            title="Auto-refresh (paused while this tab is hidden)"
+          >
+            <Timer className="h-3.5 w-3.5" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {intervalOptions.map((option) => (
+              <SelectItem key={option.seconds} value={String(option.seconds)} className="text-xs">
+                {option.seconds === 0
+                  ? "Auto-refresh off"
+                  : `Every ${formatRefreshInterval(option.seconds)}`}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
         <Button
           size="sm"
           variant="outline"
-          onClick={handleRefreshAll}
+          onClick={() => void refreshAll()}
           disabled={refreshing || parsed.queries.length === 0}
           className="h-7 gap-1.5 text-xs"
         >
@@ -369,7 +509,6 @@ function SourceEditor({
       instanceRef.current?.dispose();
       instanceRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tabId, config, collabText]);
 
   return <div ref={containerRef} className="h-full w-full" />;

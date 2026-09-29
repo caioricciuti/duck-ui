@@ -1,5 +1,5 @@
 // src/components/workspace/SqlTab.tsx
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useDuckStore } from "@/store";
 import SqlEditor from "@/components/editor/SqlEditor";
 import { ResizablePanel, ResizablePanelGroup, ResizableHandle } from "@/components/ui/resizable";
@@ -15,8 +15,18 @@ import {
   Loader2,
   Scissors,
   LayoutDashboard,
+  Pin,
+  GitCompare,
+  Map as MapIcon,
 } from "lucide-react";
+import GeoMapView from "@/components/map/GeoMapView";
+import { findGeometryColumns } from "@/lib/geoResult";
 import AddToDashboardDialog from "@/components/dashboard/AddToDashboardDialog";
+import ResultCompareDialog from "@/components/workspace/ResultCompareDialog";
+import { PIN_ROW_LIMIT } from "@/lib/resultDiff";
+import QueryParamsBar from "@/components/editor/QueryParamsBar";
+import { listParameterNames } from "@/lib/sqlParams";
+import BrainResultActions from "@/components/duck-brain/BrainResultActions";
 import { isNumericColumn } from "@/lib/chartDataTransform";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -56,7 +66,20 @@ const SqlTab: React.FC<SqlTabProps> = ({ tabId }) => {
   const updateTabQuery = useDuckStore((s) => s.updateTabQuery);
   const [isFixing, setIsFixing] = useState(false);
   const [addToDashboardOpen, setAddToDashboardOpen] = useState(false);
+  const [compareOpen, setCompareOpen] = useState(false);
+  const pinResult = useDuckStore((s) => s.pinResult);
+  const pinCount = useDuckStore((s) => s.resultPins.length);
   const currentTab = tabs.find((tab) => tab.id === tabId);
+  const sqlText = useDuckStore((s) => {
+    const content = s.tabs.find((tab) => tab.id === tabId)?.content;
+    return typeof content === "string" ? content : "";
+  });
+  const paramNames = useMemo(() => listParameterNames(sqlText), [sqlText]);
+  const [resultView, setResultView] = useState("table");
+  // Cheap: a scan of the column types, not the rows.
+  const geometryColumns = currentTab?.result ? findGeometryColumns(currentTab.result) : [];
+  // A rerun without a GEOMETRY column drops the Map tab; fall back to the table.
+  const activeView = resultView === "map" && geometryColumns.length === 0 ? "table" : resultView;
 
   const handleFixWithBrain = async () => {
     if (!currentTab || typeof currentTab.content !== "string" || !currentTab.result?.error) return;
@@ -72,6 +95,23 @@ const SqlTab: React.FC<SqlTabProps> = ({ tabId }) => {
       }
     } finally {
       setIsFixing(false);
+    }
+  };
+
+  const handlePinResult = () => {
+    if (!currentTab?.result || currentTab.result.error) return;
+    const query = typeof currentTab.content === "string" ? currentTab.content : "";
+    const pin = pinResult(tabId, query, currentTab.result);
+    const { rows, sourceRowCount, truncated } = pin.snapshot;
+    if (truncated) {
+      toast.warning(
+        `Pinned ${rows.length.toLocaleString()} of ${sourceRowCount.toLocaleString()} rows` +
+          (rows.length >= PIN_ROW_LIMIT
+            ? ` — pins keep at most ${PIN_ROW_LIMIT.toLocaleString()}`
+            : " — the result itself was truncated")
+      );
+    } else {
+      toast.success(`Pinned ${rows.length.toLocaleString()} rows for comparison`);
     }
   };
 
@@ -174,7 +214,7 @@ const SqlTab: React.FC<SqlTabProps> = ({ tabId }) => {
 
     // Show results in tabs (Table and Charts)
     return (
-      <Tabs defaultValue="table" className="h-full flex flex-col">
+      <Tabs value={activeView} onValueChange={setResultView} className="h-full flex flex-col">
         {currentTab.result.truncated && (
           <div className="mx-4 mt-2 flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs">
             <Scissors className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
@@ -201,6 +241,11 @@ const SqlTab: React.FC<SqlTabProps> = ({ tabId }) => {
             />
           </div>
         </TabsContent>
+        {geometryColumns.length > 0 && (
+          <TabsContent value="map" className="flex-1 min-h-0 mt-0">
+            <GeoMapView result={currentTab.result} geometryColumns={geometryColumns} />
+          </TabsContent>
+        )}
 
         {/* Sits at the bottom, beside the paging controls, rather than as a
             full-width band above the results. The results panel is the part
@@ -214,11 +259,46 @@ const SqlTab: React.FC<SqlTabProps> = ({ tabId }) => {
             <BarChart3 className="h-3.5 w-3.5" />
             Charts
           </TabsTrigger>
+          {geometryColumns.length > 0 && (
+            <TabsTrigger value="map" className="h-6 gap-1.5 px-2 text-xs">
+              <MapIcon className="h-3.5 w-3.5" />
+              Map
+            </TabsTrigger>
+          )}
 
+          <div className="ml-auto" />
+          {currentTab.result.data.length > 0 && (
+            <BrainResultActions
+              tabId={tabId}
+              sql={typeof currentTab.content === "string" ? currentTab.content : ""}
+              result={currentTab.result}
+              onChartApplied={() => setResultView("charts")}
+            />
+          )}
           <Button
             size="sm"
             variant="ghost"
-            className="ml-auto h-6 gap-1.5 px-2 text-xs"
+            className="h-6 gap-1.5 px-2 text-xs"
+            onClick={handlePinResult}
+            title="Keep a copy of this result to compare against later"
+          >
+            <Pin className="h-3.5 w-3.5" />
+            Pin result
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-6 gap-1.5 px-2 text-xs"
+            onClick={() => setCompareOpen(true)}
+            disabled={pinCount === 0}
+          >
+            <GitCompare className="h-3.5 w-3.5" />
+            Compare{pinCount > 0 ? ` (${pinCount})` : ""}
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-6 gap-1.5 px-2 text-xs"
             onClick={() => setAddToDashboardOpen(true)}
           >
             <LayoutDashboard className="h-3.5 w-3.5" />
@@ -248,6 +328,13 @@ const SqlTab: React.FC<SqlTabProps> = ({ tabId }) => {
           numeric: isNumericColumn(currentTab.result?.data ?? [], name),
         }))}
       />
+      {compareOpen && (
+        <ResultCompareDialog
+          open={compareOpen}
+          onOpenChange={setCompareOpen}
+          currentResult={currentTab.result}
+        />
+      )}
       <ResizablePanelGroup direction="horizontal">
         {/* Main Editor + Results Panel */}
         <ResizablePanel defaultSize={100} minSize={50}>
@@ -257,7 +344,10 @@ const SqlTab: React.FC<SqlTabProps> = ({ tabId }) => {
             </ResizablePanel>
             <ResizableHandle withHandle />
             <ResizablePanel defaultSize={50} minSize={25}>
-              {renderResults()}
+              <div className="flex h-full flex-col">
+                <QueryParamsBar tabId={tabId} names={paramNames} />
+                <div className="min-h-0 flex-1">{renderResults()}</div>
+              </div>
             </ResizablePanel>
           </ResizablePanelGroup>
         </ResizablePanel>

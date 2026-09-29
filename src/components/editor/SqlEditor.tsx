@@ -26,6 +26,8 @@ import SaveQueryDialog from "@/components/saved-queries/SaveQueryDialog";
 import { bindCollaborativeEditor, type CollaborativeBinding } from "./collaborativeBinding";
 import { getCollaboration } from "@/store/slices/sessionSlice";
 import { ExplainPlanViewer } from "@/components/workspace/ExplainPlanViewer";
+import { missingParamsMessage, resolveQueryParams } from "@/lib/sqlParams";
+import { extractPlanText } from "@/lib/explainPlan";
 
 interface SqlEditorProps {
   tabId: string;
@@ -89,7 +91,10 @@ const SqlEditor: React.FC<SqlEditorProps> = ({ tabId, title, className }) => {
         editorInstanceRef.current = null;
       }
     };
-  }, [tabId, monacoConfig, stableExecuteCallback]); // Keep stableExecuteCallback
+    // currentContent seeds the editor once; later edits flow through the model,
+    // so re-creating the editor on every keystroke would drop cursor state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabId, monacoConfig, stableExecuteCallback]);
 
   // Collaborative binding — attaches only while a session is live, so a solo
   // Duck-UI pays nothing for it.
@@ -189,16 +194,20 @@ const SqlEditor: React.FC<SqlEditorProps> = ({ tabId, title, className }) => {
     const query = editor.getValue().trim();
     if (!query) return;
 
+    // Run without a tabId (below) skips executeQuery's parameter step, so
+    // resolve `$name` placeholders here with this tab's values.
+    const resolved = resolveQueryParams(query, currentTab?.queryParams);
+    if (resolved.sql === null) {
+      toast.error(missingParamsMessage(resolved.missing));
+      return;
+    }
+
     try {
       // Run without tabId so the result is returned without overwriting the tab's data
-      const result = await executeQuery(`EXPLAIN ANALYZE ${query}`);
+      const result = await executeQuery(`EXPLAIN ANALYZE ${resolved.sql}`);
       if (result && result.data?.length > 0) {
         // DuckDB returns rows with explain_key / explain_value — the analyzed_plan row has the full plan
-        const planRow = result.data.find((row) => row["explain_key"] === "analyzed_plan");
-        const planText = planRow
-          ? String(planRow["explain_value"])
-          : result.data.map((row) => String(row["explain_value"] ?? "")).join("\n");
-        setExplainText(planText);
+        setExplainText(extractPlanText(result.data));
         setExplainOpen(true);
       }
     } catch (error) {

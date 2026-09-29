@@ -8,6 +8,9 @@ import type {
 import type { SharedCapability } from "@/services/collaboration/capabilities/capability";
 import type { ForkTableProgress } from "@/services/collaboration/fork";
 import type { Dashboard } from "@/services/dashboard/types";
+import type { ResultSnapshot } from "@/lib/resultDiff";
+import type { QueryParamsState } from "@/lib/sqlParams";
+import type { ExtensionAction, ExtensionInfo } from "@/lib/duckdbExtensions";
 
 //
 // Global Window type augmentation
@@ -26,6 +29,7 @@ declare global {
       DUCK_UI_ALLOW_UNSIGNED_EXTENSIONS: boolean;
       DUCK_UI_DUCKDB_WASM_USE_CDN?: boolean;
       DUCK_UI_DUCKDB_WASM_BASE_URL?: string;
+      DUCK_UI_PYODIDE_BASE_URL?: string;
     };
   }
 }
@@ -208,11 +212,33 @@ export interface MountedFolderInfo {
 
 export type EditorTabType = "sql" | "notebook" | "dashboard" | "home" | "connections" | "settings";
 
+export type NotebookCellType = "sql" | "markdown" | "python";
+
+/** Output of a Python cell run. Local-only, like a SQL cell's `result`. */
+export interface PythonCellOutput {
+  stdout: string;
+  stderr: string;
+  /** repr() of the last expression, when it was not a DataFrame. */
+  text?: string;
+  /** The last expression as a table, when it was a DataFrame/Series. */
+  table?: QueryResult;
+  /** Base64 PNGs of matplotlib figures left open by the run. */
+  images?: string[];
+  /** Formatted traceback, init failure, interrupt or timeout. */
+  error?: string;
+  durationMs?: number;
+}
+
 export interface NotebookCell {
   id: string;
-  type: "sql" | "markdown";
+  /**
+   * Cells synced from a newer peer may carry a type this build does not know;
+   * the renderer shows those read-only instead of guessing.
+   */
+  type: NotebookCellType;
   content: string;
   result?: QueryResult | null;
+  pythonOutput?: PythonCellOutput | null;
   chartConfig?: ChartConfig;
   collapsed?: boolean;
 }
@@ -313,6 +339,11 @@ export interface EditorTab {
   content: string | { database?: string; table?: string };
   result?: QueryResult | null;
   chartConfig?: ChartConfig;
+  /**
+   * `$name` / `${name}` parameter values for sql and notebook tabs. Persisted
+   * with the tab (the workspace serializes tabs wholesale).
+   */
+  queryParams?: QueryParamsState;
 }
 
 //
@@ -406,6 +437,10 @@ export interface SchemaSlice {
     schema?: string
   ) => Promise<ColumnDistribution | null>;
   deleteTable: (tableName: string, database?: string, schema?: string) => Promise<void>;
+  /** `duckdb_extensions()` on the active connection. Throws on failure. */
+  fetchExtensions: () => Promise<ExtensionInfo[]>;
+  /** Runs INSTALL or LOAD for one extension. Throws with DuckDB's message on failure. */
+  runExtensionAction: (action: ExtensionAction, name: string) => Promise<void>;
   importFile: (
     fileName: string,
     fileContent: ArrayBuffer,
@@ -427,15 +462,26 @@ export interface TabSlice {
   updateTabQuery: (tabId: string, query: string) => void;
   updateTabTitle: (tabId: string, title: string) => void;
   updateTabChartConfig: (tabId: string, chartConfig: ChartConfig | undefined) => void;
+  /** Updates a tab's `$name` parameter state (values, text overrides, on/off). */
+  updateTabQueryParams: (
+    tabId: string,
+    updater: (current: QueryParamsState) => QueryParamsState
+  ) => void;
   moveTab: (oldIndex: number, newIndex: number) => void;
   closeAllTabs: () => void;
 
   // Notebook cell operations
   getNotebookCells: (tabId: string) => NotebookCell[];
-  addNotebookCell: (tabId: string, afterCellId?: string, cellType?: "sql" | "markdown") => void;
+  replaceNotebookCells: (tabId: string, cells: NotebookCell[]) => void;
+  addNotebookCell: (tabId: string, afterCellId?: string, cellType?: NotebookCellType) => void;
   removeNotebookCell: (tabId: string, cellId: string) => void;
   updateNotebookCellContent: (tabId: string, cellId: string, content: string) => void;
   updateNotebookCellResult: (tabId: string, cellId: string, result: QueryResult | null) => void;
+  updateNotebookCellPythonOutput: (
+    tabId: string,
+    cellId: string,
+    output: PythonCellOutput | null
+  ) => void;
   updateNotebookCellChartConfig: (
     tabId: string,
     cellId: string,
@@ -464,6 +510,15 @@ export interface DuckBrainSlice {
 
   initializeDuckBrain: (modelId?: string) => Promise<void>;
   generateSQL: (naturalLanguage: string) => Promise<string | null>;
+  /**
+   * One-shot, non-streaming request to the active provider for the result
+   * actions (explain, optimize, suggest chart). Does not touch the chat.
+   * Callers are responsible for any data-sharing consent.
+   */
+  runBrainTask: (
+    messages: { role: "system" | "user" | "assistant"; content: string }[],
+    options?: { maxTokens?: number }
+  ) => Promise<string | null>;
   toggleBrainPanel: () => void;
   abortGeneration: () => void;
   clearBrainMessages: () => void;
@@ -616,6 +671,28 @@ export interface SessionSlice {
 }
 
 //
+// Pinned results (compare view)
+//
+
+/** A frozen query result, kept for comparison. Session-only; never persisted. */
+export interface ResultPin {
+  id: string;
+  /** The SQL tab it was pinned from. */
+  tabId: string;
+  query: string;
+  pinnedAt: Date;
+  snapshot: ResultSnapshot;
+}
+
+export interface ResultPinSlice {
+  resultPins: ResultPin[];
+  /** Snapshots `result` (capped at PIN_ROW_LIMIT rows). Returns the new pin. */
+  pinResult: (tabId: string, query: string, result: QueryResult) => ResultPin;
+  removeResultPin: (id: string) => void;
+  clearResultPins: () => void;
+}
+
+//
 // Composed Store Type
 //
 
@@ -628,4 +705,5 @@ export type DuckStoreState = DuckdbSlice &
   FileSystemSlice &
   ProfileSlice &
   SessionSlice &
-  DashboardSlice;
+  DashboardSlice &
+  ResultPinSlice;

@@ -7,9 +7,14 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 // Applied by `vite preview` and the Docker serve config (serve.json — keep the
 // two in sync). Not applied to `vite dev`, whose HMR needs inline scripts.
-// 'wasm-unsafe-eval' is DuckDB WASM; jsDelivr is the optional WASM CDN mode;
+// 'wasm-unsafe-eval' is DuckDB WASM and Pyodide; jsDelivr is the optional WASM
+// CDN mode and the default Pyodide source for Python notebook cells;
 // broad connect-src is the point of the app (httpfs reads, external servers,
 // AI providers). No 'unsafe-inline' for scripts — env.js is a real file.
+// The result map's basemap (tile.openstreetmap.org) needs no extra entry: its
+// tiles are fetched under connect-src/img-src https:, and maplibre's worker is
+// a same-origin bundle file ('self'). Narrowing those directives must keep the
+// tile host, or the map silently falls back to its blank offline background.
 const CSP = [
   "default-src 'self'",
   "script-src 'self' blob: 'wasm-unsafe-eval' https://cdn.jsdelivr.net https://a.caioricciuti.com",
@@ -106,6 +111,18 @@ export default defineConfig(({ mode }) => {
               options: {
                 cacheName: 'duckdb-extensions',
                 expiration: { maxEntries: 60 },
+                cacheableResponse: { statuses: [0, 200] },
+              },
+            },
+            {
+              // Pyodide (Python cells): a pinned, versioned path whose files
+              // never change, and large enough (runtime + wheels) that it
+              // must not evict the DuckDB bundles from the jsdelivr cache.
+              urlPattern: /^https:\/\/cdn\.jsdelivr\.net\/pyodide\/.*/i,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'pyodide',
+                expiration: { maxEntries: 80, maxAgeSeconds: 30 * 24 * 60 * 60 },
                 cacheableResponse: { statuses: [0, 200] },
               },
             },

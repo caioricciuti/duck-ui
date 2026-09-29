@@ -5,7 +5,7 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
-  { ignores: ['dist', 'docs'] },
+  { ignores: ['dist', 'docs', '.claude'] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['**/*.{ts,tsx}'],
@@ -28,5 +28,15 @@ export default tseslint.config(
         { argsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' },
       ],
     },
+  },
+  {
+    // shadcn primitives export variants next to components, the entry file
+    // exports nothing, and the theme context ships its hook alongside.
+    files: [
+      'src/components/ui/**/*.tsx',
+      'src/main.tsx',
+      'src/components/theme/theme-provider.tsx',
+    ],
+    rules: { 'react-refresh/only-export-components': 'off' },
   },
 )

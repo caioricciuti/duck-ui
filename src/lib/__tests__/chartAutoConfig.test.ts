@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { isNumericColumn } from "@/lib/chartDataTransform";
+import { autoDetectChartConfig, DEFAULT_CHART_COLORS } from "@/lib/chartAutoConfig";
 import type { QueryResult } from "@/store/types";
 
 /**
@@ -93,5 +94,14 @@ describe("single-point x range", () => {
 
   it("leaves a normal result's range alone", () => {
     expect(range(5, 1, 5)).toEqual([1, 5]);
+  });
+});
+
+describe("autoDetectChartConfig", () => {
+  it("applies the same axis rule as the mirrored helper", () => {
+    const result = makeResult(["1", "2", "3"], [{ "1": 1, "2": 2, "3": 3 }]);
+    const config = autoDetectChartConfig(result);
+    expect({ xAxis: config.xAxis, yAxis: config.yAxis }).toEqual(pickAxes(result));
+    expect(config.colors).toEqual(DEFAULT_CHART_COLORS);
   });
 });

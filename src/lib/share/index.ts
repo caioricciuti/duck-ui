@@ -155,7 +155,7 @@ export function tabToSharePayload(
       }
     }
     // Strip cached results — only the definition is shared.
-    const cleanCells = cells.map((cell) => ({ ...cell, result: null }));
+    const cleanCells = cells.map((cell) => ({ ...cell, result: null, pythonOutput: null }));
     return {
       v: SHARE_VERSION,
       type: "notebook",

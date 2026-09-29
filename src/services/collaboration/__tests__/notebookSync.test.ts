@@ -113,6 +113,33 @@ describe("mergeSharedIntoLocal", () => {
     expect(merged[0].id).toBe("x");
   });
 
+  it("syncs Python cells without their output, and keeps local output on merge", () => {
+    const local = JSON.stringify([
+      {
+        id: "p",
+        type: "python",
+        content: "print(1)",
+        pythonOutput: { stdout: "1\n", stderr: "", images: ["AAAA"] },
+      },
+    ]);
+    const cells = toSyncableCells(local);
+    expect(cells).toEqual([{ id: "p", type: "python", content: "print(1)" }]);
+    expect(JSON.stringify(cells)).not.toContain("stdout");
+
+    const merged = JSON.parse(
+      mergeSharedIntoLocal([{ id: "p", type: "python", content: "print(2)" }], local)
+    );
+    expect(merged[0].content).toBe("print(2)");
+    expect(merged[0].pythonOutput).toEqual({ stdout: "1\n", stderr: "", images: ["AAAA"] });
+  });
+
+  it("passes an unknown cell type through untouched", () => {
+    const cells = toSyncableCells(JSON.stringify([{ id: "r", type: "r-lang", content: "x <- 1" }]));
+    expect(cells?.[0].type).toBe("r-lang");
+    const merged = JSON.parse(mergeSharedIntoLocal(cells ?? [], "[]"));
+    expect(merged[0]).toMatchObject({ id: "r", type: "r-lang", content: "x <- 1" });
+  });
+
   it("round-trips chart config through its JSON encoding", () => {
     const merged = JSON.parse(
       mergeSharedIntoLocal(

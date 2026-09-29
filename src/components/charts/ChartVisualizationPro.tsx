@@ -35,7 +35,8 @@ import {
 import { toast } from "sonner";
 import { useTheme } from "@/components/theme/theme-provider";
 import { formatNumber, formatNumberWithSuffix, shortenLabel } from "@/lib/chartUtils";
-import { transformData, isNumericColumn, suggestChartTypes } from "@/lib/chartDataTransform";
+import { transformData, isNumericColumn } from "@/lib/chartDataTransform";
+import { autoDetectChartConfig, DEFAULT_CHART_COLORS } from "@/lib/chartAutoConfig";
 import { exportChartAsPNG } from "@/lib/chartExport";
 import UPlotChart from "./UPlotChart";
 import { tooltipPlugin } from "./tooltipPlugin";
@@ -54,18 +55,7 @@ interface ChartVisualizationProProps {
 }
 
 // Enhanced color palette
-const DEFAULT_COLORS = [
-  "#D99B43",
-  "#8B5CF6",
-  "#3B82F6",
-  "#10B981",
-  "#F59E0B",
-  "#EF4444",
-  "#EC4899",
-  "#6366F1",
-  "#14B8A6",
-  "#F97316",
-];
+const DEFAULT_COLORS = DEFAULT_CHART_COLORS;
 
 // Chart type display labels with icons
 const CHART_TYPE_INFO: Record<string, { label: string; icon: React.ElementType }> = {
@@ -316,33 +306,10 @@ export const ChartVisualizationPro: React.FC<ChartVisualizationProProps> = ({
   );
 
   // Auto-chart: detect best config when no config exists
-  const autoDetect = useCallback((): ChartConfig => {
-    // Prefer a categorical column for the x-axis; fall back to the first
-    // column when everything is numeric.
-    const xAxis =
-      result.columns.find((col) => !isNumericColumn(result.data, col)) || result.columns[0] || "";
-
-    // The x-axis column must NOT also be plotted as a series. With an
-    // all-numeric result (`SELECT 1, 2, 3`) the old default picked column one
-    // for both, so the chart drew a value against itself and the legend
-    // listed the axis as data.
-    const yCol =
-      numericColumns.find((col) => col !== xAxis) ||
-      result.columns.find((col) => col !== xAxis) ||
-      "";
-    const suggested = suggestChartTypes(result, xAxis, yCol);
-    const type = (suggested[0] || "bar") as ChartType;
-    return {
-      type,
-      xAxis,
-      yAxis: yCol,
-      colors: DEFAULT_COLORS,
-      showGrid: true,
-      showValues: false,
-      smooth: false,
-      legend: { show: true, position: "bottom" },
-    };
-  }, [result, numericColumns]);
+  const autoDetect = useCallback(
+    (): ChartConfig => autoDetectChartConfig(result, DEFAULT_COLORS),
+    [result]
+  );
 
   // On mount: auto-generate config if none provided
   useEffect(() => {
