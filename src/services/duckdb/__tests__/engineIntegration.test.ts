@@ -73,6 +73,18 @@ describe("real-engine coercion regressions", () => {
     expect(ts.toISOString()).toBe("2025-06-15T12:34:56.000Z");
   });
 
+  it("fractional TIME matches DuckDB's own ::VARCHAR, in the grid and exports (#42)", () => {
+    // DuckDB trims trailing zeros from fractional seconds, so the trimmed form
+    // is the canonical one: exports reuse it and must round-trip through
+    // DuckDB unchanged.
+    const literals = ["12:34:56.5", "12:34:56.123456", "12:34:56.120000", "00:00:00.000001"];
+    const select = literals
+      .map((t, i) => `TIME '${t}' AS t${i}, TIME '${t}'::VARCHAR AS v${i}`)
+      .join(", ");
+    const row = run(`SELECT ${select}`).data[0];
+    literals.forEach((_, i) => expect(row[`t${i}`]).toBe(row[`v${i}`]));
+  });
+
   it("TIME renders as HH:MM:SS", () => {
     const result = run("SELECT TIME '12:34:56' AS t");
     expect(result.data[0].t).toBe("12:34:56");

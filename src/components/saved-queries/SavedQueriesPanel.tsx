@@ -94,7 +94,13 @@ export default function SavedQueriesPanel({ onClose }: SavedQueriesPanelProps) {
           <Bookmark className="h-4 w-4" />
           Saved Queries
         </span>
-        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6"
+          onClick={onClose}
+          aria-label="Close saved queries"
+        >
           <X className="h-4 w-4" />
           <span className="sr-only">Close</span>
         </Button>
@@ -156,6 +162,7 @@ export default function SavedQueriesPanel({ onClose }: SavedQueriesPanelProps) {
                           size="icon"
                           className="h-7 w-7 shrink-0"
                           onClick={(e) => e.stopPropagation()}
+                          aria-label={`${query.name} options`}
                         >
                           <MoreVertical className="h-4 w-4" />
                         </Button>

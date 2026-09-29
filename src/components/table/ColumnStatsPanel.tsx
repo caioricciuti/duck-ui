@@ -228,6 +228,7 @@ export const ColumnStatsPanel: React.FC<ColumnStatsPanelProps> = ({
                   e.stopPropagation();
                   onToggleMinimize();
                 }}
+                aria-label="Expand column statistics"
               >
                 <ChevronUp className="h-4 w-4" />
               </Button>
@@ -239,6 +240,7 @@ export const ColumnStatsPanel: React.FC<ColumnStatsPanelProps> = ({
                   e.stopPropagation();
                   onClose();
                 }}
+                aria-label="Close column statistics"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -260,10 +262,22 @@ export const ColumnStatsPanel: React.FC<ColumnStatsPanelProps> = ({
             </p>
           </div>
           <div className="flex gap-1">
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={onToggleMinimize}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0"
+              onClick={onToggleMinimize}
+              aria-label="Minimize column statistics"
+            >
               <ChevronDown className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={onClose}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0"
+              onClick={onClose}
+              aria-label="Close column statistics"
+            >
               <X className="h-4 w-4" />
             </Button>
           </div>

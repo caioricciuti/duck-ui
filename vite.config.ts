@@ -17,7 +17,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 // tile host, or the map silently falls back to its blank offline background.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' blob: 'wasm-unsafe-eval' https://cdn.jsdelivr.net https://a.caioricciuti.com",
+  "script-src 'self' blob: 'wasm-unsafe-eval' https://cdn.jsdelivr.net",
   "worker-src 'self' blob:",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",

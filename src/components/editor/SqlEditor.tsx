@@ -313,7 +313,13 @@ const SqlEditor: React.FC<SqlEditorProps> = ({ tabId, title, className }) => {
           <TooltipProvider>
             <Tooltip delayDuration={200}>
               <TooltipTrigger asChild>
-                <Button onClick={handleShareQuery} variant="ghost" size="icon" className="h-9 w-9">
+                <Button
+                  onClick={handleShareQuery}
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9"
+                  aria-label="Share query & chart"
+                >
                   <Share2 className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
@@ -331,6 +337,7 @@ const SqlEditor: React.FC<SqlEditorProps> = ({ tabId, title, className }) => {
                   size="icon"
                   className="h-9 w-9"
                   disabled={!currentContent.trim() || !currentProfileId}
+                  aria-label="Save Query"
                 >
                   <Bookmark className="h-4 w-4" />
                 </Button>
@@ -348,6 +355,7 @@ const SqlEditor: React.FC<SqlEditorProps> = ({ tabId, title, className }) => {
                   variant={duckBrain.isPanelOpen ? "secondary" : "ghost"}
                   size="icon"
                   className="h-9 w-9"
+                  aria-label={duckBrain.isPanelOpen ? "Close Duck Brain" : "Open Duck Brain"}
                 >
                   <Brain className={cn("h-4 w-4", duckBrain.isPanelOpen && "text-primary")} />
                 </Button>
@@ -366,6 +374,7 @@ const SqlEditor: React.FC<SqlEditorProps> = ({ tabId, title, className }) => {
                   variant="ghost"
                   size="icon"
                   className="h-9 w-9"
+                  aria-label="Explain Plan"
                 >
                   <ListTree className="h-4 w-4" />
                 </Button>

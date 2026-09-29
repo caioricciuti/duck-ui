@@ -109,6 +109,7 @@ const QueryHistory: React.FC<QueryHistoryProps> = ({ isExpanded, mode = "sheet" 
                     size="icon"
                     className="h-7 w-7 shrink-0"
                     onClick={() => handleCopyQuery(item.query)}
+                    aria-label="Copy query"
                   >
                     {copiedQuery === item.query ? (
                       <CopyCheck className="w-3.5 h-3.5" />
@@ -167,7 +168,7 @@ const QueryHistory: React.FC<QueryHistoryProps> = ({ isExpanded, mode = "sheet" 
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       {!isExpanded && (
         <SheetTrigger asChild>
-          <Button variant="ghost">
+          <Button variant="ghost" aria-label="Query History">
             <FileClock className="w-8 h-8" />
           </Button>
         </SheetTrigger>

@@ -254,7 +254,12 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(
                 {contextMenuOptions[node.type as keyof typeof contextMenuOptions].length > 0 && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button size="icon" variant="ghost" className="h-6 w-6">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6"
+                        aria-label={`More options for ${node.name}`}
+                      >
                         <MoreVertical className="w-4 h-4" />
                       </Button>
                     </DropdownMenuTrigger>
@@ -284,7 +289,7 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(
             )}
           </ContextMenuContent>
           {(isOpen || searchTerm) && node.children && (
-            <div>
+            <div role="group">
               {node.children.length > 0 ? (
                 node.children.map((child) => (
                   <TreeNode
@@ -306,7 +311,7 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(
 
           {/* Render column stats for tables */}
           {isOpen && node.type === "table" && (
-            <div>
+            <div role="group">
               {isLoadingStats ? (
                 <div className="ml-8 flex items-center gap-2 py-2 text-xs text-muted-foreground">
                   <Loader2 className="w-3 h-3 animate-spin" />
@@ -320,6 +325,7 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(
                     databaseName={parentDatabaseName}
                     tableName={node.name}
                     schema={node.schema}
+                    level={level + 2}
                   />
                 ))
               ) : null}
