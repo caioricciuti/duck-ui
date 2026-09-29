@@ -268,7 +268,12 @@
           placeholder="Column"
           value={config.xAxis}
           options={result.columns.map((col) => ({ value: col, label: col }))}
-          onchange={(value) => updateConfig({ xAxis: value })}
+          onchange={(value) =>
+            // Aggregation groups by the x axis, so the two move together.
+            updateConfig({
+              xAxis: value,
+              ...(config.transform?.groupBy ? { transform: { ...config.transform, groupBy: value } } : {}),
+            })}
         />
       </div>
 
