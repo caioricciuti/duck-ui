@@ -4,16 +4,19 @@
   import TabBar from './TabBar.svelte'
   import TabContent from './TabContent.svelte'
   import CommandPalette from './CommandPalette.svelte'
-  import ExplorerPanel from '../explorer/ExplorerPanel.svelte'
+  import ContextPanel from './ContextPanel.svelte'
+  import PageRouter from './PageRouter.svelte'
   import DuckBrainSheet from '../duck-brain/DuckBrainSheet.svelte'
   import { duckActions } from '../../stores/duck.svelte'
   import { openCommandPalette, toggleCommandPalette } from '../../stores/command-palette.svelte'
   import { toggleExplorer } from '../../stores/layout.svelte'
   import { hasUnsavedWork } from '@/lib/boot'
+  import { initRouter, isOnWorkspace, goWorkspace } from '../../stores/router.svelte'
 
   function handleGlobalShortcuts(e: KeyboardEvent) {
     const mod = e.metaKey || e.ctrlKey
-    const key = e.key.toLowerCase()
+    // Autofill and IME events arrive as keydown without a key.
+    const key = e.key?.toLowerCase() ?? ''
     const target = e.target as HTMLElement | null
     const isTypingTarget = !!target && (
       target.tagName === 'INPUT' ||
@@ -32,11 +35,12 @@
     // we care about, and a query editor is where they are wanted most.
     if (e.altKey && !mod && e.code === 'KeyN') {
       e.preventDefault()
+      goWorkspace()
       duckActions().createTab('sql')
       return
     }
 
-    if (e.altKey && !mod && e.code === 'KeyW') {
+    if (e.altKey && !mod && e.code === 'KeyW' && isOnWorkspace()) {
       e.preventDefault()
       const { activeTabId, closeTab } = duckActions()
       if (activeTabId) closeTab(activeTabId)
@@ -51,7 +55,7 @@
       return
     }
 
-    if (mod && key === 'b') {
+    if (mod && key === 'b' && isOnWorkspace()) {
       e.preventDefault()
       toggleExplorer()
     }
@@ -62,9 +66,11 @@
   }
 
   onMount(() => {
+    const stopRouter = initRouter()
     window.addEventListener('keydown', handleGlobalShortcuts, true)
     window.addEventListener('beforeunload', handleBeforeUnload)
     return () => {
+      stopRouter()
       window.removeEventListener('keydown', handleGlobalShortcuts, true)
       window.removeEventListener('beforeunload', handleBeforeUnload)
     }
@@ -73,9 +79,18 @@
 
 <div class="flex h-full">
   <Sidebar />
-  <ExplorerPanel />
+  <ContextPanel />
 
-  <main class="flex min-w-0 flex-1 flex-col overflow-hidden bg-canvas">
+  <!-- Pages: full-screen product areas driven by the URL -->
+  {#if !isOnWorkspace()}
+    <main class="flex min-w-0 flex-1 flex-col overflow-hidden bg-canvas">
+      <PageRouter />
+    </main>
+  {/if}
+
+  <!-- Workspace: stays mounted while a page is shown, so running queries and
+       results survive navigation. -->
+  <main class="flex min-w-0 flex-1 flex-col overflow-hidden bg-canvas" hidden={!isOnWorkspace()}>
     <TabBar />
     <div class="min-h-0 flex-1">
       <TabContent />

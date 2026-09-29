@@ -2,6 +2,7 @@ import type { StateCreator } from "@/store/createStore";
 import { toast } from "svelte-sonner";
 import { generateUUID } from "@/lib/utils";
 import { isGatedTabHidden } from "@/lib/appConfig";
+import { isPageTabType, openPageFor } from "@/lib/pageNavigation";
 import { disposePythonKernel } from "@/services/python/kernel";
 import type { DuckStoreState, TabSlice, EditorTab, NotebookCell, NotebookCellType } from "../types";
 
@@ -57,6 +58,11 @@ export const createTabSlice: StateCreator<DuckStoreState, [], [], TabSlice> = (s
   createTab: (type = "sql", content = "", title) => {
     // Kiosk mode: refuse to open gated surfaces; keep the current tab focused.
     if (isGatedTabHidden(type)) {
+      return get().activeTabId ?? "";
+    }
+    // Connections and Settings are pages, not tabs.
+    if (isPageTabType(type)) {
+      openPageFor(type);
       return get().activeTabId ?? "";
     }
     const isNotebook = type === "notebook";

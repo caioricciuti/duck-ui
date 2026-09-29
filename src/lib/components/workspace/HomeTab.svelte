@@ -9,23 +9,18 @@
   import { demoDatasets, type DemoDataset } from '@/lib/demoDatasets'
   import { stageRemoteTextFile } from '@/services/duckdb/utils'
   import { getUiConfig } from '@/lib/appConfig'
+  import { goTo } from '../../stores/router.svelte'
 
   const ui = getUiConfig()
   const version = __DUCK_UI_VERSION__
   const releaseDate = __DUCK_UI_RELEASE_DATE__
 
-  const tabs = $derived(duck((s) => s.tabs))
   const db = $derived(duck((s) => s.db))
   const supportsFileImport = $derived(duck((s) => s.currentSession?.capabilities.supportsFileImport ?? false))
   const profile = $derived(duck((s) => s.currentProfile))
 
   let openingDemo = $state<string | null>(null)
 
-  function openConnections() {
-    const existing = tabs.find((t) => t.type === 'connections')
-    if (existing) duckActions().setActiveTab(existing.id)
-    else duckActions().createTab('connections', '', 'Connections')
-  }
 
   const quickStart = $derived([
     {
@@ -58,7 +53,7 @@
             title: 'Connect local DuckDB',
             description: 'Query your own DuckDB instance over the HTTP server extension.',
             icon: Server,
-            run: openConnections,
+            run: () => goTo('connections'),
           },
         ]),
   ])

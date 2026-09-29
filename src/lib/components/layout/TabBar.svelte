@@ -1,19 +1,17 @@
 <script lang="ts">
   import {
-    X, Plus, Home, SquareTerminal, NotebookPen, LayoutDashboard, Cable, Settings,
+    X, Plus, Home, SquareTerminal, NotebookPen, LayoutDashboard,
   } from 'lucide-svelte'
   import { tick } from 'svelte'
   import ContextMenu, { type ContextMenuItem } from '../common/ContextMenu.svelte'
   import { duck, duckActions } from '../../stores/duck.svelte'
   import type { EditorTab, EditorTabType } from '@/store/types'
 
-  const ICONS: Record<EditorTabType, typeof Home> = {
+  const ICONS: Partial<Record<EditorTabType, typeof Home>> = {
     home: Home,
     sql: SquareTerminal,
     notebook: NotebookPen,
     dashboard: LayoutDashboard,
-    connections: Cable,
-    settings: Settings,
   }
   const RENAMABLE: EditorTabType[] = ['sql', 'notebook']
 
@@ -116,6 +114,7 @@
         role="tab"
         tabindex={active ? 0 : -1}
         aria-selected={active}
+        aria-label={tab.title}
         draggable={renamingId !== tab.id}
         onclick={() => duckActions().setActiveTab(tab.id)}
         onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && duckActions().setActiveTab(tab.id)}
@@ -163,6 +162,14 @@
     aria-label="New query"
   >
     <Plus size={14} />
+  </button>
+  <button
+    class="inline-flex w-9 shrink-0 items-center justify-center text-fg-3 hover:bg-hover hover:text-fg"
+    onclick={() => duckActions().createTab('notebook')}
+    title="New notebook"
+    aria-label="New notebook"
+  >
+    <NotebookPen size={14} />
   </button>
 </div>
 

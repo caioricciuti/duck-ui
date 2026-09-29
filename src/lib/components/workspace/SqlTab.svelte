@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Play, Square, ListTree, WandSparkles, Pin, GitCompare, Keyboard, Brain, Sparkles, ChartColumn, Map as MapIcon } from 'lucide-svelte'
+  import { Play, Square, ListTree, WandSparkles, Pin, GitCompare, Keyboard, Brain, Sparkles, Bookmark, ChartColumn, Map as MapIcon } from 'lucide-svelte'
   import Button from '../common/Button.svelte'
   import Tooltip from '../common/Tooltip.svelte'
   import CodeEditor from '../editor/CodeEditor.svelte'
@@ -9,6 +9,7 @@
   import ResultCompareDialog from '../editor/ResultCompareDialog.svelte'
   import ChartView from '../charts/ChartView.svelte'
   import Spinner from '../common/Spinner.svelte'
+  import SaveQueryDialog from '../saved-queries/SaveQueryDialog.svelte'
   import BrainResultActions from '../duck-brain/BrainResultActions.svelte'
   import { duck, duckActions } from '../../stores/duck.svelte'
   import * as toast from '../../stores/toast.svelte'
@@ -55,6 +56,8 @@
   let compareOpen = $state(false)
   let resizing = $state(false)
   let fixing = $state(false)
+  let saveOpen = $state(false)
+  const profileId = $derived(duck((s) => s.currentProfileId))
 
   const savedSplit = parseFloat(localStorage.getItem(SPLIT_KEY) ?? '')
   let splitPercent = $state(Number.isNaN(savedSplit) ? 45 : savedSplit)
@@ -196,6 +199,11 @@
           Explain
         </Button>
 
+        <Button size="sm" variant="ghost" onclick={() => (saveOpen = true)} title="Save query" disabled={!sqlText.trim() || !profileId}>
+          <Bookmark size={13} />
+          Save
+        </Button>
+
         <div class="ml-auto flex items-center">
           {#if !ui.hideBrain}
             <Button
@@ -296,6 +304,7 @@
     </div>
   </div>
 
+  <SaveQueryDialog open={saveOpen} sql={sqlText} defaultTitle={tab.title} onclose={() => (saveOpen = false)} />
   <ExplainPlanViewer open={explainOpen} {explainText} onclose={() => (explainOpen = false)} />
   <ResultCompareDialog open={compareOpen} currentResult={tab.result} onclose={() => (compareOpen = false)} />
 

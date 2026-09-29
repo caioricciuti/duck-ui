@@ -110,20 +110,16 @@ export const createProfileSlice: StateCreator<DuckStoreState, [], [], ProfileSli
       try {
         // Tab types that no longer exist (the old Brain settings tab) are
         // dropped rather than rendered as a mystery blank.
-        const validTypes = new Set([
-          "sql",
-          "notebook",
-          "dashboard",
-          "home",
-          "connections",
-          "settings",
-        ]);
+        const validTypes = new Set(["sql", "notebook", "dashboard", "home"]);
         const tabs = (JSON.parse(workspace.tabs) as EditorTab[]).filter((tab) =>
           validTypes.has(tab.type)
         );
         set({
           tabs: tabs.length > 0 ? tabs : [{ id: "home", title: "Home", type: "home", content: "" }],
-          activeTabId: workspace.active_tab_id ?? tabs[0]?.id ?? "home",
+          // Connections and Settings became pages, so a workspace saved while
+          // one of them was the active tab points at a tab that is gone.
+          activeTabId:
+            tabs.find((tab) => tab.id === workspace.active_tab_id)?.id ?? tabs[0]?.id ?? "home",
           currentDatabase: workspace.current_database ?? "memory",
         });
       } catch {

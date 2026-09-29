@@ -3,7 +3,8 @@
   import { generateUUID } from '@/lib/utils'
   import Button from '../common/Button.svelte'
   import Panel from '../common/Panel.svelte'
-  import SectionHeader from '../common/SectionHeader.svelte'
+  import PageHeader from '../common/PageHeader.svelte'
+  import PageBody from '../common/PageBody.svelte'
   import { duck, duckActions } from '../../stores/duck.svelte'
   import ConnectionForm from './ConnectionForm.svelte'
   import ConnectionsList from './ConnectionsList.svelte'
@@ -48,31 +49,29 @@
   }
 </script>
 
-<div class="h-full overflow-auto">
-  <div class="mx-auto flex max-w-5xl flex-col px-6 py-6">
-    <SectionHeader level="page" title="Connections" description="DuckDB servers and browser databases this profile can query.">
-      {#snippet actions()}
-        <Button size="sm" variant="outline" disabled={connecting} onclick={() => (adding = true)}>
-          <Plus size={14} />
-          Add Connection
-        </Button>
-      {/snippet}
-    </SectionHeader>
+<PageHeader title="Connections" subtitle="DuckDB servers and browser databases this profile can query">
+  {#snippet actions()}
+    <Button size="sm" disabled={connecting} onclick={() => (adding = true)}>
+      <Plus size={14} />
+      Add connection
+    </Button>
+  {/snippet}
+</PageHeader>
 
-    <Panel title="Available Connections" description="List of all configured database connections" padding="none">
-      <div class="pt-3">
-        <ConnectionsList
-          {connections}
-          {currentConnectionId}
-          {loading}
-          onconnect={connect}
-          onedit={edit}
-          ondelete={(id) => duckActions().deleteConnection(id)}
-        />
-      </div>
-    </Panel>
-  </div>
-</div>
+<PageBody>
+  <Panel title="Available connections" description="Every connection configured for this profile" padding="none">
+    <div class="pt-3">
+      <ConnectionsList
+        {connections}
+        {currentConnectionId}
+        {loading}
+        onconnect={connect}
+        onedit={edit}
+        ondelete={(id) => duckActions().deleteConnection(id)}
+      />
+    </div>
+  </Panel>
+</PageBody>
 
 <ConnectionForm open={adding} onsubmit={addConnection} onclose={() => (adding = false)} />
 

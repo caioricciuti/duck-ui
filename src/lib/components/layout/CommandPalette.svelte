@@ -1,7 +1,7 @@
 <script lang="ts">
   import { tick } from 'svelte'
   import {
-    Search, Plus, Table2, Settings, Moon, Sun, SquareTerminal, Home, NotebookPen, Cable, RefreshCw, PanelLeft,
+    Search, Plus, Table2, Moon, Sun, SquareTerminal, Home, NotebookPen, RefreshCw, PanelLeft,
   } from 'lucide-svelte'
   import { closeCommandPalette, isCommandPaletteOpen } from '../../stores/command-palette.svelte'
   import { duck, duckActions } from '../../stores/duck.svelte'
@@ -9,10 +9,10 @@
   import { toggleExplorer } from '../../stores/layout.svelte'
   import { trapFocus } from '../../utils/focus-trap'
   import { qualifyTable } from '@/lib/sqlSanitize'
-  import { getUiConfig } from '@/lib/appConfig'
-  import type { EditorTabType } from '@/store/types'
+  import { goTo, goWorkspace } from '../../stores/router.svelte'
+  import { NAV_GROUPS, PAGE_ROUTES, PAGE_SECTIONS, visibleRoutes } from '@/lib/routes'
 
-  type Group = 'actions' | 'tabs' | 'tables'
+  type Group = 'actions' | 'pages' | 'tabs' | 'tables'
 
   interface CommandItem {
     id: string
@@ -25,11 +25,9 @@
     run: () => void
   }
 
-  const GROUP_LABEL: Record<Group, string> = { actions: 'Quick actions', tabs: 'Open tabs', tables: 'Tables' }
-  const GROUP_ORDER: Group[] = ['actions', 'tabs', 'tables']
+  const GROUP_LABEL: Record<Group, string> = { actions: 'Quick actions', pages: 'Pages', tabs: 'Open tabs', tables: 'Tables' }
+  const GROUP_ORDER: Group[] = ['actions', 'pages', 'tabs', 'tables']
   const MAX_PER_GROUP = 12
-
-  const ui = getUiConfig()
 
   let inputEl: HTMLInputElement | undefined = $state()
   let listEl: HTMLDivElement | undefined = $state()
@@ -56,26 +54,38 @@
     return score
   }
 
-  function openOrFocus(type: EditorTabType, title: string) {
-    const existing = tabs.find((t) => t.type === type)
+  /** Opens a tab and brings the workspace forward, in case a page is showing. */
+  function inWorkspace(action: () => void): () => void {
+    return () => {
+      goWorkspace()
+      action()
+    }
+  }
+
+  function openHome() {
+    const existing = tabs.find((t) => t.type === 'home')
     if (existing) duckActions().setActiveTab(existing.id)
-    else duckActions().createTab(type, '', title)
+    else duckActions().createTab('home', '', 'Home')
   }
 
   const items = $derived.by((): CommandItem[] => {
     const list: CommandItem[] = [
-      { id: 'new-query', group: 'actions', label: 'New query', icon: Plus, shortcut: '⌥N', keywords: 'sql editor tab', run: () => duckActions().createTab('sql') },
-      { id: 'new-notebook', group: 'actions', label: 'New notebook', icon: NotebookPen, keywords: 'python markdown cells', run: () => duckActions().createTab('notebook') },
-      { id: 'home', group: 'actions', label: 'Home', icon: Home, keywords: 'start welcome', run: () => openOrFocus('home', 'Home') },
-      { id: 'explorer', group: 'actions', label: 'Toggle explorer', icon: PanelLeft, shortcut: '⌘B', keywords: 'sidebar schema panel', run: toggleExplorer },
+      { id: 'new-query', group: 'actions', label: 'New query', icon: Plus, shortcut: '⌥N', keywords: 'sql editor tab', run: inWorkspace(() => duckActions().createTab('sql')) },
+      { id: 'new-notebook', group: 'actions', label: 'New notebook', icon: NotebookPen, keywords: 'python markdown cells', run: inWorkspace(() => duckActions().createTab('notebook')) },
+      { id: 'home', group: 'actions', label: 'Home', icon: Home, keywords: 'start welcome', run: inWorkspace(openHome) },
+      { id: 'explorer', group: 'actions', label: 'Toggle explorer', icon: PanelLeft, shortcut: '⌘B', keywords: 'sidebar schema panel', run: inWorkspace(toggleExplorer) },
       { id: 'refresh', group: 'actions', label: 'Refresh schema', icon: RefreshCw, keywords: 'reload tables databases', run: () => void duckActions().fetchDatabasesAndTablesInfo() },
       { id: 'theme', group: 'actions', label: getTheme() === 'dark' ? 'Switch to light theme' : 'Switch to dark theme', icon: getTheme() === 'dark' ? Sun : Moon, keywords: 'dark light mode appearance', run: toggleTheme },
     ]
-    if (!ui.hideConnections) {
-      list.push({ id: 'connections', group: 'actions', label: 'Connections', icon: Cable, keywords: 'external opfs server', run: () => openOrFocus('connections', 'Connections') })
-    }
-    if (!ui.hideSettings) {
-      list.push({ id: 'settings', group: 'actions', label: 'Settings', icon: Settings, keywords: 'preferences profile ai extensions', run: () => openOrFocus('settings', 'Settings') })
+
+    for (const group of NAV_GROUPS) {
+      for (const route of visibleRoutes(group)) {
+        const meta = PAGE_ROUTES[route]
+        list.push({ id: `page:${route}`, group: 'pages', label: meta.label, sub: group.label, keywords: meta.description, icon: meta.icon, run: () => goTo(route) })
+        for (const section of PAGE_SECTIONS[route] ?? []) {
+          list.push({ id: `page:${route}:${section.id}`, group: 'pages', label: `${meta.label}: ${section.label}`, sub: group.label, icon: meta.icon, run: () => goTo(route, section.id) })
+        }
+      }
     }
 
     for (const tab of tabs) {
@@ -85,7 +95,7 @@
         label: tab.title,
         sub: tab.type,
         icon: SquareTerminal,
-        run: () => duckActions().setActiveTab(tab.id),
+        run: inWorkspace(() => duckActions().setActiveTab(tab.id)),
       })
     }
 
@@ -99,6 +109,7 @@
           keywords: table.columns.map((c) => c.name).join(' '),
           icon: Table2,
           run: () => {
+            goWorkspace()
             const sql = `SELECT * FROM ${qualifyTable(db.name, table.schema, table.name)} LIMIT 100`
             const { createTab, executeQuery } = duckActions()
             const tabId = createTab('sql', sql, table.name)
