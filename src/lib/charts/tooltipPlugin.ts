@@ -12,6 +12,12 @@ function escapeHtml(str: string): string {
 
 export interface TooltipPluginOptions {
   stacked?: boolean;
+  /**
+   * Values to show instead of the plotted ones, one array per series in
+   * series order (without the x series). A stacked chart plots running
+   * totals, and the tooltip must show what each series contributes.
+   */
+  values?: (number | null)[][];
 }
 
 export function tooltipPlugin(xLabels: string[], opts?: TooltipPluginOptions): uPlot.Plugin {
@@ -60,7 +66,7 @@ export function tooltipPlugin(xLabels: string[], opts?: TooltipPluginOptions): u
         for (let i = 1; i < u.series.length; i++) {
           const s = u.series[i];
           if (!s.show) continue;
-          const rawVal = u.data[i][idx];
+          const rawVal = opts?.values ? opts.values[i - 1]?.[idx] : u.data[i][idx];
           const val = rawVal != null ? (rawVal as number) : null;
           const color =
             typeof s.stroke === "function"
@@ -74,7 +80,7 @@ export function tooltipPlugin(xLabels: string[], opts?: TooltipPluginOptions): u
         }
 
         for (const row of rows) {
-          const formatted = row.val != null ? formatNumberWithSuffix(row.val) : "\u2014";
+          const formatted = row.val != null ? formatNumberWithSuffix(row.val) : "-";
           const pct =
             isStacked && row.val != null && total > 0
               ? ` <span class="uplot-tooltip-pct">(${((row.val / total) * 100).toFixed(1)}%)</span>`
