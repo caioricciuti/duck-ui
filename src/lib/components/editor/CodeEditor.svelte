@@ -132,9 +132,13 @@
     return view ? selectionOrAll(view) : value.trim()
   }
 
-  export function format(): void {
+  export async function format(): Promise<void> {
     if (!view || language !== 'sql' || readonly) return
-    setValue(formatSql(view.state.doc.toString()))
+    const before = view.state.doc.toString()
+    const formatted = await formatSql(before)
+    // Typing continued while the formatter loaded: keep what was typed.
+    if (!view || view.state.doc.toString() !== before) return
+    setValue(formatted)
     flushChange()
   }
 
@@ -178,7 +182,7 @@
           key: 'Alt-f',
           run: () => {
             if (language !== 'sql') return false
-            format()
+            void format()
             return true
           },
         },

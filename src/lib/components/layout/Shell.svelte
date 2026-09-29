@@ -6,7 +6,7 @@
   import CommandPalette from './CommandPalette.svelte'
   import ContextPanel from './ContextPanel.svelte'
   import PageRouter from './PageRouter.svelte'
-  import DuckBrainSheet from '../duck-brain/DuckBrainSheet.svelte'
+  import Lazy from '../common/Lazy.svelte'
   import JoinSessionDialog from '../collaboration/JoinSessionDialog.svelte'
   import DeepLinkLoader from '../share/DeepLinkLoader.svelte'
   import ShareLiveDialog from '../collaboration/ShareLiveDialog.svelte'
@@ -84,6 +84,13 @@
     goWorkspace()
   })
 
+  // Duck Brain is fetched the first time its panel opens, then stays mounted.
+  const brainOpen = $derived(duck((s) => s.duckBrain.isPanelOpen))
+  let brainRequested = $state(false)
+  $effect(() => {
+    if (brainOpen) brainRequested = true
+  })
+
   function handleBeforeUnload(e: BeforeUnloadEvent) {
     if (hasUnsavedWork()) e.preventDefault()
   }
@@ -122,7 +129,9 @@
 </div>
 
 <CommandPalette />
-<DuckBrainSheet />
+{#if brainRequested}
+  <Lazy load={() => import('../duck-brain/DuckBrainSheet.svelte')} props={{}} />
+{/if}
 <JoinSessionDialog />
 <DeepLinkLoader />
 <DashboardShareLoader />

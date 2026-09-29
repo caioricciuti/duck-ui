@@ -1,9 +1,8 @@
 <script lang="ts">
   import HomeTab from '../workspace/HomeTab.svelte'
-  import DashboardTab from '../dashboard/DashboardTab.svelte'
   import { openShareLive } from '../../stores/overlays.svelte'
   import SqlTab from '../workspace/SqlTab.svelte'
-  import NotebookTab from '../notebook/NotebookTab.svelte'
+  import Lazy from '../common/Lazy.svelte'
   import { duck } from '../../stores/duck.svelte'
 
   const tabs = $derived(duck((s) => s.tabs))
@@ -19,9 +18,9 @@
     {:else if tab.type === 'sql'}
       <SqlTab tabId={tab.id} />
     {:else if tab.type === 'notebook'}
-      <NotebookTab tabId={tab.id} />
+      <Lazy load={() => import('../notebook/NotebookTab.svelte')} props={{ tabId: tab.id }} />
     {:else if tab.type === 'dashboard'}
-      <DashboardTab tabId={tab.id} onsharelive={openShareLive} />
+      <Lazy load={() => import('../dashboard/DashboardTab.svelte')} props={{ tabId: tab.id, onsharelive: openShareLive }} />
     {/if}
   </div>
 {/each}
