@@ -157,7 +157,11 @@ export const createQuerySlice: StateCreator<DuckStoreState, [], [], QuerySlice> 
       // Persist to DB (fire-and-forget)
       const { currentProfileId } = get();
       if (currentProfileId) {
-        addHistoryEntry(currentProfileId, query).catch(() => {});
+        addHistoryEntry(currentProfileId, query, {
+          connectionId: get().currentConnection?.id,
+          durationMs: queryResult.durationMs,
+          rowCount: queryResult.rowCount,
+        }).catch(() => {});
       }
 
       // If the query is DDL, refresh schema.
@@ -189,7 +193,10 @@ export const createQuerySlice: StateCreator<DuckStoreState, [], [], QuerySlice> 
       // Persist to DB (fire-and-forget)
       const { currentProfileId } = get();
       if (currentProfileId) {
-        addHistoryEntry(currentProfileId, query, { error: errorMessage }).catch(() => {});
+        addHistoryEntry(currentProfileId, query, {
+          connectionId: get().currentConnection?.id,
+          error: errorMessage,
+        }).catch(() => {});
       }
       // An ad-hoc caller has no tab to read the failure from, so it gets the
       // same error result the tab would. Resolving with nothing made every

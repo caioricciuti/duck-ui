@@ -1,7 +1,7 @@
 <script lang="ts">
   import { tick } from 'svelte'
   import {
-    Search, Plus, Table2, Moon, Sun, SquareTerminal, Home, NotebookPen, RefreshCw, PanelLeft,
+    Search, Plus, Table2, Moon, Sun, SquareTerminal, Home, NotebookPen, RefreshCw, PanelLeft, Bookmark, History, LayoutDashboard,
   } from 'lucide-svelte'
   import { closeCommandPalette, isCommandPaletteOpen } from '../../stores/command-palette.svelte'
   import { duck, duckActions } from '../../stores/duck.svelte'
@@ -11,8 +11,10 @@
   import { qualifyTable } from '@/lib/sqlSanitize'
   import { goTo, goWorkspace } from '../../stores/router.svelte'
   import { NAV_GROUPS, PAGE_ROUTES, PAGE_SECTIONS, visibleRoutes } from '@/lib/routes'
+  import { getSavedQueries, type SavedQuery } from '@/services/persistence/repositories/savedQueryRepository'
+  import { searchHistory, type HistoryEntry } from '@/services/persistence/repositories/queryHistoryRepository'
 
-  type Group = 'actions' | 'pages' | 'tabs' | 'tables'
+  type Group = 'actions' | 'pages' | 'tabs' | 'saved' | 'dashboards' | 'tables' | 'history'
 
   interface CommandItem {
     id: string
@@ -25,9 +27,15 @@
     run: () => void
   }
 
-  const GROUP_LABEL: Record<Group, string> = { actions: 'Quick actions', pages: 'Pages', tabs: 'Open tabs', tables: 'Tables' }
-  const GROUP_ORDER: Group[] = ['actions', 'pages', 'tabs', 'tables']
+  const GROUP_LABEL: Record<Group, string> = {
+    actions: 'Quick actions', pages: 'Pages', tabs: 'Open tabs', saved: 'Saved queries',
+    dashboards: 'Dashboards', tables: 'Tables', history: 'Recent queries',
+  }
+  const GROUP_ORDER: Group[] = ['actions', 'tabs', 'saved', 'dashboards', 'tables', 'pages', 'history']
   const MAX_PER_GROUP = 12
+  /** Before anything is typed the menu is a starting point, not a listing. */
+  const MAX_PER_GROUP_IDLE = 5
+  const HISTORY_LOOKBACK = 200
 
   let inputEl: HTMLInputElement | undefined = $state()
   let listEl: HTMLDivElement | undefined = $state()
@@ -37,6 +45,40 @@
   const open = $derived(isCommandPaletteOpen())
   const tabs = $derived(duck((s) => s.tabs))
   const databases = $derived(duck((s) => s.databases))
+  const dashboards = $derived(duck((s) => s.dashboards))
+  const profileId = $derived(duck((s) => s.currentProfileId))
+
+  let savedQueries = $state.raw<SavedQuery[]>([])
+  let recentQueries = $state.raw<HistoryEntry[]>([])
+
+  // Read when the menu opens, so it always reflects what was just saved or run.
+  $effect(() => {
+    if (!open || !profileId) return
+    let stale = false
+    void getSavedQueries(profileId)
+      .then((list) => {
+        if (!stale) savedQueries = list
+      })
+      .catch(() => {})
+    void searchHistory(profileId, { status: 'succeeded', limit: HISTORY_LOOKBACK })
+      .then((page) => {
+        if (stale) return
+        // The same query run ten times is one entry here.
+        const seen = new Set<string>()
+        recentQueries = page.entries.filter((entry) => {
+          const key = entry.sql_text.trim()
+          if (seen.has(key)) return false
+          seen.add(key)
+          return true
+        })
+      })
+      .catch(() => {})
+    return () => {
+      stale = true
+    }
+  })
+
+  const oneLine = (sql: string) => sql.replace(/\s+/g, ' ').trim()
 
   function scoreMatch(text: string, term: string): number {
     if (!term) return 1
@@ -99,6 +141,41 @@
       })
     }
 
+    for (const query of savedQueries) {
+      list.push({
+        id: `saved:${query.id}`,
+        group: 'saved',
+        label: query.name,
+        sub: oneLine(query.sql_text).slice(0, 90),
+        keywords: query.sql_text,
+        icon: Bookmark,
+        run: inWorkspace(() => duckActions().createTab('sql', query.sql_text, query.name)),
+      })
+    }
+
+    for (const dashboard of dashboards) {
+      list.push({
+        id: `dashboard:${dashboard.id}`,
+        group: 'dashboards',
+        label: dashboard.name,
+        icon: LayoutDashboard,
+        run: inWorkspace(() => duckActions().openDashboardTab(dashboard.id, dashboard.name)),
+      })
+    }
+
+    for (const entry of recentQueries) {
+      const text = oneLine(entry.sql_text)
+      list.push({
+        id: `history:${entry.id}`,
+        group: 'history',
+        label: text.slice(0, 90),
+        sub: text.length > 90 ? text.slice(90, 200) : undefined,
+        keywords: entry.sql_text,
+        icon: History,
+        run: inWorkspace(() => duckActions().createTab('sql', entry.sql_text)),
+      })
+    }
+
     for (const db of databases) {
       for (const table of db.tables) {
         list.push({
@@ -133,7 +210,10 @@
 
     return GROUP_ORDER.map((group) => ({
       group,
-      items: scored.filter((entry) => entry.item.group === group).slice(0, MAX_PER_GROUP).map((entry) => entry.item),
+      items: scored
+        .filter((entry) => entry.item.group === group)
+        .slice(0, term || group === 'actions' ? MAX_PER_GROUP : MAX_PER_GROUP_IDLE)
+        .map((entry) => entry.item),
     })).filter((g) => g.items.length > 0)
   })
 
