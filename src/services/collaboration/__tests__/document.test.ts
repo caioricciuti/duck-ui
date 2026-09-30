@@ -376,3 +376,28 @@ describe("workspace document — never destroying local work", () => {
     expect(guest.textFor("t")?.toString()).toBe("SELECT 1");
   });
 });
+
+describe("workspace document — line endings", () => {
+  // CodeMirror holds "\n" only. A shared text with "\r\n" is longer than the
+  // editor's, so every delta after the first line lands off by one per line.
+  it("stores tab and dashboard text with LF line breaks", () => {
+    const { host } = connectedDocuments();
+    host.addTab({ id: "t", title: "T", type: "sql" }, "SELECT 1\r\nFROM t\rWHERE x");
+    host.ensureDashboard("d", "D", "# Sales\r\n\r\n<BarChart />");
+
+    expect(host.textFor("t")?.toString()).toBe("SELECT 1\nFROM t\nWHERE x");
+    expect(host.dashboardText("d")?.toString()).toBe("# Sales\n\n<BarChart />");
+  });
+
+  it("stores notebook cells with LF, and a CRLF copy of the same text is no change", () => {
+    const { host } = connectedDocuments();
+    host.syncNotebookCells("n", [{ id: "c", type: "sql", content: "SELECT 1\r\nFROM t" }]);
+    expect(host.notebookCells("n")?.[0].content).toBe("SELECT 1\nFROM t");
+
+    let changes = 0;
+    const off = host.observe(() => changes++);
+    host.syncNotebookCells("n", [{ id: "c", type: "sql", content: "SELECT 1\r\nFROM t" }]);
+    off();
+    expect(changes).toBe(0);
+  });
+});

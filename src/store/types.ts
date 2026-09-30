@@ -523,7 +523,8 @@ export interface DuckBrainSlice {
    */
   runBrainTask: (
     messages: { role: "system" | "user" | "assistant"; content: string }[],
-    options?: { maxTokens?: number }
+    /** `signal` is Stop: once it fires the result is null and nothing is reported. */
+    options?: { maxTokens?: number; signal?: AbortSignal }
   ) => Promise<string | null>;
   toggleBrainPanel: () => void;
   abortGeneration: () => void;

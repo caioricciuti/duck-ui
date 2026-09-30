@@ -74,6 +74,22 @@ export async function listFolderChildren(entry: FolderEntry): Promise<FSEntry[]>
   });
 }
 
+/**
+ * The reader for a folder file's extension. Variants go to the reader they
+ * share: line-delimited JSON to read_json, Arrow IPC to read_arrow, and TSV
+ * to read_csv with a tab, since the CSV options otherwise pin a comma.
+ */
+export function folderImportType(extension: string): {
+  fileType: string;
+  csv?: { delimiter: string };
+} {
+  const ext = extension.replace(/^\./, "").toLowerCase();
+  if (ext === "jsonl" || ext === "ndjson") return { fileType: "json" };
+  if (ext === "ipc") return { fileType: "arrow" };
+  if (ext === "tsv") return { fileType: "csv", csv: { delimiter: "\t" } };
+  return { fileType: ext };
+}
+
 const TOAST_ID = "folder-import";
 
 /** Imports a file from a mounted folder as a table or view. Reports through toasts. */
@@ -92,11 +108,10 @@ export async function importFolderFile(
     const fileData = await fileSystemService.readFile(folderId, file.path);
     const buffer = await fileData.arrayBuffer();
 
-    const ext = file.extension.replace(".", "").toLowerCase();
-    const fileType = ext === "jsonl" || ext === "ndjson" ? "json" : ext;
+    const { fileType, csv } = folderImportType(file.extension);
 
     const { importFile, fetchDatabasesAndTablesInfo } = useDuckStore.getState();
-    await importFile(file.name, buffer, tableName, fileType, undefined, { importMode });
+    await importFile(file.name, buffer, tableName, fileType, undefined, { importMode, csv });
     await fetchDatabasesAndTablesInfo();
 
     toast.success(`Created ${resultLabel} "${tableName}" from "${file.name}"`, { id: TOAST_ID });

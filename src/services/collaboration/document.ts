@@ -36,6 +36,14 @@ import type { PeerTransport } from "./transport/transport";
 /** Identifier for the one document a session shares today. */
 export const WORKSPACE_DOC_ID = "workspace";
 
+/**
+ * Shared text holds "\n" line breaks only. CodeMirror normalises "\r\n" in
+ * every editor, Y.Text keeps whatever it is given, so text from a file or an
+ * older store that entered with "\r\n" made the two sides differ in length
+ * and every remote delta land at the wrong offset.
+ */
+const toLf = (text: string): string => text.replace(/\r\n?/g, "\n");
+
 /** A tab as it appears in shared state. Results are excluded by construction. */
 export interface SharedTab {
   id: string;
@@ -218,7 +226,7 @@ export class WorkspaceDocument {
     this.doc.transact(() => {
       const entry = this.buildTab(tab);
       this.tabs.push([entry]);
-      if (initialContent) (entry.get("content") as Y.Text).insert(0, initialContent);
+      if (initialContent) (entry.get("content") as Y.Text).insert(0, toLf(initialContent));
     }, "local");
   }
 
@@ -261,7 +269,7 @@ export class WorkspaceDocument {
       entry.set("name", name);
       const content = new Y.Text();
       entry.set("content", content);
-      if (initialSource) content.insert(0, initialSource);
+      if (initialSource) content.insert(0, toLf(initialSource));
       this.sharedDashboards.set(id, entry);
     }, "local");
   }
@@ -340,7 +348,7 @@ export class WorkspaceDocument {
     if (cell.chartConfig !== undefined) entry.set("chartConfig", cell.chartConfig);
     const content = new Y.Text();
     entry.set("content", content);
-    if (cell.content) content.insert(0, cell.content);
+    if (cell.content) content.insert(0, toLf(cell.content));
     return entry;
   }
 
@@ -357,7 +365,7 @@ export class WorkspaceDocument {
 
     const content = entry.get("content");
     if (!(content instanceof Y.Text)) return;
-    const diff = diffStrings(content.toString(), cell.content);
+    const diff = diffStrings(content.toString(), toLf(cell.content));
     if (!diff) return;
     if (diff.deleteLength > 0) content.delete(diff.start, diff.deleteLength);
     if (diff.insert) content.insert(diff.start, diff.insert);

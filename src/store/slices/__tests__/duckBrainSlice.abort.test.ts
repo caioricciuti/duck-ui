@@ -15,6 +15,7 @@ const { provider, serviceAbort, toastError } = vi.hoisted(() => ({
   provider: {
     initialize: vi.fn(),
     generateStreaming: vi.fn(),
+    generateText: vi.fn(),
     cleanup: vi.fn(),
   },
   serviceAbort: vi.fn(),
@@ -202,5 +203,70 @@ describe("Duck Brain failures with a cloud provider", () => {
     expect(await actions().generateSQL("anything")).toBeNull();
     expect(toastError).toHaveBeenCalledTimes(1);
     expect(toastError).toHaveBeenCalledWith("Failed to generate SQL: Connection failed: 401");
+  });
+});
+
+describe("Duck Brain result actions with a cloud provider", () => {
+  beforeEach(() => {
+    provider.initialize.mockReset().mockResolvedValue(undefined);
+    provider.generateText.mockReset();
+    provider.cleanup.mockReset().mockResolvedValue(undefined);
+    toastError.mockReset();
+  });
+
+  it("stops while the provider is still connecting", async () => {
+    const { actions } = setup();
+    let connected!: () => void;
+    let connectSignal: AbortSignal | undefined;
+    provider.initialize.mockImplementation((config: { signal?: AbortSignal }) => {
+      connectSignal = config.signal;
+      return new Promise<void>((resolve) => (connected = resolve));
+    });
+
+    const stop = new AbortController();
+    const pending = actions().runBrainTask([{ role: "user", content: "explain" }], {
+      signal: stop.signal,
+    });
+    await vi.waitFor(() => expect(provider.initialize).toHaveBeenCalled());
+
+    stop.abort();
+    // The connection check got the signal, so a real fetch would be cancelled.
+    expect(connectSignal?.aborted).toBe(true);
+    connected();
+
+    expect(await pending).toBeNull();
+    expect(provider.generateText).not.toHaveBeenCalled();
+    expect(provider.cleanup).toHaveBeenCalled();
+    expect(toastError).not.toHaveBeenCalled();
+  });
+
+  it("drops the answer of a stopped request without reporting its abort", async () => {
+    const { actions } = setup();
+    let fail!: (error: Error) => void;
+    provider.generateText.mockImplementation(
+      () => new Promise<string>((_resolve, reject) => (fail = reject))
+    );
+
+    const stop = new AbortController();
+    const pending = actions().runBrainTask([{ role: "user", content: "explain" }], {
+      signal: stop.signal,
+    });
+    await vi.waitFor(() => expect(provider.generateText).toHaveBeenCalled());
+    expect(provider.generateText.mock.calls[0][1].signal).toBe(stop.signal);
+
+    stop.abort();
+    fail(new DOMException("The operation was aborted.", "AbortError"));
+
+    expect(await pending).toBeNull();
+    expect(toastError).not.toHaveBeenCalled();
+  });
+
+  it("returns the answer of a request that was not stopped", async () => {
+    const { actions } = setup();
+    provider.generateText.mockResolvedValue("It counts rows.");
+
+    expect(await actions().runBrainTask([{ role: "user", content: "explain" }])).toBe(
+      "It counts rows."
+    );
   });
 });

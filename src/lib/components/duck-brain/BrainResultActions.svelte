@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ChartColumn, FileText, Gauge, Sparkles } from 'lucide-svelte'
+  import { ChartColumn, FileText, Gauge, Sparkles, Square } from 'lucide-svelte'
   import Button from '../common/Button.svelte'
   import ContextMenu, { type ContextMenuItem } from '../common/ContextMenu.svelte'
   import Modal from '../common/Modal.svelte'
@@ -57,6 +57,10 @@
   const providerConfigs = $derived(duck((s) => s.duckBrain.providerConfigs))
 
   let busy = $state<BrainAction | null>(null)
+  // Stop for the running action. Not state: only handlers read it.
+  let controller: AbortController | null = null
+  // A new result replaces this component; its request has nowhere to land.
+  $effect(() => () => controller?.abort())
   let consentOpen = $state(false)
   let outcome = $state<ActionOutcome | null>(null)
   let menu = $state<{ x: number; y: number } | null>(null)
@@ -65,11 +69,26 @@
     describeProviderDestination(aiProvider, aiProvider === 'webllm' ? undefined : providerConfigs[aiProvider]),
   )
 
+  /** Starts an action: `busy` for the button, a fresh signal for Stop. */
+  function begin(action: BrainAction): AbortSignal {
+    controller?.abort()
+    controller = new AbortController()
+    busy = action
+    return controller.signal
+  }
+
+  function stop() {
+    controller?.abort()
+    controller = null
+    busy = null
+  }
+
   async function runExplain() {
-    busy = 'explain'
+    const signal = begin('explain')
     try {
       const response = await duckActions().runBrainTask(buildExplainResultsMessages(sql, result), {
         maxTokens: 700,
+        signal,
       })
       if (response === null) return
       const summary = parseExplanation(response)
@@ -79,7 +98,10 @@
       }
       outcome = { kind: 'explain', summary }
     } finally {
-      busy = null
+      if (controller?.signal === signal) {
+        controller = null
+        busy = null
+      }
     }
   }
 
@@ -113,7 +135,7 @@
       toast.error(missingParamsMessage(resolved.missing))
       return
     }
-    busy = 'optimize'
+    const signal = begin('optimize')
     try {
       // Plain EXPLAIN: plans the query without running it again.
       const explained = await runQuery(
@@ -122,6 +144,7 @@
         'duck-brain',
         { maxRows: maxResultRows },
       )
+      if (signal.aborted) return
       if (explained.error) {
         toast.error(`EXPLAIN failed: ${explained.error}`)
         return
@@ -130,6 +153,7 @@
       const schema = formatSchemaForContext(databases).formatted
       const response = await runBrainTask(buildOptimizeQueryMessages(sql, plan, schema), {
         maxTokens: 1200,
+        signal,
       })
       if (response === null) return
       const parsed = parseOptimizeResponse(response, sql)
@@ -141,7 +165,10 @@
     } catch (error) {
       toast.error(`Optimize failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
-      busy = null
+      if (controller?.signal === signal) {
+        controller = null
+        busy = null
+      }
     }
   }
 
@@ -151,7 +178,7 @@
       toast.info('This result has no numeric column to chart.')
       return
     }
-    busy = 'chart'
+    const signal = begin('chart')
     try {
       // Column names and types only: no values leave the browser.
       const columns = result.columns.map((name, i) => ({
@@ -161,6 +188,7 @@
       }))
       const response = await duckActions().runBrainTask(buildSuggestChartMessages(columns), {
         maxTokens: 300,
+        signal,
       })
       if (response === null) return
       const { config, fromModel } = resolveChartSuggestion(
@@ -176,7 +204,10 @@
         toast.warning("Duck Brain's chart suggestion was not usable, showing the automatic chart")
       }
     } finally {
-      busy = null
+      if (controller?.signal === signal) {
+        controller = null
+        busy = null
+      }
     }
   }
 
@@ -220,6 +251,11 @@
       Duck Brain
     {/if}
   </Button>
+  {#if busy}
+    <Button size="xs" variant="ghost" icon title="Stop" aria-label="Stop Duck Brain" onclick={stop}>
+      <Square size={12} />
+    </Button>
+  {/if}
 
   <ContextMenu open={menu !== null} x={menu?.x ?? 0} y={menu?.y ?? 0} items={menuItems} onclose={() => (menu = null)} />
 

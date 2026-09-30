@@ -89,6 +89,12 @@
   const isLineOrArea = $derived(['line', 'area', 'stacked_area'].includes(config.type))
   const selectedColumns = $derived(seriesColumns(config))
 
+  // Grouped rows hold only the x column and the value columns, so sorting by
+  // anything else would sort on missing values.
+  const sortColumns = $derived(
+    config.transform?.groupBy ? [config.xAxis, ...selectedColumns.filter((c) => c !== config.xAxis)] : result.columns,
+  )
+
   const rows = $derived(transformData(result, config.transform, config.xAxis, config.yAxis || config.series))
 
   const xy = $derived.by(() => {
@@ -132,8 +138,10 @@
     const columns = selectedColumns.includes(column)
       ? selectedColumns.filter((c) => c !== column)
       : [...selectedColumns, column]
+    // Keep what a series already carries (its aggregation, color, type).
+    const existing = new Map((config.series ?? []).map((s) => [s.column, s]))
     updateConfig({
-      series: columns.length > 1 ? columns.map((c) => ({ column: c, label: c })) : undefined,
+      series: columns.length > 1 ? columns.map((c) => existing.get(c) ?? { column: c, label: c }) : undefined,
       yAxis: columns.length === 1 ? columns[0] : undefined,
     })
   }
@@ -347,7 +355,7 @@
                   size="sm"
                   class="min-w-0 flex-1"
                   value={config.transform?.sortBy ?? NO_SORT}
-                  options={[{ value: NO_SORT, label: 'None' }, ...result.columns.map((col) => ({ value: col, label: col }))]}
+                  options={[{ value: NO_SORT, label: 'None' }, ...sortColumns.map((col) => ({ value: col, label: col }))]}
                   onchange={(value) =>
                     updateTransform(
                       value === NO_SORT
@@ -396,11 +404,17 @@
                 size="sm"
                 value={config.transform?.aggregation ?? 'none'}
                 options={AGGREGATIONS}
-                onchange={(value) =>
+                onchange={(value) => {
+                  const groupBy = value !== 'none' ? config.xAxis : undefined
+                  const sortBy = config.transform?.sortBy
+                  // A sort column that grouping removes goes with it.
+                  const sortLost = groupBy && sortBy && sortBy !== config.xAxis && !selectedColumns.includes(sortBy)
                   updateTransform({
                     aggregation: value as AggregationType,
-                    groupBy: value !== 'none' ? config.xAxis : undefined,
-                  })}
+                    groupBy,
+                    ...(sortLost ? { sortBy: undefined, sortOrder: undefined } : {}),
+                  })
+                }}
               />
             </div>
 

@@ -6,6 +6,8 @@ export interface ProviderConfig {
   apiKey?: string;
   modelId?: string;
   baseUrl?: string; // For OpenAI-compatible APIs
+  /** Cancels the connection check, so Stop reaches a provider still connecting. */
+  signal?: AbortSignal;
 }
 
 export interface StreamCallbacks {
