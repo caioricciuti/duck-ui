@@ -1,7 +1,7 @@
 <script lang="ts">
   import {
-    SquareTerminal, NotebookPen, FlaskConical, LayoutDashboard, Radio, Brain, Server, PackageCheck, Star, BookOpen,
-    ExternalLink, Database, Building2, ChartColumn, Logs, Bot, ArrowUpRight, Play,
+    SquareTerminal, NotebookPen, FlaskConical, LayoutDashboard, Radio, Brain, Server, Star, BookOpen,
+    ExternalLink, Database, Building2, Logs, ArrowUpRight, Play,
   } from 'lucide-svelte'
   import ProfileAvatar from '../profile/ProfileAvatar.svelte'
   import { duck, duckActions } from '../../stores/duck.svelte'
