@@ -7,7 +7,7 @@
  * the change, and this costs O(n) with no allocation beyond the slice.
  *
  * Used to turn "the content is now X" into operations: Y.Text updates that
- * merge, and Monaco edits that keep the caret where it was.
+ * merge, and CodeMirror edits that keep the caret where it was.
  */
 
 export interface StringDiff {
