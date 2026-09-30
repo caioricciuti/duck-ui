@@ -62,20 +62,24 @@ export const createSchemaSlice: StateCreator<DuckStoreState, [], [], SchemaSlice
       const result = await runQuery(requireSession(get().currentSession), query, "column-stats");
       if (result.error) throw new Error(result.error);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const columnStats: ColumnStats[] = result.data.map((row: any) => ({
-        column_name: row.column_name,
-        column_type: row.column_type,
-        min: row.min,
-        max: row.max,
-        approx_unique: row.approx_unique,
-        avg: row.avg,
-        std: row.std,
-        q25: row.q25,
-        q50: row.q50,
-        q75: row.q75,
-        count: row.count,
-        null_percentage: row.null_percentage,
+      // SUMMARIZE answers with a mix of text, BIGINT and DECIMAL. The counts
+      // arrive as bigint, which the statistics view read as 0, so every
+      // field becomes text here.
+      const text = (value: unknown): string | null =>
+        value === null || value === undefined ? null : String(value);
+      const columnStats: ColumnStats[] = result.data.map((row) => ({
+        column_name: String(row.column_name),
+        column_type: String(row.column_type),
+        min: text(row.min),
+        max: text(row.max),
+        approx_unique: text(row.approx_unique),
+        avg: text(row.avg),
+        std: text(row.std),
+        q25: text(row.q25),
+        q50: text(row.q50),
+        q75: text(row.q75),
+        count: text(row.count) ?? "0",
+        null_percentage: text(row.null_percentage) ?? "0",
       }));
 
       return columnStats;

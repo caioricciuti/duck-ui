@@ -39,4 +39,38 @@ describe("fetchTableColumnStats query shape", () => {
     const [, sql] = runQuery.mock.calls[0];
     expect(sql).toMatch(/^SELECT \* FROM \(SUMMARIZE /i);
   });
+
+  it("returns the counts as text, not as the bigint the engine hands over", async () => {
+    runQuery.mockResolvedValueOnce({
+      columns: [],
+      columnTypes: [],
+      rowCount: 1,
+      data: [
+        {
+          column_name: "id",
+          column_type: "BIGINT",
+          min: "0",
+          max: "4999",
+          approx_unique: 5012n,
+          avg: "2499.5",
+          std: null,
+          q25: "1250",
+          q50: "2500",
+          q75: "3750",
+          count: 5000n,
+          null_percentage: 0,
+        },
+      ],
+    });
+    const get = () => ({ currentSession: { id: "s" } }) as never;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const slice = createSchemaSlice((() => {}) as any, get as any, undefined as any);
+    const [stats] = await slice.fetchTableColumnStats("memory", "stations", "main");
+
+    expect(stats.count).toBe("5000");
+    expect(stats.approx_unique).toBe("5012");
+    expect(stats.null_percentage).toBe("0");
+    expect(stats.std).toBeNull();
+  });
 });
