@@ -92,9 +92,19 @@ body {
   letter-spacing: -0.02em;
   color: var(--sl-color-white);
 }
+.site-title {
+  font-size: 1.05rem;
+}
 .site-title img {
-  height: 1.7rem;
+  height: 1.35rem;
   width: auto;
+}
+/* Social icons in the header: quiet gray, not the accent. */
+.social-icons a {
+  color: var(--sl-color-gray-3);
+}
+.social-icons a:hover {
+  color: var(--sl-color-white);
 }
 
 /* ---- Sidebar ----------------------------------------------------------- */
@@ -121,9 +131,12 @@ body {
 }
 .sidebar-content a[aria-current="page"],
 .sidebar-content a[aria-current="page"]:hover {
-  background: var(--sl-color-accent-low);
-  color: var(--sl-color-accent-high);
-  font-weight: 600;
+  /* Neutral, with the yellow as a thin mark: the page you are on without
+     a block of colour in the sidebar. */
+  background: var(--sl-color-gray-6);
+  color: var(--sl-color-white);
+  font-weight: 560;
+  box-shadow: inset 2px 0 0 var(--sl-color-accent);
 }
 
 /* ---- Layout ------------------------------------------------------------ */
@@ -147,13 +160,20 @@ body {
   border-top-color: var(--sl-color-hairline) !important;
 }
 h1#_top {
-  font-weight: 680;
-  letter-spacing: -0.03em;
+  font-size: clamp(2rem, 3.5vw, 2.5rem);
+  font-weight: 580;
+  letter-spacing: -0.035em;
   line-height: 1.1;
 }
 .sl-markdown-content :is(h2, h3, h4) {
-  letter-spacing: -0.02em;
-  font-weight: 640;
+  letter-spacing: -0.025em;
+  font-weight: 580;
+}
+.sl-markdown-content h2 {
+  font-size: 1.6rem;
+}
+.sl-markdown-content h3 {
+  font-size: 1.2rem;
 }
 .sl-markdown-content .sl-heading-wrapper.level-h2 {
   margin-top: 2.75rem;
