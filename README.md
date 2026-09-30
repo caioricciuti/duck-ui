@@ -9,7 +9,7 @@ No install, no signup, no backend. Your data never leaves the tab.
 [![Release](https://img.shields.io/github/v/release/caioricciuti/duck-ui)](https://github.com/caioricciuti/duck-ui/releases)
 [![Docker](https://img.shields.io/badge/docker-ghcr.io-blue)](https://github.com/caioricciuti/duck-ui/pkgs/container/duck-ui)
 
-**[Try it now → demo.duckui.com](https://demo.duckui.com?utm_source=github&utm_medium=readme)** · [Docs](https://duckui.com?utm_source=github&utm_medium=readme) · [Contributing](CONTRIBUTING.md)
+**[Try it now → duckui.com](https://duckui.com?utm_source=github&utm_medium=readme)** · [Docs](https://duckui.com?utm_source=github&utm_medium=readme) · [Contributing](CONTRIBUTING.md)
 
 ![Duck-UI screenshot](./public/screenshot.png)
 
@@ -61,16 +61,16 @@ If you just want a quick local UI and don't care about any of that, the official
 
 ## "Open in Duck-UI" links
 
-Any hosted dataset can become a one-click, runnable analysis. Add `?load=` (and optionally `&sql=`) to the app URL. [Try this one](https://demo.duckui.com/?load=https://blobs.duckdb.org/stations.parquet&sql=SELECT%20country%2C%20count(*)%20AS%20stations%20FROM%20stations%20GROUP%20BY%20country%20ORDER%20BY%20stations%20DESC):
+Any hosted dataset can become a one-click, runnable analysis. Add `?load=` (and optionally `&sql=`) to the app URL. [Try this one](https://duckui.com/?load=https://blobs.duckdb.org/stations.parquet&sql=SELECT%20country%2C%20count(*)%20AS%20stations%20FROM%20stations%20GROUP%20BY%20country%20ORDER%20BY%20stations%20DESC):
 
 ```
-https://demo.duckui.com/?load=https://blobs.duckdb.org/stations.parquet
+https://duckui.com/?load=https://blobs.duckdb.org/stations.parquet
   &sql=SELECT country, count(*) AS stations FROM stations GROUP BY country ORDER BY stations DESC
 ```
 
 Openers see exactly what will load and what will run, confirm once, and get a live editor over your data. Nothing touches a server. Parquet, CSV, JSON, `.duckdb` files, and `ducklake:` catalogs are supported. The Share dialog generates the link and a README badge for you:
 
-[![Open in Duck-UI](./public/badge.svg)](https://demo.duckui.com/)
+[![Open in Duck-UI](./public/badge.svg)](https://duckui.com/)
 
 The data host needs CORS enabled, see [hosting your data](docs/hosting-data.md) for a free R2/GitHub Pages setup. More examples in the [gallery](docs/gallery.md).
 

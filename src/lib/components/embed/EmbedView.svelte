@@ -22,7 +22,7 @@
 
   /*
    * Chrome-free, auto-running viewer for a shared analysis. Rendered at
-   * /embed, served by a cross-origin-isolated origin (demo.duckui.com) so
+   * /embed, served by a cross-origin-isolated origin (duckui.com) so
    * DuckDB-WASM works inside an <iframe> regardless of the host page's
    * headers. No editor, no sidebar, no profile: just the result, with a fork
    * link back to Duck-UI.

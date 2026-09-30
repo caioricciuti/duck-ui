@@ -9,9 +9,9 @@ All examples use the DuckDB weather-stations sample
 
 | What | Link |
 |---|---|
-| Stations per country | [open](https://demo.duckui.com/?load=https://blobs.duckdb.org/stations.parquet&sql=SELECT%20country%2C%20count(*)%20AS%20stations%20FROM%20stations%20GROUP%20BY%20country%20ORDER%20BY%20stations%20DESC) |
-| Column profile | [open](https://demo.duckui.com/?load=https://blobs.duckdb.org/stations.parquet&sql=SUMMARIZE%20stations) |
-| First 100 rows | [open](https://demo.duckui.com/?load=https://blobs.duckdb.org/stations.parquet&sql=SELECT%20*%20FROM%20stations%20LIMIT%20100) |
+| Stations per country | [open](https://duckui.com/?load=https://blobs.duckdb.org/stations.parquet&sql=SELECT%20country%2C%20count(*)%20AS%20stations%20FROM%20stations%20GROUP%20BY%20country%20ORDER%20BY%20stations%20DESC) |
+| Column profile | [open](https://duckui.com/?load=https://blobs.duckdb.org/stations.parquet&sql=SUMMARIZE%20stations) |
+| First 100 rows | [open](https://duckui.com/?load=https://blobs.duckdb.org/stations.parquet&sql=SELECT%20*%20FROM%20stations%20LIMIT%20100) |
 
 ## Add yours
 
