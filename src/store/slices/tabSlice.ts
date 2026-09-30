@@ -86,6 +86,32 @@ export const createTabSlice: StateCreator<DuckStoreState, [], [], TabSlice> = (s
     return newTab.id;
   },
 
+  openTableTab: (database, schema, table) => {
+    const existing = get().tabs.find(
+      (tab) =>
+        tab.type === "table" &&
+        typeof tab.content !== "string" &&
+        tab.content.database === database &&
+        (tab.content.schema || "main") === (schema || "main") &&
+        tab.content.table === table
+    );
+    if (existing) {
+      set({ activeTabId: existing.id });
+      return existing.id;
+    }
+    const newTab: EditorTab = {
+      id: generateUUID(),
+      title: table,
+      type: "table",
+      content: { database, schema: schema || "main", table },
+    };
+    set((state) => ({
+      tabs: [...state.tabs, newTab],
+      activeTabId: newTab.id,
+    }));
+    return newTab.id;
+  },
+
   closeTab: (tabId) => {
     // A notebook's Python kernel dies with its tab.
     disposePythonKernel(tabId);

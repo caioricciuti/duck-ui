@@ -146,6 +146,28 @@ export const createSchemaSlice: StateCreator<DuckStoreState, [], [], SchemaSlice
     }
   },
 
+  fetchTableDdl: async (databaseName, tableName, schema) => {
+    const where = (nameColumn: string) =>
+      `database_name = '${sqlEscapeString(databaseName)}'
+         AND schema_name = '${sqlEscapeString(schema || "main")}'
+         AND ${nameColumn} = '${sqlEscapeString(tableName)}'`;
+    // The explorer lists views next to tables, so both catalogs are asked.
+    const query = `SELECT sql FROM duckdb_tables() WHERE ${where("table_name")}
+       UNION ALL
+       SELECT sql FROM duckdb_views() WHERE ${where("view_name")}
+       LIMIT 1`;
+
+    try {
+      const result = await runQuery(requireSession(get().currentSession), query, "table-ddl");
+      if (result.error) throw new Error(result.error);
+      const sql = result.data[0]?.sql;
+      return typeof sql === "string" && sql.trim() ? sql : null;
+    } catch (error) {
+      console.error("Failed to fetch table DDL:", error);
+      return null;
+    }
+  },
+
   deleteTable: async (tableName, database = "memory", schema) => {
     try {
       const session = requireSession(get().currentSession);

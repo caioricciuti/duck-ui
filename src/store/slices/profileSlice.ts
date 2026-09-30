@@ -110,7 +110,7 @@ export const createProfileSlice: StateCreator<DuckStoreState, [], [], ProfileSli
       try {
         // Tab types that no longer exist (the old Brain settings tab) are
         // dropped rather than rendered as a mystery blank.
-        const validTypes = new Set(["sql", "notebook", "dashboard", "home"]);
+        const validTypes = new Set(["sql", "notebook", "dashboard", "table", "home"]);
         const tabs = (JSON.parse(workspace.tabs) as EditorTab[]).filter((tab) =>
           validTypes.has(tab.type)
         );

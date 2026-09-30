@@ -8,7 +8,6 @@
   import { getTheme, toggleTheme } from '../../stores/theme.svelte'
   import { toggleExplorer } from '../../stores/layout.svelte'
   import { trapFocus } from '../../utils/focus-trap'
-  import { qualifyTable } from '@/lib/sqlSanitize'
   import { goTo, goWorkspace } from '../../stores/router.svelte'
   import { NAV_GROUPS, PAGE_ROUTES, PAGE_SECTIONS, visibleRoutes } from '@/lib/routes'
   import { getSavedQueries, type SavedQuery } from '@/services/persistence/repositories/savedQueryRepository'
@@ -185,13 +184,7 @@
           sub: `${db.name}.${table.schema}`,
           keywords: table.columns.map((c) => c.name).join(' '),
           icon: Table2,
-          run: () => {
-            goWorkspace()
-            const sql = `SELECT * FROM ${qualifyTable(db.name, table.schema, table.name)} LIMIT 100`
-            const { createTab, executeQuery } = duckActions()
-            const tabId = createTab('sql', sql, table.name)
-            if (tabId) void executeQuery(sql, tabId)
-          },
+          run: inWorkspace(() => duckActions().openTableTab(db.name, table.schema, table.name)),
         })
       }
     }

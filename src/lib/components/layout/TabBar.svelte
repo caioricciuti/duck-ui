@@ -1,6 +1,6 @@
 <script lang="ts">
   import {
-    X, Plus, Home, SquareTerminal, NotebookPen, LayoutDashboard,
+    X, Plus, Home, SquareTerminal, NotebookPen, LayoutDashboard, Table2,
   } from 'lucide-svelte'
   import { tick } from 'svelte'
   import ContextMenu, { type ContextMenuItem } from '../common/ContextMenu.svelte'
@@ -12,6 +12,7 @@
     sql: SquareTerminal,
     notebook: NotebookPen,
     dashboard: LayoutDashboard,
+    table: Table2,
   }
   const RENAMABLE: EditorTabType[] = ['sql', 'notebook']
 

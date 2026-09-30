@@ -136,7 +136,7 @@ For detailed environment variable documentation, see our [Environment Variables 
 
 ### Workspace and pages
 
-Queries, notebooks and dashboards open as **tabs** in the workspace. Tabs stay mounted while hidden, so a running query survives switching. Everything else is a **page** with its own sidebar, reached from the groups on the left rail:
+Queries, notebooks, dashboards and tables open as **tabs** in the workspace. Tabs stay mounted while hidden, so a running query survives switching. Everything else is a **page** with its own sidebar, reached from the groups on the left rail:
 
 | Rail group | Pages |
 |------------|-------|
@@ -146,6 +146,19 @@ Queries, notebooks and dashboards open as **tabs** in the workspace. Tabs stay m
 | **Settings** | Profile, General (theme), AI, Performance (memory limit, rows per result), Project (export and import) |
 
 The current page lives in the URL, for example `?page=settings&section=ai`, so a reload on any static host lands on the same page.
+
+### Tables
+
+Double-click a table in the explorer, or pick it in the command menu, to open it as a tab. Right click offers **Open table** and **Query table**. A table tab has four views:
+
+| View | What it shows |
+|------|---------------|
+| **Data** | The rows, in the same grid as a query result. When the table has more rows than the row limit, sorting and filtering run in DuckDB over the whole table |
+| **Schema** | One row per column: type, nullability, key and default |
+| **Stats** | A card per column with fill rate, distinct count, min, max, average and quartiles, plus a histogram for numbers or the top values for everything else |
+| **DDL** | The `CREATE` statement DuckDB keeps for the table or view, with a copy button |
+
+**Query** in the tab header opens a SQL tab on the table. Opening a table that already has a tab focuses that tab. Table tabs are restored after a reload; one whose table no longer exists in the current connection says so.
 
 ### Keyboard shortcuts
 
