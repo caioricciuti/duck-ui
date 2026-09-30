@@ -82,7 +82,7 @@
   ])
 
   const resources = [
-    { title: 'Embed Duck-UI', description: 'Put charts and queries inside your own app.', link: 'https://docs.duckui.com/embed/docs', icon: PackageCheck },
+    { title: 'Embed an analysis', description: 'Put a live chart in any page with one iframe.', link: 'https://docs.duckui.com/docs/embedding/', icon: PackageCheck },
     { title: 'Star us on GitHub', description: 'Support the project with a star.', link: 'https://github.com/caioricciuti/duck-ui', icon: Star },
     { title: 'DuckDB docs', description: 'The DuckDB documentation.', link: 'https://duckdb.org/docs/', icon: BookOpen },
     { title: 'Duck-UI documentation', description: 'Learn how to make the most of Duck-UI.', link: 'https://docs.duckui.com/', icon: ExternalLink },

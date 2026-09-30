@@ -9,7 +9,7 @@ No install, no signup, no backend. Your data never leaves the tab.
 [![Release](https://img.shields.io/github/v/release/caioricciuti/duck-ui)](https://github.com/caioricciuti/duck-ui/releases)
 [![Docker](https://img.shields.io/badge/docker-ghcr.io-blue)](https://github.com/caioricciuti/duck-ui/pkgs/container/duck-ui)
 
-**[Try it now → duckui.com](https://duckui.com?utm_source=github&utm_medium=readme)** · [Docs](https://duckui.com?utm_source=github&utm_medium=readme) · [Contributing](CONTRIBUTING.md)
+**[Try it now → duckui.com](https://duckui.com?utm_source=github&utm_medium=readme)** · [Docs](https://docs.duckui.com?utm_source=github&utm_medium=readme) · [Contributing](CONTRIBUTING.md)
 
 ![Duck-UI screenshot](./public/screenshot.png)
 
@@ -36,7 +36,7 @@ Open `http://localhost:5522`. That's the whole setup.
 - **History.** Every run is kept with duration and row count, searchable across reloads.
 - **Duck Brain (AI).** Text to SQL and one click error fixing with your choice of provider: WebLLM fully in the browser (no API key, works offline), OpenAI, Anthropic, or any OpenAI compatible endpoint (Ollama, DeepSeek, ...). By default only your schema is sent, never your data; the optional "Explain results" action sends a small row sample and asks for consent every time. With WebLLM nothing leaves the browser.
 - **Live sessions.** Invite another browser into your workspace over WebRTC. Shared editors with peer cursors, shared tables, no server.
-- **Share and embed.** Encode a whole analysis (query, notebook, chart config) into a URL. No server involved. Embed live, runnable queries in any page with an iframe or the `<duck-embed>` web component.
+- **Share and embed.** Encode a whole analysis (query, notebook, chart config) into a URL. No server involved. Embed live, runnable queries in any page with an iframe.
 - **Persistence.** OPFS backed local databases that survive reloads, profiles, encrypted credential storage (AES-256-GCM in your browser). The workspace saves itself.
 - **Connections.** In memory WASM, persistent OPFS, external [DuckDB httpserver](https://github.com/quackscience/duckdb-extension-httpserver) instances. DuckLake catalogs attach via the embedded database manifest, `?load=ducklake:` links, or plain ATTACH SQL.
 - **Works on a phone.** Below 768px the rail moves to the bottom and the explorer becomes a drawer.

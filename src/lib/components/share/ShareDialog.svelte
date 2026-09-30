@@ -26,7 +26,7 @@
   let { open, onclose, tab }: Props = $props()
 
   type ParamType = SharedParam['type']
-  type CopyTarget = 'link' | 'iframe' | 'webcomponent' | 'deep' | 'badge'
+  type CopyTarget = 'link' | 'iframe' | 'deep' | 'badge'
 
   const NUMERIC_TYPE = /int|float|double|decimal|hugeint|numeric|real/i
   const SECTIONS = [
@@ -200,20 +200,6 @@
           <p class="text-xs text-fg-3">
             Paste into any HTML page, Notion, or Ghost: a live, read-only DuckDB chart that runs entirely in the
             viewer's browser.
-          </p>
-        </div>
-        <div class="flex flex-col gap-1.5">
-          <p class="text-xs font-medium text-fg-2">Web Component, one line, cross-origin-isolated hosts</p>
-          <CopyField
-            label="web component snippet"
-            value={building ? 'Building snippet...' : (links?.webComponentSnippet ?? '')}
-            busy={building || !links}
-            copied={copied === 'webcomponent'}
-            oncopy={() => links && copy(links.webComponentSnippet, 'webcomponent')}
-          />
-          <p class="text-xs text-fg-3">
-            Native <code class="mx-0.5 font-mono">&lt;duck-embed&gt;</code> element. Needs a cross-origin-isolated
-            page (COOP/COEP); otherwise use the iframe above.
           </p>
         </div>
 

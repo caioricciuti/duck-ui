@@ -215,18 +215,11 @@ export async function buildTabShareUrl(tab: EditorTab, autoRun = true): Promise<
 export interface ShareLinks {
   /** Full Duck-UI app link (#s=). */
   appUrl: string;
-  /** Crawlable form (/a/?s=) — same payload, server-visible path (Phase 3). */
-  crawlUrl: string;
   /** Chrome-free viewer link, suitable for an <iframe>. */
   embedUrl: string;
   /** Ready-to-paste <iframe> snippet (works on any host page). */
   iframeSnippet: string;
-  /** Ready-to-paste <duck-embed> Web Component snippet (cross-origin-isolated hosts). */
-  webComponentSnippet: string;
 }
-
-/** jsDelivr URL for the pre-bundled @duck_ui/cdn web-component bundle. */
-const DUCK_UI_CDN = "https://cdn.jsdelivr.net/npm/@duck_ui/cdn/dist/duck-ui.min.js";
 
 export async function buildShareLinks(
   tab: EditorTab,
@@ -240,10 +233,8 @@ export async function buildShareLinks(
   const embedUrl = `${root}embed#${SHARE_HASH_KEY}=${encoded}`;
   return {
     appUrl: `${origin}${pathname}#${SHARE_HASH_KEY}=${encoded}`,
-    crawlUrl: `${root}a/?${SHARE_HASH_KEY}=${encoded}`,
     embedUrl,
     iframeSnippet: `<iframe src="${embedUrl}" width="100%" height="480" style="border:0;border-radius:8px" title="${(tab.title || "Duck-UI analysis").replace(/"/g, "&quot;")}"></iframe>`,
-    webComponentSnippet: `<script src="${DUCK_UI_CDN}"></script>\n<duck-embed share="${encoded}"></duck-embed>`,
   };
 }
 

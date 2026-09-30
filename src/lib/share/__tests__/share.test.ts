@@ -151,7 +151,7 @@ describe("buildShareLinks", () => {
     vi.unstubAllGlobals();
   });
 
-  it("builds app, crawl, embed and iframe forms from one encode pass", async () => {
+  it("builds app, embed and iframe forms from one encode pass", async () => {
     const tab: EditorTab = {
       id: "1",
       title: 'Trips "2024"',
@@ -164,16 +164,11 @@ describe("buildShareLinks", () => {
     const origin = window.location.origin;
     expect(links!.appUrl.startsWith(`${origin}`)).toBe(true);
     expect(links!.appUrl).toContain("#s=");
-    expect(links!.crawlUrl).toContain("/a/?s=");
     expect(links!.embedUrl.startsWith(`${origin}/embed#s=`)).toBe(true);
     // iframe points at the embed url and escapes quotes in the title
     expect(links!.iframeSnippet).toContain(`src="${links!.embedUrl}"`);
     expect(links!.iframeSnippet).toContain("&quot;2024&quot;");
     expect(links!.iframeSnippet).not.toContain('title="Trips "2024""');
-    // web component snippet carries the cdn script + the encoded token
-    const token = links!.embedUrl.split("#s=")[1];
-    expect(links!.webComponentSnippet).toContain("@duck_ui/cdn");
-    expect(links!.webComponentSnippet).toContain(`<duck-embed share="${token}">`);
 
     // every form decodes back to the same payload
     const param = links!.embedUrl.split("#s=")[1];
@@ -231,13 +226,12 @@ describe("share links under a base path", () => {
     vi.unstubAllGlobals();
   });
 
-  it("puts embed and crawl links under the base path", async () => {
+  it("puts embed links under the base path", async () => {
     vi.stubEnv("BASE_URL", "/duck-ui/");
     const links = await buildShareLinks(tab);
     const token = links!.embedUrl.split("#s=")[1];
 
     expect(links!.embedUrl).toBe(`https://tools.example.com/duck-ui/embed#s=${token}`);
-    expect(links!.crawlUrl).toBe(`https://tools.example.com/duck-ui/a/?s=${token}`);
     expect(links!.appUrl).toBe(`https://tools.example.com/duck-ui/#s=${token}`);
     expect(links!.iframeSnippet).toContain(
       `src="https://tools.example.com/duck-ui/embed#s=${token}"`
@@ -245,14 +239,13 @@ describe("share links under a base path", () => {
   });
 
   it("does not take the base from the page the link was made on", async () => {
-    // Made while looking at a crawlable share link, /duck-ui/a/.
+    // Made on a page below the app root, /duck-ui/a/.
     vi.stubGlobal("window", {
       location: { origin: "https://tools.example.com", pathname: "/duck-ui/a/" },
     });
     vi.stubEnv("BASE_URL", "/duck-ui/");
     const links = await buildShareLinks(tab);
     expect(links!.embedUrl.startsWith("https://tools.example.com/duck-ui/embed#s=")).toBe(true);
-    expect(links!.crawlUrl.startsWith("https://tools.example.com/duck-ui/a/?s=")).toBe(true);
   });
 
   it("accepts a base path without a trailing slash", () => {
