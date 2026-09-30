@@ -21,3 +21,5 @@ package-lock.json
 .gitignore
 
 /docs
+# The docs site has its own build.
+site

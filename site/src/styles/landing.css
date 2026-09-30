@@ -1,0 +1,636 @@
+/* The landing page. Dark only, the app's dark palette: true-neutral grays,
+   type doing the work, and the Duck-UI yellow kept to small marks (the
+   logo, a status dot, the bars in the result). */
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/InterVariable.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/JetBrainsMono-Regular.woff2") format("woff2");
+}
+
+:root {
+  color-scheme: dark;
+  --bg: #0a0a0a;
+  --surface: #0f0f0f;
+  --surface-2: #151515;
+  --fg: #ededed;
+  --fg-2: #a3a3a3;
+  --fg-3: #737373;
+  --fg-4: #525252;
+  --edge: rgba(255, 255, 255, 0.07);
+  --edge-strong: rgba(255, 255, 255, 0.12);
+  --yellow: #fff100;
+  --sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.6;
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+a {
+  color: inherit;
+}
+
+code {
+  font-family: var(--mono);
+  font-size: 0.86em;
+}
+
+::selection {
+  background: rgba(255, 241, 0, 0.25);
+}
+
+.container {
+  width: 100%;
+  max-width: 68rem;
+  margin: 0 auto;
+  padding-inline: max(1.5rem, env(safe-area-inset-left, 0px));
+}
+
+/* ---- Buttons ----------------------------------------------------------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.25rem;
+  padding: 0 0.95rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.btn-small {
+  height: 1.9rem;
+  padding: 0 0.8rem;
+  font-size: 0.8125rem;
+}
+.btn-solid {
+  background: var(--fg);
+  color: #0a0a0a;
+}
+.btn-solid:hover {
+  background: #ffffff;
+}
+.btn-outline {
+  border-color: var(--edge-strong);
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.02);
+}
+.btn-outline:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--fg);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+.btn:focus-visible {
+  border-radius: 999px;
+}
+
+/* ---- Nav --------------------------------------------------------------- */
+
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  padding-top: env(safe-area-inset-top, 0px);
+  /* Opaque enough on its own: the page scrolls under it, and the header must
+     not depend on a script having run. Blur is a bonus where supported. */
+  background: rgba(10, 10, 10, 0.9);
+  backdrop-filter: saturate(160%) blur(16px);
+  -webkit-backdrop-filter: saturate(160%) blur(16px);
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s ease;
+}
+.nav.scrolled {
+  border-bottom-color: var(--edge);
+}
+.nav-inner {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  max-width: 68rem;
+  margin: 0 auto;
+  padding: 0.75rem 1.5rem;
+}
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+}
+.brand img {
+  /* The logo is 263 x 196; keep that ratio. */
+  width: auto;
+  height: 22px;
+}
+.nav-links {
+  display: flex;
+  gap: 1.5rem;
+}
+.nav-links a {
+  font-size: 0.8125rem;
+  color: var(--fg-2);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+.nav-links a:hover {
+  color: var(--fg);
+}
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  margin-left: auto;
+}
+.icon-link {
+  display: inline-flex;
+  color: var(--fg-3);
+  transition: color 0.15s ease;
+}
+.icon-link:hover {
+  color: var(--fg);
+}
+.icon-link svg {
+  width: 17px;
+  height: 17px;
+}
+
+@media (max-width: 40rem) {
+  .nav-links {
+    display: none;
+  }
+}
+
+/* ---- Hero -------------------------------------------------------------- */
+
+.hero {
+  padding: 6.5rem 0 4.5rem;
+}
+.hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 3.5rem;
+  align-items: center;
+}
+.kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0 0 1.75rem;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--fg-2);
+}
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--yellow);
+  box-shadow: 0 0 0 3px rgba(255, 241, 0, 0.12);
+}
+.hero h1 {
+  margin: 0;
+  font-size: clamp(2.2rem, 4.2vw, 3.25rem);
+  line-height: 1.04;
+  letter-spacing: -0.042em;
+  font-weight: 560;
+}
+.hero h1 span {
+  display: block;
+  color: var(--fg-3);
+}
+.lead {
+  max-width: 29rem;
+  margin: 1.6rem 0 0;
+  font-size: 1.02rem;
+  line-height: 1.65;
+  color: var(--fg-2);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 2.2rem;
+}
+
+/* The query panel: an HTML rendition of one query and its answer. */
+.query {
+  margin: 0;
+  border: 1px solid var(--edge-strong);
+  border-radius: 12px;
+  background: var(--surface);
+  overflow: hidden;
+  box-shadow: 0 30px 80px -40px rgba(0, 0, 0, 0.9);
+}
+.query-bar {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid var(--edge);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--fg-3);
+}
+.query-meta {
+  color: var(--fg-4);
+}
+.query-sql {
+  margin: 0;
+  padding: 1rem 1.1rem;
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  line-height: 1.75;
+  color: var(--fg-2);
+  border-bottom: 1px solid var(--edge);
+}
+.query-sql code {
+  font-size: inherit;
+}
+.query-sql .k {
+  color: var(--fg);
+}
+.query-sql .f {
+  color: #d4d4d4;
+  font-style: italic;
+}
+.query-sql .s {
+  color: #8f8f8f;
+}
+.query-sql .n {
+  color: var(--yellow);
+}
+.query-result {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 0.74rem;
+}
+.query-result th {
+  padding: 0.5rem 1.1rem;
+  text-align: left;
+  font-weight: 400;
+  color: var(--fg-4);
+  border-bottom: 1px solid var(--edge);
+}
+.query-result th:not(:first-child),
+.query-result .num {
+  text-align: right;
+}
+.query-result td {
+  padding: 0.36rem 1.1rem;
+  color: var(--fg-2);
+  font-variant-numeric: tabular-nums;
+}
+.query-result tr + tr td {
+  border-top: 1px solid rgba(255, 255, 255, 0.035);
+}
+.bar-cell {
+  position: relative;
+  width: 55%;
+  text-align: right;
+}
+.bar {
+  position: absolute;
+  inset: calc(50% - 2px) auto auto 1.1rem;
+  height: 4px;
+  /* --w is the row's share of the largest value, 0 to 1. The number sits
+     in the 4rem kept free on the right. */
+  width: calc((100% - 5.5rem) * var(--w));
+  min-width: 2px;
+  border-radius: 2px;
+  background: var(--yellow);
+  opacity: 0.75;
+}
+.bar-cell .num {
+  position: relative;
+}
+
+@media (max-width: 58rem) {
+  .hero {
+    padding-top: 4rem;
+  }
+  .hero-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 3rem;
+  }
+}
+
+/* ---- Showcase ---------------------------------------------------------- */
+
+.showcase {
+  padding-bottom: 2rem;
+}
+.shot {
+  position: relative;
+  margin: 0;
+  border: 1px solid var(--edge-strong);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.shot img {
+  display: block;
+  width: 100%;
+}
+/* The screenshot fades into the page instead of ending on a hard edge. */
+.shot::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 35%;
+  background: linear-gradient(to bottom, transparent, var(--bg));
+  pointer-events: none;
+}
+.caption {
+  margin: 1rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--fg-3);
+}
+
+/* ---- Sections ---------------------------------------------------------- */
+
+.section {
+  padding: 6rem 0;
+}
+.section + .section {
+  border-top: 1px solid var(--edge);
+}
+.two-col {
+  display: grid;
+  grid-template-columns: minmax(0, 20rem) minmax(0, 1fr);
+  gap: 3rem 5rem;
+}
+@media (max-width: 58rem) {
+  .two-col {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.label {
+  margin: 0 0 0.9rem;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fg-3);
+}
+.section h2 {
+  margin: 0;
+  font-size: clamp(1.5rem, 2.8vw, 1.95rem);
+  line-height: 1.15;
+  letter-spacing: -0.035em;
+  font-weight: 560;
+}
+.section-head {
+  align-self: start;
+  position: sticky;
+  top: 6rem;
+}
+@media (max-width: 58rem) {
+  .section-head {
+    position: static;
+  }
+}
+
+.features {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2.4rem 3rem;
+  margin: 0;
+}
+@media (max-width: 40rem) {
+  .features {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.feature dt {
+  margin: 0 0 0.4rem;
+  font-size: 0.9375rem;
+  font-weight: 560;
+  letter-spacing: -0.01em;
+}
+.feature dt a {
+  text-decoration: none;
+  background: linear-gradient(currentColor, currentColor) 0 100% / 0 1px no-repeat;
+  transition: background-size 0.25s ease;
+}
+.feature dt a::after {
+  content: " →";
+  color: var(--fg-4);
+}
+.feature dt a:hover {
+  background-size: 100% 1px;
+}
+.feature dd {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.65;
+  color: var(--fg-2);
+}
+
+.ways {
+  display: grid;
+  gap: 0;
+}
+.way {
+  padding: 1.6rem 0;
+  border-top: 1px solid var(--edge);
+}
+.way:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+.way h3 {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 560;
+  letter-spacing: -0.01em;
+}
+.way p {
+  margin: 0.35rem 0 0;
+  font-size: 0.875rem;
+  color: var(--fg-2);
+}
+.way code {
+  color: var(--fg);
+}
+.link {
+  display: inline-block;
+  margin-top: 0.8rem;
+  font-size: 0.875rem;
+  color: var(--fg);
+  text-decoration: none;
+  border-bottom: 1px solid var(--edge-strong);
+  transition: border-color 0.15s ease;
+}
+.link:hover {
+  border-bottom-color: var(--fg);
+}
+.cmd {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.9rem;
+  padding: 0.55rem 0.55rem 0.55rem 0.9rem;
+  border: 1px solid var(--edge-strong);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.cmd code {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  white-space: nowrap;
+  font-size: 0.78rem;
+  color: var(--fg-2);
+  scrollbar-width: none;
+}
+.cmd button {
+  flex: none;
+  height: 1.7rem;
+  padding: 0 0.7rem;
+  border: 1px solid var(--edge-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--fg-2);
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+.cmd button:hover {
+  color: var(--fg);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.closing {
+  text-align: center;
+  padding: 7rem 0;
+}
+.closing h2 {
+  font-size: clamp(1.7rem, 3.4vw, 2.4rem);
+}
+.closing .actions {
+  justify-content: center;
+}
+.thanks {
+  margin: 2.5rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--fg-3);
+}
+.thanks a {
+  color: var(--fg-2);
+  text-decoration-color: var(--fg-4);
+  text-underline-offset: 3px;
+}
+
+/* ---- Footer ------------------------------------------------------------ */
+
+.footer {
+  padding: 3.5rem 0 calc(2rem + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--edge);
+  font-size: 0.8125rem;
+}
+.footer-grid {
+  display: grid;
+  grid-template-columns: 2fr repeat(3, 1fr);
+  gap: 2rem;
+}
+.footer-brand p {
+  max-width: 18rem;
+  margin: 0.8rem 0 0;
+  color: var(--fg-3);
+}
+.footer h3 {
+  margin: 0 0 0.8rem;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fg-4);
+}
+.footer-grid > div:not(.footer-brand) a {
+  display: block;
+  padding: 0.2rem 0;
+  color: var(--fg-2);
+  text-decoration: none;
+}
+.footer-grid > div:not(.footer-brand) a:hover {
+  color: var(--fg);
+}
+.footer-base {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--edge);
+  color: var(--fg-4);
+  font-size: 0.78rem;
+}
+@media (max-width: 44rem) {
+  .footer-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .footer-brand {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+  }
+}

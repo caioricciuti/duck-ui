@@ -1,0 +1,4 @@
+/embed/docs /docs/ 301
+/embed/docs/* /docs/ 301
+/a https://duckui.com/ 302
+/a/ https://duckui.com/ 302

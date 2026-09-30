@@ -1,0 +1,196 @@
+---
+import { Image } from "astro:assets";
+import Landing from "../layouts/Landing.astro";
+import screenshot from "../assets/screenshot.png";
+
+const app = "https://duckui.com";
+const repo = "https://github.com/caioricciuti/duck-ui";
+const docker = "docker run -p 5522:5522 ghcr.io/caioricciuti/duck-ui:latest";
+const openLink = `${app}/?load=https://blobs.duckdb.org/stations.parquet&sql=${encodeURIComponent(
+  "SELECT country, count(*) AS stations FROM stations GROUP BY country ORDER BY stations DESC",
+)}`;
+
+// The result of the query in the hero, as DuckDB returns it for the
+// stations sample. Bars are drawn against the largest value.
+const rows = [
+  ["NL", 397, 52.16],
+  ["D", 105, 51.11],
+  ["B", 48, 51.05],
+  ["F", 14, 46.18],
+  ["A", 10, 47.94],
+  ["CH", 3, 47.47],
+  ["GB", 1, 51.53],
+] as const;
+const max = rows[0][1];
+
+const features = [
+  {
+    title: "Editor",
+    body: "Completion from your own catalog, DuckDB-aware formatting, and ⌘Enter for the statement under the cursor. Errors are underlined where DuckDB points.",
+  },
+  {
+    title: "Results",
+    body: "A virtualized grid with sort, filter, column statistics, and exports to CSV, JSON, XLSX or Parquet.",
+  },
+  {
+    title: "Notebooks",
+    body: "SQL, Python and Markdown cells side by side. Python runs in Pyodide, and sql() hands you a pandas DataFrame.",
+  },
+  {
+    title: "Dashboards",
+    body: "Reports written as Markdown with live SQL inside. Inputs re-run only the queries that read them.",
+    href: "/docs/dashboards/",
+  },
+  {
+    title: "Duck Brain",
+    body: "Ask in plain language, get SQL. A model in the browser, or your own OpenAI, Anthropic or Ollama. Only the schema leaves the tab.",
+    href: "/docs/duck-brain/",
+  },
+  {
+    title: "Live sessions",
+    body: "Bring someone into your workspace, browser to browser. Shared editors, visible cursors, no server in between.",
+    href: "/docs/live-sessions/",
+  },
+  {
+    title: "Your files",
+    body: "CSV, JSON, Parquet, Arrow, Excel and DuckDB files, from disk, a URL, S3, R2 or a folder you mount once.",
+    href: "/docs/folder-access/",
+  },
+  {
+    title: "Share",
+    body: "An analysis travels as a link, or as a live chart in any page through one iframe. The data never goes with it.",
+    href: "/docs/embedding/",
+  },
+];
+---
+
+<Landing
+  title="Duck-UI: DuckDB in your browser"
+  description="Duck-UI runs DuckDB in your browser: open files, query with SQL, build notebooks and markdown dashboards, and collaborate live, with no server. Free and open source."
+>
+  <section class="hero">
+    <div class="container hero-grid">
+      <div class="hero-copy">
+        <p class="kicker"><span class="dot" aria-hidden="true"></span>Duck-UI 2.0, open source</p>
+        <h1>
+          SQL on anything.
+          <span>Right in your browser.</span>
+        </h1>
+        <p class="lead">
+          A DuckDB workbench that lives in a tab. Open a file, write a query, chart the answer. Nothing to install,
+          no account, and your data never leaves the machine.
+        </p>
+        <div class="actions">
+          <a class="btn btn-solid" href={app}>Open Duck-UI</a>
+          <a class="btn btn-outline" href="/docs/getting-started/">Documentation</a>
+        </div>
+      </div>
+
+      <figure class="query" aria-label="A query and its result">
+        <div class="query-bar">
+          <span>stations.sql</span>
+          <span class="query-meta">7 rows · 714 ms</span>
+        </div>
+        <pre class="query-sql"><code><span class="k">SELECT</span> country, <span class="f">count</span>(*) <span class="k">AS</span> stations,
+       <span class="f">round</span>(<span class="f">avg</span>(geo_lat), <span class="n">2</span>) <span class="k">AS</span> avg_lat
+<span class="k">FROM</span> <span class="s">'https://blobs.duckdb.org/stations.parquet'</span>
+<span class="k">GROUP BY</span> country
+<span class="k">ORDER BY</span> stations <span class="k">DESC</span></code></pre>
+        <table class="query-result">
+          <thead>
+            <tr><th>country</th><th>stations</th><th>avg_lat</th></tr>
+          </thead>
+          <tbody>
+            {rows.map(([country, stations, lat]) => (
+              <tr>
+                <td>{country}</td>
+                <td class="bar-cell">
+                  <span class="bar" style={`--w:${(stations / max).toFixed(3)}`} aria-hidden="true"></span>
+                  <span class="num">{stations}</span>
+                </td>
+                <td class="num">{lat.toFixed(2)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </figure>
+    </div>
+  </section>
+
+  <section class="showcase">
+    <div class="container">
+      <figure class="shot">
+        <Image
+          src={screenshot}
+          alt="Duck-UI with a query over the DuckDB stations dataset, its result grid and the database explorer"
+          widths={[720, 1440]}
+          sizes="(max-width: 68rem) 100vw, 68rem"
+        />
+      </figure>
+      <p class="caption">The workspace. DuckDB compiled to WebAssembly does the work; the interface starts at about 350 kB.</p>
+    </div>
+  </section>
+
+  <section class="section" id="features">
+    <div class="container two-col">
+      <header class="section-head">
+        <p class="label">What's inside</p>
+        <h2>A complete workbench, in one tab.</h2>
+      </header>
+      <dl class="features">
+        {features.map((f) => (
+          <div class="feature">
+            <dt>{f.href ? <a href={f.href}>{f.title}</a> : f.title}</dt>
+            <dd>{f.body}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  </section>
+
+  <section class="section" id="run">
+    <div class="container two-col">
+      <header class="section-head">
+        <p class="label">Run it</p>
+        <h2>Where you want it.</h2>
+      </header>
+      <div class="ways">
+        <div class="way">
+          <h3>In the browser</h3>
+          <p>Nothing to set up. Everything stays in the tab.</p>
+          <a class="link" href={app}>duckui.com →</a>
+        </div>
+        <div class="way">
+          <h3>With Docker</h3>
+          <p>One container, configured by environment variables.</p>
+          <div class="cmd">
+            <code>{docker}</code>
+            <button type="button" data-copy={docker} aria-label="Copy the Docker command">Copy</button>
+          </div>
+        </div>
+        <div class="way">
+          <h3>From a link</h3>
+          <p>
+            Add <code>?load=</code> and <code>&amp;sql=</code> to the address and any public Parquet, CSV or JSON file
+            opens as a runnable analysis.
+          </p>
+          <a class="link" href={openLink}>Try the stations dataset →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section closing">
+    <div class="container">
+      <h2>Open a file. Ask it anything.</h2>
+      <div class="actions">
+        <a class="btn btn-solid" href={app}>Open Duck-UI</a>
+        <a class="btn btn-outline" href={repo}>Star on GitHub</a>
+      </div>
+      <p class="thanks">
+        Free and MIT licensed, supported by <a href="https://qxip.net">QXIP</a>{" and "}<a
+          href="https://github.com/sponsors/caioricciuti">its sponsors</a>.
+      </p>
+    </div>
+  </section>
+</Landing>

@@ -1,0 +1,88 @@
+---
+title: Privacy
+description: "How duckui.com and docs.duckui.com handle personal data: what stays in your browser, which third parties your browser talks to, analytics, logs and your rights."
+tableOfContents: false
+pagefind: false
+---
+
+import AnalyticsOptOut from "../../components/AnalyticsOptOut.astro";
+
+_Last updated 30 September 2026_
+
+This notice covers **duckui.com** (the Duck-UI app) and **docs.duckui.com** (this documentation site). Copies of Duck-UI that other people host on their own servers are their operators' responsibility, not covered here.
+
+## Who is responsible
+
+The controller is **Caio Ricciuti**, an individual established in Spain. For anything privacy-related, write to [me@caioricciuti.com](mailto:me@caioricciuti.com).
+
+## The short version
+
+- Duck-UI runs DuckDB entirely in your browser. Your files, queries and results are processed on your device and are not uploaded to me.
+- Neither site sets cookies or asks for an account.
+- Visits are counted with self-hosted, cookieless analytics that do not store your IP address, and never see query strings.
+- Some features make your browser talk to third parties directly. They are listed below.
+
+## duckui.com: what stays on your device
+
+The app is a set of static files. Once loaded, DuckDB runs as WebAssembly inside your browser. Files you open, databases you create, saved queries, notebooks, dashboards, connection settings and any AI API key you enter are kept in your browser's own storage (such as IndexedDB and local storage) on your device. I have no access to them. You can delete them by clearing this site's data in your browser.
+
+### Third parties your browser contacts
+
+These requests go straight from your browser to the party named, so that party sees your IP address and ordinary request data (browser, time, the address requested), under its own privacy terms. I do not receive what they receive.
+
+- **DuckDB extensions**: when the app starts, DuckDB downloads some of its extensions (for example Parquet, Arrow, Excel and DuckLake support) from `extensions.duckdb.org`, run by the DuckDB project.
+- **Data you query by URL**: if you query a remote file, your browser fetches it from the server you named.
+- **Sample datasets**, when you load one: `blobs.duckdb.org` or `raw.githubusercontent.com` (GitHub).
+- **Live sessions**, only if you start or join one: browsers connect directly to each other over WebRTC, so participants can see each other's IP addresses. To find a route between you, each browser asks Google's public STUN server (`stun.l.google.com`) for its own public address. No query or data passes through Google or through me; the connection codes you exchange travel in the URL fragment, which browsers do not send to servers.
+- **Duck Brain cloud AI**, only if you add your own API key: your question, the SQL and a summary of your schema are sent to OpenAI (`api.openai.com`) or Anthropic (`api.anthropic.com`) under your account with them. Your data rows are not sent.
+- **Duck Brain local AI**, only if you enable it: the model is downloaded from Hugging Face (`huggingface.co`) or GitHub and then runs on your device.
+
+### Share links
+
+A share link contains the shared query or notebook itself, compressed into the link. Links in the `#s=` form keep it in the fragment, which is never sent to a server. Links in the `?sql=` form carry the SQL in the query string, which is sent to the server and appears in its access logs (below), but not in analytics. Anyone you give a link to can read what it contains.
+
+## docs.duckui.com
+
+The documentation is a set of static pages served by **Cloudflare** (see "Who hosts it"). The Introduction and Getting started pages show a "Buy Me a Coffee" button image loaded from `img.buymeacoffee.com`, which sees your IP address when those pages load.
+
+## Visit statistics (Umami)
+
+Both sites use [Umami](https://umami.is), running on my own server at a.caioricciuti.com; no third party receives this data. For each page view it records the page address without its query string or fragment, the referring site, the browser, operating system and device type, screen size, language, and a country, region and city derived from your IP address at that moment. Your IP address itself is not stored, no cookies are set, and page views are grouped only by an anonymous session identifier. I use the results only as aggregated statistics.
+
+_Legal basis:_ my legitimate interest in knowing how my own sites are used (GDPR Art. 6(1)(f)), within the conditions the Spanish Data Protection Agency (AEPD) sets for audience measurement that needs no consent: first-party only, statistics only, no cross-site tracking, and disclosed here.
+
+You can opt out at any time. The button below stores a single `umami.disabled` flag in this browser's local storage for docs.duckui.com. Browsers keep storage per site, so for duckui.com, or any other browser, block `a.caioricciuti.com` with a content blocker, or write to me.
+
+<AnalyticsOptOut />
+
+## Server logs
+
+The server that hosts duckui.com and the analytics keeps access logs of each request: IP address, date and time, the address requested (including any query string), referring page and user agent. They exist to keep the sites running and secure. Short-lived request traces with the same kind of data, without query strings, are kept for up to 30 days. Logs rotate automatically and are deleted as they age out; they are not used for analytics or shared with anyone.
+
+Cloudflare processes the same kind of request data for docs.duckui.com in order to deliver and protect it, as described under "Who hosts it".
+
+_Legal basis:_ my legitimate interest in operating secure websites (Art. 6(1)(f)).
+
+## Who hosts it
+
+- **duckui.com** and the analytics: **Hetzner Online GmbH** (Germany) hosts the server, in a data centre in Finland.
+- **docs.duckui.com**: **Cloudflare, Inc.** (United States) serves the pages from its network, and its DNS answers for both domains. Cloudflare acts as my processor under its Data Processing Addendum, which includes the EU Standard Contractual Clauses, and is certified under the EU-US Data Privacy Framework.
+
+The third parties listed above are contacted by your browser, not by me, and handle that data under their own terms.
+
+## How long it is kept
+
+- **Your work in the app:** on your device, until you delete it.
+- **Analytics:** at most 25 months.
+- **Server logs and traces:** a few weeks at most, as described above.
+- **Backups** of the server are kept for up to 14 days.
+
+## Your rights
+
+You can ask me for access to your personal data, and to correct, delete or restrict it, to receive it in a portable format, or object to processing based on legitimate interest. Email [me@caioricciuti.com](mailto:me@caioricciuti.com); I will answer within one month. Note that I hold very little that can be linked to you: no accounts, and no data from inside the app.
+
+If you think your data is being handled unlawfully, you can complain to the Spanish Data Protection Agency (Agencia Española de Protección de Datos, [www.aepd.es](https://www.aepd.es)) or to the supervisory authority where you live or work.
+
+## Changes
+
+If this notice changes, the new version is published here with a new date.
