@@ -6,6 +6,12 @@ import starlight from "@astrojs/starlight";
 
 export default defineConfig({
   site: "https://docs.duckui.com",
+  // Astro turns on tsconfig path resolution, and Vite then looks for the
+  // nearest tsconfig of every file it compiles, walking up past site/ to the
+  // app's tsconfig, which extends @tsconfig/svelte. That package is an app
+  // dependency, absent on Cloudflare where only site/ is installed. Pin the
+  // site's own.
+  vite: { tsconfig: "./tsconfig.json" },
   redirects: {
     "/examples": "/docs/examples/",
   },
