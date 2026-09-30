@@ -16,7 +16,7 @@ vi.mock("@/services/persistence/repositories/settingsRepository", () => ({
   getSetting: vi.fn().mockResolvedValue(null),
 }));
 
-vi.mock("sonner", () => ({
+vi.mock("svelte-sonner", () => ({
   toast: { warning: vi.fn(), success: vi.fn(), error: vi.fn(), info: vi.fn() },
 }));
 

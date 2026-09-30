@@ -185,6 +185,24 @@ export async function encodeShareForTab(
   return encodeShare(payload);
 }
 
+/**
+ * The app's root URL, with a trailing slash: the origin plus the base path
+ * the build was made for (`import.meta.env.BASE_URL`, "/" unless deployed
+ * under a sub path).
+ *
+ * `/embed` and `/a/` live under that root. Built from the origin alone they
+ * point outside the app on a sub path deployment.
+ */
+export function appRootUrl(
+  origin: string = window.location.origin,
+  base: string = import.meta.env.BASE_URL ?? "/"
+): string {
+  // A base that is a full URL (assets on another host) or relative ("./")
+  // does not say where the app is served, so the origin root stands in.
+  const path = base.startsWith("/") && !base.startsWith("//") ? base : "/";
+  return `${origin}${path.endsWith("/") ? path : `${path}/`}`;
+}
+
 /** Build a full shareable URL (origin + path + #s=payload) for a tab. */
 export async function buildTabShareUrl(tab: EditorTab, autoRun = true): Promise<string | null> {
   const encoded = await encodeShareForTab(tab, autoRun);
@@ -218,10 +236,11 @@ export async function buildShareLinks(
   const encoded = await encodeShareForTab(tab, autoRun, params);
   if (!encoded) return null;
   const { origin, pathname } = window.location;
-  const embedUrl = `${origin}/embed#${SHARE_HASH_KEY}=${encoded}`;
+  const root = appRootUrl(origin);
+  const embedUrl = `${root}embed#${SHARE_HASH_KEY}=${encoded}`;
   return {
     appUrl: `${origin}${pathname}#${SHARE_HASH_KEY}=${encoded}`,
-    crawlUrl: `${origin}/a/?${SHARE_HASH_KEY}=${encoded}`,
+    crawlUrl: `${root}a/?${SHARE_HASH_KEY}=${encoded}`,
     embedUrl,
     iframeSnippet: `<iframe src="${embedUrl}" width="100%" height="480" style="border:0;border-radius:8px" title="${(tab.title || "Duck-UI analysis").replace(/"/g, "&quot;")}"></iframe>`,
     webComponentSnippet: `<script src="${DUCK_UI_CDN}"></script>\n<duck-embed share="${encoded}"></duck-embed>`,

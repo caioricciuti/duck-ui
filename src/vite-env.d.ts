@@ -1,3 +1,4 @@
+/// <reference types="svelte" />
 /// <reference types="vite/client" />
 
 declare const __DUCK_UI_VERSION__: string;

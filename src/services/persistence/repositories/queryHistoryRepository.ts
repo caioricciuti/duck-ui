@@ -108,3 +108,56 @@ export async function getHistoryCount(profileId: string): Promise<number> {
     return all.filter((r) => r.profile_id === profileId).length;
   }
 }
+
+export type HistoryStatus = "all" | "succeeded" | "failed";
+
+export interface HistorySearch {
+  /** Matched against the SQL and the error text, case-insensitively. */
+  text?: string;
+  status?: HistoryStatus;
+  limit?: number;
+  offset?: number;
+}
+
+export interface HistoryPage {
+  entries: HistoryEntry[];
+  /** Entries matching the search, before paging. */
+  total: number;
+}
+
+/** Newest first, narrowed by text and status. Exported for tests. */
+export function filterHistory(
+  entries: HistoryEntry[],
+  { text = "", status = "all" }: Pick<HistorySearch, "text" | "status">
+): HistoryEntry[] {
+  const needle = text.trim().toLowerCase();
+  return entries
+    .filter((entry) => {
+      if (status === "failed" && !entry.error) return false;
+      if (status === "succeeded" && entry.error) return false;
+      if (!needle) return true;
+      return (
+        entry.sql_text.toLowerCase().includes(needle) ||
+        (entry.error?.toLowerCase().includes(needle) ?? false)
+      );
+    })
+    .sort((a, b) => new Date(b.executed_at).getTime() - new Date(a.executed_at).getTime());
+}
+
+/** One page of history matching a search, with the size of the whole match. */
+export async function searchHistory(
+  profileId: string,
+  search: HistorySearch = {}
+): Promise<HistoryPage> {
+  const limit = search.limit ?? 50;
+  const offset = search.offset ?? 0;
+  // History is a few thousand short rows at most, so narrowing it in memory
+  // keeps one code path for both storage backends.
+  const all = isUsingOpfs()
+    ? await getHistory(profileId, Number.MAX_SAFE_INTEGER, 0)
+    : ((await fallbackGetAll("query_history")) as HistoryEntry[]).filter(
+        (entry) => entry.profile_id === profileId
+      );
+  const matched = filterHistory(all, search);
+  return { entries: matched.slice(offset, offset + limit), total: matched.length };
+}

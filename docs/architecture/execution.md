@@ -185,7 +185,7 @@ Both predate the engine layer and are load-bearing:
 
 ## Session lifecycle
 
-`registry.ts` owns it, not the Zustand store. One session per connection id,
+`registry.ts` owns it, not the app store. One session per connection id,
 with concurrent opens de-duplicated — for OPFS a double open would deadlock on
 the file lock, and for WASM it would silently double a 34MB engine.
 

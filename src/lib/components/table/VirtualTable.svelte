@@ -1,0 +1,478 @@
+<script lang="ts">
+  import { onMount, untrack } from 'svelte'
+  import type { ColumnMeta } from '../../types/query'
+  import type { ColumnFilter } from '../../utils/result-filters'
+  import TableHeader from './TableHeader.svelte'
+  import TableCell from './TableCell.svelte'
+  import FilterPopover from './FilterPopover.svelte'
+  import { SearchX, Copy, MousePointer2, Rows3, Columns3, Download } from 'lucide-svelte'
+  import ContextMenu, { type ContextMenuItem } from '../common/ContextMenu.svelte'
+  import * as toast from '../../stores/toast.svelte'
+  import {
+    countCells, isSelected, rangeBetween, selectionToTsv, singleCell, toggleCell,
+    type CellPoint, type CellRange,
+  } from '@/lib/resultTable/cellSelection'
+  import { getFormatNumbers } from '../../stores/number-format.svelte'
+  import { getDisplayType, cellText } from '../../utils/column-types'
+
+  const ROW_HEIGHT = 34
+  const OVERSCAN = 5
+  const ROW_NUMBER_WIDTH = 60
+  const MIN_COL_WIDTH = 80
+  const MAX_COL_WIDTH = 720
+  const SAMPLE_ROWS = 160
+
+  interface Props {
+    meta: ColumnMeta[]
+    data: unknown[][]
+    sortColumn?: string
+    sortDir?: 'asc' | 'desc'
+    onsort?: (column: string) => void
+    filters?: ColumnFilter[]
+    onfilterchange?: (column: string, filter: ColumnFilter | null) => void
+    /** Number of selected cells, for the footer. */
+    onselectionchange?: (count: number) => void
+    /** Offered as "Export" in the cell menu when given. */
+    onexport?: () => void
+  }
+
+  let {
+    meta, data, sortColumn = '', sortDir = 'asc', onsort, filters = [], onfilterchange,
+    onselectionchange, onexport,
+  }: Props = $props()
+
+  let filterPopover = $state<{ column: string; x: number; y: number } | null>(null)
+
+  function handleFilterClick(column: string, e: MouseEvent) {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    filterPopover = filterPopover?.column === column
+      ? null
+      : { column, x: rect.left, y: rect.bottom + 6 }
+  }
+
+  let container: HTMLDivElement
+  let scrollTop = $state(0)
+  let viewportHeight = $state(600)
+  let viewportWidth = $state(900)
+  let widths = $state<number[]>([])
+  let baseWidths = $state<number[]>([])
+  let manualTouched = $state<boolean[]>([])
+  let selection = $state.raw<CellRange[]>([])
+  /** Where a shift-click or a drag extends from. */
+  let anchor: CellPoint | null = null
+  let dragging = false
+  let menu = $state<{ x: number; y: number } | null>(null)
+
+  const selectedCount = $derived(countCells(selection))
+  $effect(() => {
+    onselectionchange?.(selectedCount)
+  })
+
+  const isMac = /Mac/.test(navigator.platform)
+
+  function onCellMouseDown(e: MouseEvent, row: number, col: number) {
+    if (e.button !== 0) return
+    const point = { row, col }
+    if (e.shiftKey && anchor) {
+      selection = [rangeBetween(anchor, point)]
+    } else if (isMac ? e.metaKey : e.ctrlKey) {
+      selection = toggleCell(selection, point)
+      anchor = point
+    } else {
+      selection = [singleCell(point)]
+      anchor = point
+      dragging = true
+    }
+    container.focus({ preventScroll: true })
+  }
+
+  function onCellMouseEnter(row: number, col: number) {
+    if (dragging && anchor) selection = [rangeBetween(anchor, { row, col })]
+  }
+
+  function onCellContextMenu(e: MouseEvent, row: number, col: number) {
+    e.preventDefault()
+    // A right-click outside the selection moves it, like a spreadsheet does.
+    if (!isSelected(selection, row, col)) {
+      selection = [singleCell({ row, col })]
+      anchor = { row, col }
+    }
+    menu = { x: e.clientX, y: e.clientY }
+  }
+
+  function selectRow(row: number) {
+    if (meta.length === 0) return
+    selection = [{ row0: row, row1: row, col0: 0, col1: meta.length - 1 }]
+    anchor = { row, col: 0 }
+    container.focus({ preventScroll: true })
+  }
+
+  function selectAll() {
+    if (data.length === 0 || meta.length === 0) return
+    selection = [{ row0: 0, row1: data.length - 1, col0: 0, col1: meta.length - 1 }]
+  }
+
+  async function copySelection() {
+    if (selection.length === 0) return
+    try {
+      await navigator.clipboard.writeText(selectionToTsv(selection, data, meta.length, cellText))
+      toast.success(`Copied ${selectedCount.toLocaleString()} ${selectedCount === 1 ? 'cell' : 'cells'}`, 1500)
+    } catch {
+      toast.error('Could not copy to the clipboard')
+    }
+  }
+
+  const menuItems = $derived.by((): ContextMenuItem[] => {
+    const first = selection[0]
+    return [
+      { id: 'copy', label: 'Copy', icon: Copy, shortcut: isMac ? '⌘C' : 'Ctrl+C', onSelect: () => void copySelection() },
+      { id: 'all', label: 'Select All', icon: MousePointer2, shortcut: isMac ? '⌘A' : 'Ctrl+A', onSelect: selectAll },
+      { id: 'row', label: 'Select Row', icon: Rows3, disabled: !first, onSelect: () => first && selectRow(first.row0) },
+      {
+        id: 'column',
+        label: 'Select Column',
+        icon: Columns3,
+        disabled: !first,
+        onSelect: () => {
+          if (first) selection = [{ row0: 0, row1: data.length - 1, col0: first.col0, col1: first.col0 }]
+        },
+      },
+      ...(onexport
+        ? [{ id: 'sep', separator: true }, { id: 'export', label: 'Export as CSV', icon: Download, onSelect: onexport }]
+        : []),
+    ]
+  })
+
+  // Shortcuts belong to the grid while it has focus. They must not take
+  // select-all or copy away from the editor above it.
+  function onGridKeydown(e: KeyboardEvent) {
+    const mod = isMac ? e.metaKey : e.ctrlKey
+    if (mod && e.key.toLowerCase() === 'c' && selection.length > 0) {
+      e.preventDefault()
+      void copySelection()
+    } else if (mod && e.key.toLowerCase() === 'a') {
+      e.preventDefault()
+      selectAll()
+    } else if (e.key === 'Escape' && selection.length > 0) {
+      e.preventDefault()
+      selection = []
+    }
+  }
+
+  function estimateTextWidth(text: string): number {
+    return Math.max(0, Math.ceil(text.length * 7.4))
+  }
+
+  function estimateValueWidth(value: unknown): number {
+    if (value === null || value === undefined) return 34
+    if (typeof value === 'number' || typeof value === 'bigint') {
+      const display = getFormatNumbers() ? value.toLocaleString() : String(value)
+      return Math.max(60, estimateTextWidth(display) + 18)
+    }
+    if (typeof value === 'boolean') return 58
+    if (typeof value === 'string') {
+      const str = value.length > 80 ? value.slice(0, 80) : value
+      return Math.max(74, estimateTextWidth(str) + 18)
+    }
+    return Math.max(90, estimateTextWidth(cellText(value).slice(0, 80)) + 20)
+  }
+
+  function compactTypeLabel(type: string): string {
+    const normalized = type.replace(/\s+/g, '')
+
+    if (normalized.length <= 16) return normalized
+    return `${normalized.slice(0, 15)}…`
+  }
+
+  function sampleRows(rows: unknown[][]): unknown[][] {
+    if (rows.length <= SAMPLE_ROWS) return rows
+    const sampled: unknown[][] = []
+    const step = rows.length / SAMPLE_ROWS
+    for (let i = 0; i < SAMPLE_ROWS; i++) {
+      const idx = Math.floor(i * step)
+      sampled.push(rows[idx] ?? rows[rows.length - 1])
+    }
+    return sampled
+  }
+
+  function buildBaseWidths(columns: ColumnMeta[], rows: unknown[][]): number[] {
+    if (!columns.length) return []
+    const sampled = sampleRows(rows)
+
+    return columns.map((col, ci) => {
+      const metricWidths: number[] = []
+      const typeLabel = compactTypeLabel(col.type)
+      const headerMinWidth = estimateTextWidth(col.name) + Math.min(estimateTextWidth(typeLabel), 124) + 62
+      let width = Math.max(
+        estimateTextWidth(col.name) + 40,
+        estimateTextWidth(col.type) + 28,
+        headerMinWidth,
+      )
+
+      for (let ri = 0; ri < sampled.length; ri++) {
+        const valueWidth = estimateValueWidth(sampled[ri]?.[ci])
+        metricWidths.push(valueWidth)
+        width = Math.max(width, valueWidth)
+      }
+
+      if (metricWidths.length > 0) {
+        const sorted = [...metricWidths].sort((a, b) => a - b)
+        const p90 = sorted[Math.floor((sorted.length - 1) * 0.9)] ?? width
+        width = Math.max(width, Math.round(p90))
+      }
+
+      const display = getDisplayType(col.type)
+      if (display === 'date') width = Math.max(width, 140)
+      if (display === 'number') width = Math.max(width, 124)
+      if (/uuid/i.test(col.type)) width = Math.max(width, 180)
+
+      return Math.max(MIN_COL_WIDTH, Math.min(MAX_COL_WIDTH, Math.round(width)))
+    })
+  }
+
+  function distributeToViewport(source: number[], touched: boolean[], viewport: number): number[] {
+    if (!source.length) return []
+    const available = Math.max(0, viewport - ROW_NUMBER_WIDTH)
+    const total = source.reduce((sum, w) => sum + w, 0)
+    if (available <= 0 || total >= available) return source
+
+    const extra = available - total
+    const autoIndices = source.map((_, i) => i).filter((i) => !touched[i])
+    const targets = autoIndices.length > 0 ? autoIndices : source.map((_, i) => i)
+    const targetSet = new Set(targets)
+    const weightSum = targets.reduce((sum, i) => sum + Math.max(1, Math.sqrt(source[i])), 0)
+
+    // Each column may grow to at most MAX_GROWTH times its natural width;
+    // beyond that the viewport keeps empty space on the right, which reads
+    // better than values floating 400 px away from their header.
+    const MAX_GROWTH = 1.6
+    let consumed = 0
+    const grown = source.map((w, i) => {
+      if (!targetSet.has(i)) return w
+      const gain = Math.floor((extra * Math.max(1, Math.sqrt(source[i]))) / weightSum)
+      const capped = Math.min(gain, Math.round(w * (MAX_GROWTH - 1)))
+      consumed += capped
+      return w + capped
+    })
+
+    // Hand out the last few pixels only while columns are still under their cap.
+    let remainder = extra - consumed
+    for (let i = 0; i < grown.length && remainder > 0; i++) {
+      if (targetSet.has(i) && grown[i] < Math.round(source[i] * MAX_GROWTH)) {
+        grown[i] += 1
+        remainder--
+      }
+    }
+
+    return grown
+  }
+
+  function syncViewport() {
+    if (!container) return
+    viewportHeight = container.clientHeight
+    viewportWidth = container.clientWidth
+  }
+
+  // Initialize and keep widths in sync with new result sets.
+  $effect(() => {
+    const columns = meta
+    const rows = data
+    getFormatNumbers() // subscribe: number formatting changes column widths
+    if (!columns.length) {
+      widths = []
+      baseWidths = []
+      manualTouched = []
+      return
+    }
+
+    const nextBase = buildBaseWidths(columns, rows)
+    baseWidths = nextBase
+
+    const currentWidths = untrack(() => widths)
+    const currentTouched = untrack(() => manualTouched)
+
+    if (currentWidths.length !== columns.length || currentTouched.length !== columns.length) {
+      widths = [...nextBase]
+      manualTouched = Array.from({ length: columns.length }, () => false)
+      return
+    }
+
+    const nextWidths = currentWidths.map((w, i) => (currentTouched[i] ? w : nextBase[i]))
+    const changed = nextWidths.some((w, i) => w !== currentWidths[i])
+    if (changed) widths = nextWidths
+  })
+
+  // Keep viewport metrics fresh when result sets or panels change size.
+  $effect(() => {
+    meta
+    data
+    const raf = requestAnimationFrame(syncViewport)
+    return () => cancelAnimationFrame(raf)
+  })
+
+  // Close any open filter popover when a new result set arrives.
+  $effect(() => {
+    meta
+    filterPopover = null
+  })
+
+  // The selection is positional, so it is meaningless once sorting or
+  // filtering rearranges the rows. Drop it whenever the data is replaced.
+  $effect(() => {
+    data
+    selection = []
+    anchor = null
+    menu = null
+  })
+
+  const rowCount = $derived(data.length)
+  const totalHeight = $derived(rowCount * ROW_HEIGHT)
+  const startIdx = $derived(Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - OVERSCAN))
+  const endIdx = $derived(Math.min(rowCount, Math.ceil((scrollTop + viewportHeight) / ROW_HEIGHT) + OVERSCAN))
+  const visibleRows = $derived(data.slice(startIdx, endIdx))
+  const topPad = $derived(startIdx * ROW_HEIGHT)
+  const effectiveWidths = $derived(distributeToViewport(widths, manualTouched, viewportWidth))
+  const tableWidth = $derived(ROW_NUMBER_WIDTH + effectiveWidths.reduce((sum, w) => sum + w, 0))
+
+  function handleScroll() {
+    scrollTop = container.scrollTop
+  }
+
+  function handleResize(index: number, width: number) {
+    widths = widths.map((w, i) => i === index ? Math.max(MIN_COL_WIDTH, Math.min(MAX_COL_WIDTH, Math.round(width))) : w)
+    manualTouched = manualTouched.map((t, i) => i === index ? true : t)
+  }
+
+  function handleFitColumn(index: number) {
+    if (!baseWidths[index]) return
+    widths = widths.map((w, i) => i === index ? baseWidths[index] : w)
+    manualTouched = manualTouched.map((t, i) => i === index ? false : t)
+  }
+
+  function handleFitAll() {
+    widths = [...baseWidths]
+    manualTouched = manualTouched.map(() => false)
+  }
+
+  onMount(() => {
+    if (!container) return
+
+    syncViewport()
+
+    const observer = new ResizeObserver(() => syncViewport())
+    observer.observe(container)
+    window.addEventListener('resize', syncViewport)
+
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', syncViewport)
+    }
+  })
+</script>
+
+<svelte:window onmouseup={() => (dragging = false)} />
+
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+<div
+  bind:this={container}
+  class="relative flex-1 overflow-auto bg-canvas focus:outline-none"
+  role="grid"
+  tabindex="0"
+  aria-label="Query result"
+  aria-rowcount={rowCount}
+  aria-colcount={meta.length}
+  onscroll={handleScroll}
+  onkeydown={onGridKeydown}
+>
+  <table class="text-sm border-collapse table-fixed" style="width:{tableWidth}px;min-width:{tableWidth}px">
+    <colgroup>
+      <col style="width:{ROW_NUMBER_WIDTH}px;min-width:{ROW_NUMBER_WIDTH}px;max-width:{ROW_NUMBER_WIDTH}px" />
+      {#each effectiveWidths as width}
+        <col style="width:{width}px;min-width:{width}px;max-width:{width}px" />
+      {/each}
+    </colgroup>
+    <TableHeader
+      columns={meta}
+      widths={effectiveWidths}
+      {sortColumn}
+      {sortDir}
+      {onsort}
+      filteredColumns={filters.map((f) => f.column)}
+      onfilterclick={onfilterchange ? handleFilterClick : undefined}
+      onresize={handleResize}
+      onfitcolumn={handleFitColumn}
+      onfitall={handleFitAll}
+    />
+    {#if rowCount > 0}
+      <tbody>
+        <!-- Spacer for virtual scroll -->
+        <tr style="height:{topPad}px" aria-hidden="true"><td colspan={meta.length + 1}></td></tr>
+
+        {#each visibleRows as row, vi (startIdx + vi)}
+          {@const absIdx = startIdx + vi}
+          <tr
+            class="group h-[34px] border-b border-edge-subtle hover:bg-hover cursor-default
+              {absIdx % 2 === 1 ? 'bg-surface' : 'bg-canvas'}"
+          >
+            <td
+              class="sticky left-0 z-[2] px-2.5 text-right text-xs font-semibold text-fg-2 border-r border-edge-subtle tabular-nums select-none
+                {absIdx % 2 === 1 ? 'bg-surface' : 'bg-canvas'}
+                group-hover:bg-hover"
+              style="width:{ROW_NUMBER_WIDTH}px;max-width:{ROW_NUMBER_WIDTH}px;min-width:{ROW_NUMBER_WIDTH}px"
+              title="Select row"
+              onmousedown={() => selectRow(absIdx)}
+            >{absIdx + 1}</td>
+            {#each meta as col, ci}
+              <TableCell
+                value={row[ci]}
+                type={col.type}
+                width={effectiveWidths[ci] ?? 120}
+                selected={selection.length > 0 && isSelected(selection, absIdx, ci)}
+                onmousedown={(e) => onCellMouseDown(e, absIdx, ci)}
+                onmouseenter={() => onCellMouseEnter(absIdx, ci)}
+                oncontextmenu={(e) => onCellContextMenu(e, absIdx, ci)}
+              />
+            {/each}
+          </tr>
+        {/each}
+
+        <!-- Bottom spacer -->
+        <tr style="height:{Math.max(0, totalHeight - (endIdx * ROW_HEIGHT))}px" aria-hidden="true"><td colspan={meta.length + 1}></td></tr>
+      </tbody>
+    {/if}
+  </table>
+
+  {#if rowCount === 0 && meta.length > 0}
+    <div class="absolute inset-x-0 top-[35px] bottom-0 grid place-items-center p-6 pointer-events-none">
+      <div class="max-w-md rounded-md border border-edge-subtle bg-surface px-6 py-5 text-center shadow-lg">
+        <div class="mx-auto mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full bg-surface-2 text-fg-3">
+          <SearchX size={18} />
+        </div>
+        <p class="text-sm font-semibold text-fg">No rows returned</p>
+        <p class="mt-1 text-xs text-fg-3">
+          {#if filters.length > 0}
+            No rows match the active filters.
+          {:else}
+            Your query executed successfully, but returned no rows.
+          {/if}
+        </p>
+      </div>
+    </div>
+  {/if}
+
+  {#if filterPopover}
+    {@const popoverMeta = meta.find((c) => c.name === filterPopover!.column)}
+    <FilterPopover
+      column={filterPopover.column}
+      columnType={popoverMeta?.type ?? 'VARCHAR'}
+      current={filters.find((f) => f.column === filterPopover!.column) ?? null}
+      x={filterPopover.x}
+      y={filterPopover.y}
+      onapply={(filter) => { onfilterchange?.(filter.column, filter); filterPopover = null }}
+      onclear={() => { onfilterchange?.(filterPopover!.column, null); filterPopover = null }}
+      onclose={() => (filterPopover = null)}
+    />
+  {/if}
+</div>
+
+<ContextMenu open={menu !== null} x={menu?.x ?? 0} y={menu?.y ?? 0} items={menuItems} onclose={() => (menu = null)} />

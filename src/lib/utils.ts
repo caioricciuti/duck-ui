@@ -1,10 +1,3 @@
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
-
 /**
  * Generate a UUID v4 string. Uses crypto.randomUUID() when available (secure
  * contexts / HTTPS), falls back to a crypto.getRandomValues()-based polyfill

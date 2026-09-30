@@ -29,11 +29,13 @@ Run all four. `bun run typecheck` alone is not enough; some errors only surface 
 
 ## Project layout
 
-- `src/store/` — single Zustand store, one slice per domain. Types in `src/store/types.ts`.
+- `src/store/`: one framework-free store (`createStore.ts`), one slice per domain. Types in `src/store/types.ts`. Svelte reads it through `src/lib/stores/duck.svelte.ts`.
 - `src/services/duckdb/` — DuckDB WASM, OPFS, and external-connection layers.
 - `src/services/persistence/` — IndexedDB persistence, repositories, crypto.
 - `src/lib/` — shared utilities (share codec, SQL sanitization, app config, Duck Brain providers).
-- `src/components/` — UI. shadcn/ui primitives live in `src/components/ui/`.
+- `src/lib/components/`: UI in Svelte 5. Shared primitives live in `src/lib/components/common/`, design tokens in `src/app.css`.
+- `src/lib/routes.ts` and `src/lib/stores/router.svelte.ts`: pages and their sidebar sections.
+- `src/lib/editor/`: CodeMirror theme, completion and the collaborative binding.
 - Tests live in `__tests__/` directories next to the code they test, named `*.test.ts`.
 
 More detail in `CLAUDE.md` and the README architecture section.

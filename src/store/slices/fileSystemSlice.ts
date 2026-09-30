@@ -1,13 +1,10 @@
-import type { StateCreator } from "zustand";
-import { toast } from "sonner";
+import type { StateCreator } from "@/store/createStore";
+import { toast } from "svelte-sonner";
 import type { DuckStoreState, FileSystemSlice, MountedFolderInfo } from "../types";
 
-export const createFileSystemSlice: StateCreator<
-  DuckStoreState,
-  [["zustand/devtools", never]],
-  [],
-  FileSystemSlice
-> = (set) => ({
+export const createFileSystemSlice: StateCreator<DuckStoreState, [], [], FileSystemSlice> = (
+  set
+) => ({
   mountedFolders: [],
   isFileSystemSupported: typeof window !== "undefined" && "showDirectoryPicker" in window,
 

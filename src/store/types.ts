@@ -383,7 +383,8 @@ export interface ConnectionSlice {
   isLoadingExternalConnection: boolean;
 
   addConnection: (connection: ConnectionProvider) => Promise<void>;
-  updateConnection: (connection: ConnectionProvider) => void;
+  /** Updates the connection in memory and in the profile's storage. */
+  updateConnection: (connection: ConnectionProvider) => Promise<void>;
   deleteConnection: (id: string) => void;
   setCurrentConnection: (connectionId: string) => Promise<void>;
   getConnection: (connectionId: string) => ConnectionProvider | undefined;
@@ -411,6 +412,11 @@ export interface QuerySlice {
   maxResultRows: number;
   setMaxResultRows: (rows: number) => void;
 
+  /**
+   * With a `tabId` the outcome lands on the tab and nothing is returned.
+   * Without one the result is returned, and a failure comes back as a result
+   * carrying `error` rather than as a rejection: check it.
+   */
   executeQuery: (query: string, tabId?: string) => Promise<QueryResult | void>;
   /** Cancels the in-flight query started for this tab, if any. */
   cancelQuery: (tabId: string) => Promise<void>;
@@ -581,14 +587,19 @@ export interface ProfileSlice {
 
 export interface DashboardSlice {
   dashboards: Dashboard[];
-  isDashboardEditing: boolean;
+  /**
+   * Edit mode by dashboard id. Every open dashboard tab stays mounted, so one
+   * shared flag put all of them in edit mode at once.
+   */
+  dashboardEditing: Record<string, boolean>;
 
   loadDashboards: (profileId?: string) => Promise<void>;
   createDashboard: (name: string) => Promise<Dashboard | null>;
   updateDashboard: (dashboard: Dashboard) => Promise<void>;
   deleteDashboard: (id: string) => Promise<void>;
   duplicateDashboard: (id: string) => Promise<Dashboard | null>;
-  setDashboardEditing: (editing: boolean) => void;
+  /** Without an id, applies to the dashboard of the active tab. */
+  setDashboardEditing: (editing: boolean, dashboardId?: string) => void;
 
   /** Appends a named SQL fence plus a component tag to a dashboard document. */
   appendQueryToDashboard: (options: {

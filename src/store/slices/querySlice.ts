@@ -1,4 +1,4 @@
-import type { StateCreator } from "zustand";
+import type { StateCreator } from "@/store/createStore";
 import {
   collectExecution,
   materializeCollected,
@@ -40,12 +40,7 @@ export const MAX_MAX_RESULT_ROWS = 50_000_000;
 export const clampMaxResultRows = (rows: number): number =>
   Math.max(MIN_MAX_RESULT_ROWS, Math.min(MAX_MAX_RESULT_ROWS, Math.floor(rows)));
 
-export const createQuerySlice: StateCreator<
-  DuckStoreState,
-  [["zustand/devtools", never]],
-  [],
-  QuerySlice
-> = (set, get) => ({
+export const createQuerySlice: StateCreator<DuckStoreState, [], [], QuerySlice> = (set, get) => ({
   queryHistory: [],
   executingTabs: {},
   queryProgress: {},
@@ -162,7 +157,11 @@ export const createQuerySlice: StateCreator<
       // Persist to DB (fire-and-forget)
       const { currentProfileId } = get();
       if (currentProfileId) {
-        addHistoryEntry(currentProfileId, query).catch(() => {});
+        addHistoryEntry(currentProfileId, query, {
+          connectionId: get().currentConnection?.id,
+          durationMs: queryResult.durationMs,
+          rowCount: queryResult.rowCount,
+        }).catch(() => {});
       }
 
       // If the query is DDL, refresh schema.
@@ -194,8 +193,15 @@ export const createQuerySlice: StateCreator<
       // Persist to DB (fire-and-forget)
       const { currentProfileId } = get();
       if (currentProfileId) {
-        addHistoryEntry(currentProfileId, query, { error: errorMessage }).catch(() => {});
+        addHistoryEntry(currentProfileId, query, {
+          connectionId: get().currentConnection?.id,
+          error: errorMessage,
+        }).catch(() => {});
       }
+      // An ad-hoc caller has no tab to read the failure from, so it gets the
+      // same error result the tab would. Resolving with nothing made every
+      // `await executeQuery(sql)` look like a success.
+      return tabId ? undefined : errorResult;
     }
   },
 

@@ -1,5 +1,5 @@
-import type { StateCreator } from "zustand";
-import { toast } from "sonner";
+import type { StateCreator } from "@/store/createStore";
+import { toast } from "svelte-sonner";
 import {
   asLocalDuckSession,
   closeSession,
@@ -19,6 +19,7 @@ import type {
 } from "../types";
 import {
   saveConnection,
+  updateConnection as updateConnectionRepo,
   deleteConnection as deleteConnectionRepo,
 } from "@/services/persistence/repositories/connectionRepository";
 
@@ -80,12 +81,10 @@ const closeOtherOpfsSessions = async (keepConnectionId: string): Promise<void> =
   );
 };
 
-export const createConnectionSlice: StateCreator<
-  DuckStoreState,
-  [["zustand/devtools", never]],
-  [],
-  ConnectionSlice
-> = (set, get) => ({
+export const createConnectionSlice: StateCreator<DuckStoreState, [], [], ConnectionSlice> = (
+  set,
+  get
+) => ({
   currentConnection: null,
   currentSession: null,
   connectionList: {
@@ -133,6 +132,9 @@ export const createConnectionSlice: StateCreator<
           host: connection.host,
           port: connection.port,
           database: connection.database,
+          // Without it a password connection comes back after a reload with
+          // no username, and every request is refused.
+          user: connection.user,
           path: connection.path,
           authMode: connection.authMode,
         };
@@ -143,6 +145,9 @@ export const createConnectionSlice: StateCreator<
         saveConnection(
           currentProfileId,
           {
+            // Same id as the in-memory connection, or deleting it later in
+            // this session would leave the stored row behind.
+            id: connection.id,
             name: connection.name,
             scope: connection.scope ?? "External",
             config,
@@ -164,14 +169,71 @@ export const createConnectionSlice: StateCreator<
     }
   },
 
-  updateConnection: (connection) => {
+  updateConnection: async (connection) => {
+    const existing = get().connectionList.connections.find((c) => c.id === connection.id);
+    if (!existing) return;
+
+    // The form carries only the fields of its scope and always says "APP".
+    // Whatever it does not edit keeps its value. A scope change starts clean,
+    // so an OPFS database does not inherit the host of the server it replaced.
+    const merged: ConnectionProvider = {
+      ...(existing.scope === connection.scope ? existing : {}),
+      ...connection,
+      environment: existing.environment,
+    };
+
     set((state) => ({
       connectionList: {
-        connections: state.connectionList.connections.map((c) =>
-          c.id === connection.id ? connection : c
-        ),
+        connections: state.connectionList.connections.map((c) => (c.id === merged.id ? merged : c)),
       },
     }));
+
+    // The open session was built from the old settings. Reopen it, or the
+    // edit would only take effect after switching away and back.
+    if (get().currentConnection?.id === merged.id) {
+      await closeSession(merged.id).catch((error) =>
+        console.warn("[Connection] Failed to close session before reconnecting:", error)
+      );
+      await get().setCurrentConnection(merged.id);
+    }
+
+    const { currentProfileId, encryptionKey } = get();
+    if (!currentProfileId) return;
+
+    const credentialRecord: Record<string, unknown> = {};
+    if (merged.password) credentialRecord.password = merged.password;
+    if (merged.apiKey) credentialRecord.apiKey = merged.apiKey;
+
+    try {
+      await updateConnectionRepo(
+        currentProfileId,
+        merged.id,
+        {
+          name: merged.name,
+          scope: merged.scope,
+          config: {
+            host: merged.host,
+            port: merged.port,
+            database: merged.database,
+            user: merged.user,
+            path: merged.path,
+            authMode: merged.authMode,
+          },
+          // Without a key nothing can be encrypted. Leaving the stored value
+          // alone beats wiping credentials over a rename.
+          credentials: !encryptionKey
+            ? undefined
+            : Object.keys(credentialRecord).length > 0
+              ? credentialRecord
+              : null,
+          environment: merged.environment,
+        },
+        encryptionKey
+      );
+    } catch (error) {
+      console.warn("[Connection] Failed to persist update:", error);
+      toast.error(`Connection "${merged.name}" was changed but could not be saved.`);
+    }
   },
 
   deleteConnection: (id) => {

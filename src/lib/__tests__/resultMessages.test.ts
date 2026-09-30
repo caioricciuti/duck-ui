@@ -15,10 +15,10 @@ describe("formatQueryTime", () => {
 
 describe("zeroRowsMessage", () => {
   it("includes the engine time when known", () => {
-    expect(zeroRowsMessage(12)).toBe("Query ran fine — 0 rows returned (took 12 ms).");
+    expect(zeroRowsMessage(12)).toBe("Query ran fine, 0 rows returned (took 12 ms).");
   });
 
   it("omits the time for results restored from persistence", () => {
-    expect(zeroRowsMessage()).toBe("Query ran fine — 0 rows returned.");
+    expect(zeroRowsMessage()).toBe("Query ran fine, 0 rows returned.");
   });
 });
