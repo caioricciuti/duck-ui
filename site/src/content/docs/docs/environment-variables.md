@@ -32,7 +32,7 @@ These variables pre-configure a connection to an external DuckDB server (via HTT
 
 ### Live session networking
 
-Peer connections use a public STUN server by default. These variables override that. They are read from `env.js` like the settings above, but the Docker entrypoint does not write them in this version, so set them by editing `env.js` in the served folder (see [How Environment Variables Work](#how-environment-variables-work)).
+Peer connections use a public STUN server by default. These variables override that, and the Docker image passes them through like the settings above (since 2.0.1). An unset variable keeps the default; `DUCK_UI_STUN_URLS` set to an empty string means no STUN at all. The TURN credentials reach every browser that opens the app, so use a relay-only account.
 
 | Variable | Description | Default |
 |----------|-------------|---------|

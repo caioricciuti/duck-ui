@@ -203,6 +203,21 @@ h1#_top {
 .sl-markdown-content a:not(:where(.not-content *)):hover {
   text-decoration-color: currentColor;
 }
+/* Long values (URLs, defaults) break instead of widening the table past
+   the column and under the table of contents. Headers and the first
+   column, usually a name, stay whole. */
+.sl-markdown-content th,
+.sl-markdown-content td:first-child code {
+  white-space: nowrap;
+}
+.sl-markdown-content td:not(:first-child) code {
+  overflow-wrap: anywhere;
+}
+/* In a table that has to scroll, the browser squeezes text columns first.
+   The second column is the description in these docs: keep it readable. */
+.sl-markdown-content td:nth-child(2) {
+  min-width: 15rem;
+}
 .sl-markdown-content :not(pre) > code {
   border-radius: 4px;
   padding: 0.12em 0.38em;
@@ -212,8 +227,13 @@ h1#_top {
 
 /* Tables: framed, scrollable when wide. */
 .sl-markdown-content table {
-  display: table;
-  width: 100%;
+  /* A block that scrolls sideways when the table is wider than the text
+     column, instead of running under the table of contents. It hugs its
+     content when narrower. */
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
   border-collapse: separate;
   border-spacing: 0;
   border: 1px solid var(--duck-frame);
@@ -237,12 +257,6 @@ h1#_top {
   text-transform: uppercase;
 }
 
-@media (max-width: 50rem) {
-  .sl-markdown-content table {
-    display: block;
-    overflow-x: auto;
-  }
-}
 
 /* Asides: rounded, the tip in yellow. */
 .starlight-aside {
