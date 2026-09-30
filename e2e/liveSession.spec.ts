@@ -122,13 +122,26 @@ function resultCell(page: Page, value: string | RegExp) {
   return page.getByRole("tabpanel").getByRole("cell", { name: value, exact: true }).first();
 }
 
-/** Opens the host's Share Live dialog and returns it. */
-async function openShareDialog(page: Page) {
-  await page.getByRole("button", { name: "Live session", exact: true }).click();
-  await page.getByRole("menuitem", { name: /Share Live/ }).click();
-  const dialog = page.getByRole("dialog", { name: "Share Live" });
-  await expect(dialog).toBeVisible();
-  return dialog;
+const rail = (page: Page) => page.getByRole("navigation", { name: "Primary" });
+
+/**
+ * Opens the Live session page, where a host sets a session up and runs it,
+ * and returns it.
+ */
+async function openSharePage(page: Page) {
+  await rail(page)
+    .getByRole("button", { name: /^Share live/ })
+    .click();
+  // The workspace is hidden while a page is shown, so this is the page.
+  const livePage = page.getByRole("main");
+  await expect(livePage.getByRole("heading", { name: "Live session", level: 1 })).toBeVisible();
+  return livePage;
+}
+
+/** Back to the tabs. A session keeps running whatever screen is shown. */
+async function backToWorkspace(page: Page) {
+  await rail(page).getByRole("button", { name: "Query", exact: true }).click();
+  await expect(page.getByRole("tablist", { name: "Open tabs" })).toBeVisible();
 }
 
 test.describe("live session", () => {
@@ -145,17 +158,17 @@ test.describe("live session", () => {
       await seedHostData(host);
 
       // ---- Host creates a session that shares one table -------------------
-      const shareDialog = await openShareDialog(host);
-      await shareDialog.getByLabel("Session name").fill("E2E session");
-      await shareDialog.getByText("Share selected tables").click();
+      const sharePage = await openSharePage(host);
+      await sharePage.getByLabel("Session name").fill("E2E session");
+      await sharePage.getByText("Share selected tables").click();
 
-      const tableCheckbox = shareDialog.getByText("regional_sales", { exact: true });
+      const tableCheckbox = sharePage.getByText("regional_sales", { exact: true });
       await expect(tableCheckbox).toBeVisible({ timeout: 30_000 });
       await tableCheckbox.click();
 
-      await shareDialog.getByRole("button", { name: "Create session" }).click();
+      await sharePage.getByRole("button", { name: "Create session" }).click();
 
-      const inviteInput = shareDialog.locator("input[readonly]").first();
+      const inviteInput = sharePage.locator("input[readonly]").first();
       await expect(inviteInput).toBeVisible({ timeout: 60_000 });
       const inviteUrl = await inviteInput.inputValue();
       expect(inviteUrl).toContain("#live=");
@@ -174,9 +187,9 @@ test.describe("live session", () => {
       expect(answerCode.length).toBeGreaterThan(0);
 
       // ---- Host completes the handshake ----------------------------------
-      await shareDialog.getByPlaceholder("Paste their connection code here").fill(answerCode);
-      await shareDialog.getByRole("button", { name: "Connect", exact: true }).click();
-      await expect(shareDialog.getByText(/Connected/)).toBeVisible({ timeout: 60_000 });
+      await sharePage.getByPlaceholder("Paste their connection code here").fill(answerCode);
+      await sharePage.getByRole("button", { name: "Connect", exact: true }).click();
+      await expect(sharePage.getByText(/Connected/)).toBeVisible({ timeout: 60_000 });
 
       // ---- Guest receives the grant and can see the shared table ---------
       await expect(joinDialog.getByText("Shared data available")).toBeVisible({ timeout: 60_000 });
@@ -213,17 +226,17 @@ test.describe("live session", () => {
       const host = await bootPeer(hostContext, "hostuser");
       await seedHostData(host);
 
-      const shareDialog = await openShareDialog(host);
-      await shareDialog.getByLabel("Session name").fill("Revoke test");
-      await shareDialog.getByText("Share selected tables").click();
+      const sharePage = await openSharePage(host);
+      await sharePage.getByLabel("Session name").fill("Revoke test");
+      await sharePage.getByText("Share selected tables").click();
 
       // The table list loads asynchronously; clicking before it arrives hangs.
-      const tableCheckbox = shareDialog.getByText("regional_sales", { exact: true });
+      const tableCheckbox = sharePage.getByText("regional_sales", { exact: true });
       await expect(tableCheckbox).toBeVisible({ timeout: 30_000 });
       await tableCheckbox.click();
-      await shareDialog.getByRole("button", { name: "Create session" }).click();
+      await sharePage.getByRole("button", { name: "Create session" }).click();
 
-      const inviteInput = shareDialog.locator("input[readonly]").first();
+      const inviteInput = sharePage.locator("input[readonly]").first();
       await expect(inviteInput).toBeVisible({ timeout: 60_000 });
       const inviteUrl = await inviteInput.inputValue();
 
@@ -239,8 +252,8 @@ test.describe("live session", () => {
       await expect(answerInput).toBeVisible({ timeout: 60_000 });
       const answerCode = await answerInput.inputValue();
 
-      await shareDialog.getByPlaceholder("Paste their connection code here").fill(answerCode);
-      await shareDialog.getByRole("button", { name: "Connect", exact: true }).click();
+      await sharePage.getByPlaceholder("Paste their connection code here").fill(answerCode);
+      await sharePage.getByRole("button", { name: "Connect", exact: true }).click();
       await expect(joinDialog.getByText("Shared data available")).toBeVisible({ timeout: 60_000 });
       await joinDialog.getByRole("button", { name: /Open workspace|Hide/ }).click();
 
@@ -248,14 +261,8 @@ test.describe("live session", () => {
       // otherwise this asserts nothing.
       await expandDatabase(guest, "memory");
 
-      // The share dialog is modal: the session panel behind it is unclickable
-      // until it is dismissed.
-      await host.getByRole("button", { name: "Close", exact: true }).click();
-      await expect(host.getByRole("dialog")).toBeHidden();
-
-      // Host withdraws the grant from the session panel.
-      await host.getByRole("button", { name: "Session details" }).click();
-      await host.getByRole("button", { name: /Withdraw access/ }).click();
+      // Host withdraws the grant, on the same page the session was set up on.
+      await sharePage.getByRole("button", { name: /Withdraw access/ }).click();
 
       // The guest must not be left quietly executing against something else.
       await expect(guest.getByText(/no longer available/i).first()).toBeVisible({
@@ -276,11 +283,11 @@ test.describe("live session", () => {
       await runSql(host, "SELECT 1 AS seeded");
       await expectQueryFinished(host);
 
-      const shareDialog = await openShareDialog(host);
-      await shareDialog.getByLabel("Session name").fill("Editing test");
-      await shareDialog.getByRole("button", { name: "Create session" }).click();
+      const sharePage = await openSharePage(host);
+      await sharePage.getByLabel("Session name").fill("Editing test");
+      await sharePage.getByRole("button", { name: "Create session" }).click();
 
-      const inviteUrl = await shareDialog.locator("input[readonly]").first().inputValue();
+      const inviteUrl = await sharePage.locator("input[readonly]").first().inputValue();
       const guest = await bootPeer(
         guestContext,
         "guestuser",
@@ -291,9 +298,9 @@ test.describe("live session", () => {
       await joinDialog.getByRole("button", { name: "Join", exact: true }).click();
       const answerCode = await joinDialog.locator("input[readonly]").first().inputValue();
 
-      await shareDialog.getByPlaceholder("Paste their connection code here").fill(answerCode);
-      await shareDialog.getByRole("button", { name: "Connect", exact: true }).click();
-      await expect(shareDialog.getByText(/Connected/)).toBeVisible({ timeout: 60_000 });
+      await sharePage.getByPlaceholder("Paste their connection code here").fill(answerCode);
+      await sharePage.getByRole("button", { name: "Connect", exact: true }).click();
+      await expect(sharePage.getByText(/Connected/)).toBeVisible({ timeout: 60_000 });
       await joinDialog.getByRole("button", { name: /Open workspace|Hide/ }).click();
 
       // The host's tab, and its SQL, should reach the guest's workspace.
@@ -312,10 +319,9 @@ test.describe("live session", () => {
       // with invisible collaborators reads as haunted, not multiplayer.
       await guest.getByRole("tabpanel").locator(".cm-content").first().click();
       await guest.keyboard.type(" -- guest was here");
-      // The host's share dialog is modal; its workspace is unreachable until
-      // it closes. The session survives the dialog.
-      await host.keyboard.press("Escape");
-      await expect(shareDialog).toBeHidden({ timeout: 10_000 });
+      // The host is still on the Live session page. The session survives
+      // leaving it.
+      await backToWorkspace(host);
       await host.getByRole("tab", { name: /Query|seeded/i }).first().click();
       await expect(host.locator(".duck-peer-caret").first()).toBeAttached({ timeout: 60_000 });
     } finally {
@@ -336,13 +342,13 @@ test.describe("live session", () => {
       // ever".
       const host = await bootPeer(hostContext, "hostuser");
 
-      const shareDialog = await openShareDialog(host);
-      await shareDialog.getByLabel("Session name").fill("All data session");
-      await shareDialog.getByText("All data", { exact: true }).click();
-      await expect(shareDialog.getByText(/shared as they appear/)).toBeVisible();
-      await shareDialog.getByRole("button", { name: "Create session" }).click();
+      const sharePage = await openSharePage(host);
+      await sharePage.getByLabel("Session name").fill("All data session");
+      await sharePage.getByText("All data", { exact: true }).click();
+      await expect(sharePage.getByText(/shared as they appear/)).toBeVisible();
+      await sharePage.getByRole("button", { name: "Create session" }).click();
 
-      const inviteUrl = await shareDialog.locator("input[readonly]").first().inputValue();
+      const inviteUrl = await sharePage.locator("input[readonly]").first().inputValue();
       const guest = await bootPeer(
         guestContext,
         "guestuser",
@@ -353,15 +359,13 @@ test.describe("live session", () => {
       await joinDialog.getByRole("button", { name: "Join", exact: true }).click();
       const answerCode = await joinDialog.locator("input[readonly]").first().inputValue();
 
-      await shareDialog.getByPlaceholder("Paste their connection code here").fill(answerCode);
-      await shareDialog.getByRole("button", { name: "Connect", exact: true }).click();
-      await expect(shareDialog.getByText(/Connected/)).toBeVisible({ timeout: 60_000 });
+      await sharePage.getByPlaceholder("Paste their connection code here").fill(answerCode);
+      await sharePage.getByRole("button", { name: "Connect", exact: true }).click();
+      await expect(sharePage.getByText(/Connected/)).toBeVisible({ timeout: 60_000 });
       await joinDialog.getByRole("button", { name: /Open workspace|Hide/ }).click();
 
-      // The share dialog is modal: close it, or the host's workspace below
-      // is unreachable. The session itself survives the dialog.
-      await host.keyboard.press("Escape");
-      await expect(shareDialog).toBeHidden({ timeout: 10_000 });
+      // Back to the tabs: the session itself survives leaving its page.
+      await backToWorkspace(host);
 
       // NOW the host creates a table: after the session is live. No goto:
       // navigation would tear down the peer connection.
@@ -405,12 +409,12 @@ test.describe("multi-peer session", () => {
       await runSql(host, "SELECT 1 AS seeded");
       await expectQueryFinished(host);
 
-      const shareDialog = await openShareDialog(host);
-      await shareDialog.getByLabel("Session name").fill("Group session");
-      await shareDialog.getByRole("button", { name: "Create session" }).click();
+      const sharePage = await openSharePage(host);
+      await sharePage.getByLabel("Session name").fill("Group session");
+      await sharePage.getByRole("button", { name: "Create session" }).click();
 
       // ---- First guest ----------------------------------------------------
-      const firstInvite = await shareDialog.locator("input[readonly]").first().inputValue();
+      const firstInvite = await sharePage.locator("input[readonly]").first().inputValue();
       const guestOne = await bootPeer(
         firstContext,
         "guestone",
@@ -420,26 +424,26 @@ test.describe("multi-peer session", () => {
       await dialogOne.getByRole("button", { name: "Join", exact: true }).click();
       const codeOne = await dialogOne.locator("input[readonly]").first().inputValue();
 
-      await shareDialog.getByPlaceholder("Paste their connection code here").fill(codeOne);
-      await shareDialog.getByRole("button", { name: "Connect", exact: true }).click();
-      await expect(shareDialog.getByText(/Connected ·/)).toBeVisible({ timeout: 60_000 });
+      await sharePage.getByPlaceholder("Paste their connection code here").fill(codeOne);
+      await sharePage.getByRole("button", { name: "Connect", exact: true }).click();
+      await expect(sharePage.getByText(/Connected ·/)).toBeVisible({ timeout: 60_000 });
       await dialogOne.getByRole("button", { name: /Open workspace|Hide/ }).click();
 
       // ---- Second guest needs a FRESH invite ------------------------------
       // An SDP offer belongs to one connection, so reusing the first invite
       // cannot work. The host mints another.
-      await shareDialog.getByRole("button", { name: "Invite someone else" }).click();
+      await sharePage.getByRole("button", { name: "Invite someone else" }).click();
 
       const secondInvite = await expect
         .poll(
           async () => {
-            const value = await shareDialog.locator("input[readonly]").first().inputValue();
+            const value = await sharePage.locator("input[readonly]").first().inputValue();
             return value !== firstInvite ? value : null;
           },
           { timeout: 60_000 }
         )
         .not.toBeNull()
-        .then(() => shareDialog.locator("input[readonly]").first().inputValue());
+        .then(() => sharePage.locator("input[readonly]").first().inputValue());
 
       const guestTwo = await bootPeer(
         secondContext,
@@ -450,18 +454,20 @@ test.describe("multi-peer session", () => {
       await dialogTwo.getByRole("button", { name: "Join", exact: true }).click();
       const codeTwo = await dialogTwo.locator("input[readonly]").first().inputValue();
 
-      await shareDialog.getByPlaceholder("Paste their connection code here").fill(codeTwo);
-      await shareDialog.getByRole("button", { name: "Connect", exact: true }).click();
+      await sharePage.getByPlaceholder("Paste their connection code here").fill(codeTwo);
+      await sharePage.getByRole("button", { name: "Connect", exact: true }).click();
       await dialogTwo.getByRole("button", { name: /Open workspace|Hide/ }).click();
 
       // ---- All three are in the session ----------------------------------
-      await host.getByRole("button", { name: "Close", exact: true }).click();
-      await expect(host.getByRole("dialog")).toBeHidden();
-      await host.getByRole("button", { name: "Session details" }).click();
-      // Scoped to the panel: peer carets in the editor carry the names too.
-      const sessionPanel = host.getByRole("dialog", { name: "Session details" });
-      await expect(sessionPanel.getByText("guestone")).toBeVisible({ timeout: 60_000 });
-      await expect(sessionPanel.getByText("guesttwo")).toBeVisible();
+      // Scoped to the list: peer carets in the editor carry the names too.
+      const participants = sharePage.getByRole("region", { name: "Participants" });
+      await expect(participants.getByText("guestone")).toBeVisible({ timeout: 60_000 });
+      await expect(participants.getByText("guesttwo")).toBeVisible();
+
+      // The rail shows the running session from any screen.
+      await expect(
+        rail(host).getByRole("button", { name: "Share live: Group session" })
+      ).toContainText("2");
 
       // ---- The host's work reached BOTH guests ---------------------------
       // Guest two has no connection to guest one; anything shared between them
@@ -490,15 +496,15 @@ test.describe("fork session", () => {
       const host = await bootPeer(hostContext, "hostuser");
       await seedHostData(host);
 
-      const shareDialog = await openShareDialog(host);
-      await shareDialog.getByLabel("Session name").fill("Fork test");
-      await shareDialog.getByText("Share selected tables").click();
-      const tableCheckbox = shareDialog.getByText("regional_sales", { exact: true });
+      const sharePage = await openSharePage(host);
+      await sharePage.getByLabel("Session name").fill("Fork test");
+      await sharePage.getByText("Share selected tables").click();
+      const tableCheckbox = sharePage.getByText("regional_sales", { exact: true });
       await expect(tableCheckbox).toBeVisible({ timeout: 30_000 });
       await tableCheckbox.click();
-      await shareDialog.getByRole("button", { name: "Create session" }).click();
+      await sharePage.getByRole("button", { name: "Create session" }).click();
 
-      const inviteUrl = await shareDialog.locator("input[readonly]").first().inputValue();
+      const inviteUrl = await sharePage.locator("input[readonly]").first().inputValue();
       const guest = await bootPeer(
         guestContext,
         "guestuser",
@@ -510,13 +516,15 @@ test.describe("fork session", () => {
       await expect(answerInput).toBeVisible({ timeout: 60_000 });
       const answerCode = await answerInput.inputValue();
 
-      await shareDialog.getByPlaceholder("Paste their connection code here").fill(answerCode);
-      await shareDialog.getByRole("button", { name: "Connect", exact: true }).click();
+      await sharePage.getByPlaceholder("Paste their connection code here").fill(answerCode);
+      await sharePage.getByRole("button", { name: "Connect", exact: true }).click();
       await expect(joinDialog.getByText("Shared data available")).toBeVisible({ timeout: 60_000 });
       await joinDialog.getByRole("button", { name: /Open workspace|Hide/ }).click();
 
       // ---- Guest forks the shared table ----------------------------------
-      await guest.getByRole("button", { name: "Session details" }).click();
+      await rail(guest)
+        .getByRole("button", { name: /^Share live/ })
+        .click();
       await guest.getByRole("button", { name: /^Fork / }).click();
 
       const forkDialog = guest.getByRole("dialog");
@@ -527,6 +535,7 @@ test.describe("fork session", () => {
       });
       // Two "Close" buttons exist: the dialog's X and the footer. Take the footer.
       await forkDialog.getByRole("button", { name: "Close", exact: true }).last().click();
+      await backToWorkspace(guest);
 
       // ---- The host disappears entirely ----------------------------------
       await hostContext.close();

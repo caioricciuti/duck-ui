@@ -12,6 +12,7 @@
     history: () => import('../history/QueryHistoryPage.svelte'),
     connections: () => import('../connections/ConnectionsPage.svelte'),
     extensions: () => import('../settings/ExtensionsPage.svelte'),
+    live: () => import('../collaboration/LiveSessionPage.svelte'),
     settings: () => import('../settings/SettingsPage.svelte'),
   }
 

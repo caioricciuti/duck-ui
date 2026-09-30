@@ -65,16 +65,23 @@
 
   {#each railGroups as group (group.id)}
     {@const active = activeGroup.id === group.id}
-    <button
-      class="{railButton} {mobile ? '' : 'mt-1'} {active ? 'bg-active text-fg' : idle}"
-      onclick={() => openGroup(group)}
-      title={group.label}
-      aria-label={group.label}
-      aria-current={active ? 'page' : undefined}
-    >
-      {#if active}{@render marker()}{/if}
-      <group.icon size={16} />
-    </button>
+    {#if group.id === 'share'}
+      <!-- Its own button: the icon also carries the state of a running session. -->
+      <SessionIndicator class="{railButton} {mobile ? '' : 'mt-1'} {active ? 'bg-active text-fg' : idle}" {active} onclick={() => openGroup(group)}>
+        {#if active}{@render marker()}{/if}
+      </SessionIndicator>
+    {:else}
+      <button
+        class="{railButton} {mobile ? '' : 'mt-1'} {active ? 'bg-active text-fg' : idle}"
+        onclick={() => openGroup(group)}
+        title={group.label}
+        aria-label={group.label}
+        aria-current={active ? 'page' : undefined}
+      >
+        {#if active}{@render marker()}{/if}
+        <group.icon size={16} />
+      </button>
+    {/if}
   {/each}
 
   {#if !mobile}<div class="flex-1"></div>{/if}
@@ -94,8 +101,6 @@
   {/if}
 
   {#if !mobile}<span class="my-1.5 h-px w-5 bg-edge"></span>{/if}
-
-  <SessionIndicator />
 
   {#if !mobile}
     <span

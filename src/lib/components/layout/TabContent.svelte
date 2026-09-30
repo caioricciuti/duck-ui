@@ -1,6 +1,6 @@
 <script lang="ts">
   import HomeTab from '../workspace/HomeTab.svelte'
-  import { openShareLive } from '../../stores/overlays.svelte'
+  import { goTo } from '../../stores/router.svelte'
   import SqlTab from '../workspace/SqlTab.svelte'
   import Lazy from '../common/Lazy.svelte'
   import { duck, duckActions } from '../../stores/duck.svelte'
@@ -50,7 +50,7 @@
     {:else if tab.type === 'table'}
       <Lazy load={() => import('../workspace/TableTab.svelte')} props={{ tabId: tab.id, visible }} />
     {:else if tab.type === 'dashboard'}
-      <Lazy load={() => import('../dashboard/DashboardTab.svelte')} props={{ tabId: tab.id, onsharelive: openShareLive }} />
+      <Lazy load={() => import('../dashboard/DashboardTab.svelte')} props={{ tabId: tab.id, onsharelive: () => goTo('live') }} />
     {/if}
   </div>
 {/each}
