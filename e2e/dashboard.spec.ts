@@ -174,6 +174,10 @@ test.describe("markdown dashboards", () => {
     // as a fallback. Either way the choice must offer the starter's query.
     if (!(await suggest.isVisible())) await page.keyboard.press("Control+Space");
     await expect(suggest).toBeVisible({ timeout: 30_000 });
+    // Diagnostic: what the editor and the list hold when the choice is missing.
+    const doc = await editor.innerText();
+    const listed = await suggest.innerText();
+    expect(listed, `editor:\n${doc}\n\nlist:\n${listed}`).toContain("my_query");
     await expect(suggest.getByText("my_query").first()).toBeVisible();
 
     // Accepting the choice completes a runnable component reference.
