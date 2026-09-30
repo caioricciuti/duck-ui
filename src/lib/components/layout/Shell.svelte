@@ -9,9 +9,7 @@
   import Lazy from '../common/Lazy.svelte'
   import JoinSessionDialog from '../collaboration/JoinSessionDialog.svelte'
   import DeepLinkLoader from '../share/DeepLinkLoader.svelte'
-  import ShareLiveDialog from '../collaboration/ShareLiveDialog.svelte'
   import DashboardShareLoader from '../dashboard/DashboardShareLoader.svelte'
-  import { isShareLiveOpen, closeShareLive } from '../../stores/overlays.svelte'
   import { duck, duckActions } from '../../stores/duck.svelte'
   import { openCommandPalette, toggleCommandPalette } from '../../stores/command-palette.svelte'
   import { toggleExplorer, isMobile } from '../../stores/layout.svelte'
@@ -254,4 +252,3 @@
 <JoinSessionDialog />
 <DeepLinkLoader />
 <DashboardShareLoader />
-<ShareLiveDialog open={isShareLiveOpen()} onclose={closeShareLive} />

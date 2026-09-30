@@ -10,7 +10,6 @@
   import { stageRemoteTextFile } from '@/services/duckdb/utils'
   import { getUiConfig } from '@/lib/appConfig'
   import { goTo } from '../../stores/router.svelte'
-  import { openShareLive } from '../../stores/overlays.svelte'
 
   const ui = getUiConfig()
   const version = __DUCK_UI_VERSION__
@@ -46,7 +45,7 @@
       title: 'Share live',
       description: 'Invite another browser into your workspace. No server.',
       icon: Radio,
-      run: openShareLive,
+      run: () => goTo('live'),
     },
     ...(ui.hideBrain
       ? []

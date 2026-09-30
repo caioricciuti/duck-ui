@@ -143,6 +143,7 @@ Queries, notebooks, dashboards and tables open as **tabs** in the workspace. Tab
 | **Query** | The workspace with your tabs |
 | **Library** | Dashboards, Saved queries, History |
 | **Data** | Connections, Extensions |
+| **Share live** | Live session: host or join a session with another browser ([Live Sessions](/docs/live-sessions)) |
 | **Settings** | Profile, General (theme), AI, Performance (memory limit, rows per result), Project (export and import) |
 
 The current page lives in the URL, for example `?page=settings&section=ai`, so a reload on any static host lands on the same page.

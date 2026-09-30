@@ -5,6 +5,7 @@ import {
   History,
   Library,
   Puzzle,
+  Radio,
   Settings,
   SquareTerminal,
   Database,
@@ -12,9 +13,9 @@ import {
 import { getUiConfig, type UiConfig } from "@/lib/appConfig";
 
 export type PageRoute =
-  "dashboards" | "saved-queries" | "history" | "connections" | "extensions" | "settings";
+  "dashboards" | "saved-queries" | "history" | "connections" | "extensions" | "live" | "settings";
 export type Route = "workspace" | PageRoute;
-export type NavGroupId = "query" | "library" | "data" | "settings";
+export type NavGroupId = "query" | "library" | "data" | "share" | "settings";
 
 type Icon = typeof Settings;
 
@@ -66,6 +67,11 @@ export const PAGE_ROUTES: Record<PageRoute, PageMeta> = {
     icon: Puzzle,
     hiddenBy: "hideSettings",
   },
+  live: {
+    label: "Live session",
+    description: "Work with someone from two browsers, with no server in between",
+    icon: Radio,
+  },
   settings: {
     label: "Settings",
     description: "Profile, AI provider and engine preferences for this browser",
@@ -93,6 +99,7 @@ export const NAV_GROUPS: NavGroup[] = [
     routes: ["dashboards", "saved-queries", "history"],
   },
   { id: "data", label: "Data", icon: Database, routes: ["connections", "extensions"] },
+  { id: "share", label: "Share live", icon: Radio, routes: ["live"] },
   { id: "settings", label: "Settings", icon: Settings, routes: ["settings"] },
 ];
 

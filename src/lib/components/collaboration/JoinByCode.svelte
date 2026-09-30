@@ -1,14 +1,8 @@
 <script lang="ts">
-  import Sheet from '../common/Sheet.svelte'
   import Button from '../common/Button.svelte'
   import Textarea from '../common/Textarea.svelte'
   import * as toast from '../../stores/toast.svelte'
   import { buildInviteUrl, decodeInvite, type ManualInvite } from '@/services/collaboration/signaling/manualSignaling'
-
-  interface Props {
-    open: boolean
-    onclose: () => void
-  }
 
   /*
    * Joining from a pasted invite, rather than from a link.
@@ -22,8 +16,6 @@
    * Deliberately thin: it validates the code and puts it in the URL, so the
    * normal join dialog picks it up and runs exactly the flow a link would.
    */
-  let { open, onclose }: Props = $props()
-
   const uid = $props.id()
   let code = $state('')
   let checking = $state(false)
@@ -43,7 +35,6 @@
         return
       }
 
-      onclose()
       code = ''
       // Assigning the hash raises `hashchange`, which the join dialog watches.
       window.location.hash = buildInviteUrl(fromUrl).split('#')[1] ?? ''
@@ -53,17 +44,8 @@
   }
 </script>
 
-<Sheet
-  {open}
-  {onclose}
-  title="Join with an invite code"
-  description="Paste the link or the code someone sent you. Nothing runs until you confirm."
->
+<div class="flex flex-col gap-3">
   <label class="sr-only" for="{uid}-code">Invite link or code</label>
   <Textarea id="{uid}-code" mono rows={5} bind:value={code} placeholder="Paste the invite link or code" />
-
-  {#snippet footer()}
-    <Button variant="ghost" onclick={onclose}>Cancel</Button>
-    <Button onclick={join} disabled={!code.trim()} loading={checking}>Continue</Button>
-  {/snippet}
-</Sheet>
+  <Button class="self-start" onclick={join} disabled={!code.trim()} loading={checking}>Continue</Button>
+</div>

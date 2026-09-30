@@ -9,12 +9,14 @@ There is no server in the middle. No SQL executes anywhere but the participants'
 
 ## Starting a session
 
-Click the radio icon in the sidebar rail, then **Share Live**.
+Click the radio icon in the rail, under Data, to open the **Live session** page. It explains what a session is and has two cards: **Host a session** and **Join a session**. Host from the first one:
 
 1. Name the session and pick a **data access** mode (below).
 2. Duck-UI produces an **invite link**. Send it to the person you want in the session, over whatever channel you already trust.
 3. They open it, click **Join**, and get a **connection code** back. They send that code to you.
 4. Paste their code and click **Connect**. You are live.
+
+While a session runs, the same page lists who is in it and what is shared, and is where the host removes a participant, withdraws data, invites someone else or ends the session. The rail icon shows the session from any screen: amber while an invite is waiting, green with the number of guests once connected. Leaving the page does not end the session.
 
 Two pastes, no account, no server. Each invite works exactly once; **Invite someone else** mints a fresh one per person.
 
@@ -22,7 +24,7 @@ Two pastes, no account, no server. Each invite works exactly once; **Invite some
 
 ## Data access modes
 
-Sharing your workspace and sharing your data are different decisions, so the dialog makes you pick:
+Sharing your workspace and sharing your data are different decisions, so the host form makes you pick:
 
 | Mode | What guests can query |
 |------|----------------------|
@@ -43,7 +45,7 @@ Shared tables are **copied into a separate, isolated DuckDB engine** in your bro
 
 ## Joining a session
 
-Open the invite link (or paste the code via **Join with an invite code**), send back your connection code, and you are in. The shared workspace appears in your tabs, shared data mounts as a connection under **Session**, and the host's tables show up in your explorer.
+Open the invite link (or paste the link or code into **Join a session** on the Live session page), send back your connection code, and you are in. The shared workspace appears in your tabs, shared data mounts as a connection under **Session**, and the host's tables show up in your explorer.
 
 Joining grants nothing by itself: everything you can query was explicitly shared by the host, and it disappears the moment the session ends or access is revoked.
 
@@ -58,13 +60,13 @@ SQL tabs, notebooks, and dashboards are collaborative while a session runs:
 
 ## Fork: leave with your own copy
 
-A guest can **fork** shared tables: copy them into their own engine (in-memory, or an OPFS database to keep them beyond the tab). Click the fork icon in the session panel, pick tables and a destination, done.
+A guest can **fork** shared tables: copy them into their own engine (in-memory, or an OPFS database to keep them beyond the tab). Click **Fork** next to the shared data on the Live session page, pick tables and a destination, done.
 
 After a fork the copy is fully independent. The host can revoke, disconnect, or close the laptop; the forked tables keep working. The host's result limits apply to what crosses, and the dialog says honestly when a copy was truncated.
 
 ## Disconnects
 
-A transient network blip gets a grace window and usually heals on its own. If the link truly drops, the rail icon turns red and tells you what survives: **everything local**: your workspace, results, and forked tables. Rejoining takes a fresh invite (there is no server to renegotiate through), and the shared workspace catches up automatically when you are back.
+A transient network blip gets a grace window and usually heals on its own. If the link truly drops, the rail icon turns red and the Live session page tells you what survives: **everything local**: your workspace, results, and forked tables. Rejoining takes a fresh invite (there is no server to renegotiate through), and the shared workspace catches up automatically when you are back.
 
 ## Networking
 
@@ -76,7 +78,7 @@ Direct peer connections work on most networks out of the box, using a public STU
 | `DUCK_UI_TURN_URLS` | optional TURN relay for strict NATs |
 | `DUCK_UI_TURN_USERNAME` / `DUCK_UI_TURN_CREDENTIAL` | relay credentials |
 
-When a TURN relay is configured, the Share Live dialog offers **Test it**: Duck-UI asks the relay for a relay-only candidate, which exercises the URL, the credentials, and the allocation path, the same path a real session uses behind a symmetric NAT. A relay only ever sees encrypted traffic.
+When a TURN relay is configured, the host form offers **Test it**: Duck-UI asks the relay for a relay-only candidate, which exercises the URL, the credentials, and the allocation path, the same path a real session uses behind a symmetric NAT. A relay only ever sees encrypted traffic.
 
 ## Security posture, in short
 
