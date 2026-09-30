@@ -1,0 +1,42 @@
+---
+// Umami's tracker sends nothing while `umami.disabled` is set in local
+// storage. Storage is per origin, so this covers docs.duckui.com only; the
+// privacy notice says so.
+---
+
+<div class="duck-optout not-content" data-optout>
+  <button type="button" disabled>Opt out of analytics</button>
+  <span hidden></span>
+</div>
+
+<script>
+  const root = document.querySelector<HTMLElement>("[data-optout]");
+  const button = root?.querySelector("button");
+  const note = root?.querySelector("span");
+
+  const render = (out: boolean) => {
+    if (!button || !note) return;
+    button.disabled = false;
+    button.textContent = out ? "Opt back in to analytics" : "Opt out of analytics";
+    note.hidden = !out;
+    note.textContent = "Analytics are off for docs.duckui.com in this browser.";
+  };
+
+  try {
+    let out = localStorage.getItem("umami.disabled") !== null;
+    render(out);
+    button?.addEventListener("click", () => {
+      out = !out;
+      if (out) localStorage.setItem("umami.disabled", "1");
+      else localStorage.removeItem("umami.disabled");
+      render(out);
+    });
+  } catch {
+    if (button && note) {
+      button.hidden = true;
+      note.hidden = false;
+      note.textContent =
+        "This browser blocks local storage for this site, so the analytics script cannot run here anyway.";
+    }
+  }
+</script>

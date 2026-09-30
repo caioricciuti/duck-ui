@@ -1,0 +1,57 @@
+---
+// Starlight's header ends with the social icons. This puts the site's own
+// links and the app button in front of them.
+import Default from "@astrojs/starlight/components/SocialIcons.astro";
+
+const path = Astro.url.pathname;
+const links = [
+  { href: "/docs/", label: "Docs", active: path.startsWith("/docs/") && !path.startsWith("/docs/examples/") },
+  { href: "/docs/examples/", label: "Examples", active: path.startsWith("/docs/examples/") },
+];
+---
+
+<nav class="duck-links" aria-label="Site">
+  {links.map((l) => (
+    <a href={l.href} aria-current={l.active ? "page" : undefined}>{l.label}</a>
+  ))}
+  <a class="duck-open" href="https://duckui.com">Open Duck-UI</a>
+</nav>
+<Default />
+
+<style>
+  .duck-links {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-inline-end: 0.5rem;
+  }
+  .duck-links a {
+    padding: 0.35rem 0.7rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    color: var(--sl-color-gray-2);
+    text-decoration: none;
+    transition: color 0.15s ease, background 0.15s ease;
+  }
+  .duck-links a:hover,
+  .duck-links a[aria-current="page"] {
+    color: var(--sl-color-white);
+    background: var(--sl-color-gray-6);
+  }
+  .duck-links a.duck-open {
+    margin-inline-start: 0.4rem;
+    padding: 0.35rem 0.9rem;
+    background: var(--duck-yellow);
+    color: #0a0a0a;
+    font-weight: 600;
+  }
+  .duck-links a.duck-open:hover {
+    background: var(--duck-yellow-hover);
+    color: #0a0a0a;
+  }
+  @media (max-width: 50rem) {
+    .duck-links {
+      display: none;
+    }
+  }
+</style>

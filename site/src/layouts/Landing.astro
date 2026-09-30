@@ -1,0 +1,125 @@
+---
+// The landing page. Starlight owns /docs, /privacy and /legal; this layout
+// is the front page only: one dark look, nav and footer.
+import "../styles/landing.css";
+
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const app = "https://duckui.com";
+const repo = "https://github.com/caioricciuti/duck-ui";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="preload" href="/fonts/InterVariable.woff2" as="font" type="font/woff2" crossorigin />
+    <meta name="theme-color" content="#0a0a0a" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={`${app}/screenshot.png`} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content={`${app}/screenshot.png`} />
+    <script
+      is:inline
+      defer
+      src="https://a.caioricciuti.com/b.js"
+      data-website-id="c7039b57-0217-4a95-b592-9523077c9cab"
+    ></script>
+  </head>
+  <body>
+    <header class="nav" data-nav>
+      <div class="nav-inner">
+        <a class="brand" href="/" aria-label="Duck-UI home">
+          <img src="/logo.png" alt="" width="28" height="28" />
+          <span>Duck-UI</span>
+        </a>
+        <nav class="nav-links" aria-label="Main">
+          <a href="/#features">Features</a>
+          <a href="/#self-host">Self-host</a>
+          <a href="/docs/examples/">Examples</a>
+          <a href="/docs/">Docs</a>
+        </nav>
+        <div class="nav-actions">
+          <a class="icon-link" href={repo} aria-label="Duck-UI on GitHub">
+            <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          </a>
+          <a class="btn btn-small btn-primary" href={app}>Open Duck-UI</a>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <slot />
+    </main>
+
+    <footer class="footer">
+      <div class="container footer-grid">
+        <div class="footer-brand">
+          <a class="brand" href="/">
+            <img src="/logo.png" alt="" width="28" height="28" />
+            <span>Duck-UI</span>
+          </a>
+          <p>DuckDB in your browser. Free and open source under the MIT license.</p>
+        </div>
+        <div>
+          <h3>Product</h3>
+          <a href={app}>Open the app</a>
+          <a href="/docs/examples/">Examples</a>
+          <a href={`${repo}/releases`}>Releases</a>
+        </div>
+        <div>
+          <h3>Docs</h3>
+          <a href="/docs/">Introduction</a>
+          <a href="/docs/getting-started/">Getting started</a>
+          <a href="/docs/dashboards/">Dashboards</a>
+          <a href="/docs/environment-variables/">Environment variables</a>
+        </div>
+        <div>
+          <h3>Project</h3>
+          <a href={repo}>GitHub</a>
+          <a href={`${repo}/issues`}>Issues</a>
+          <a href="https://github.com/sponsors/caioricciuti">Sponsor</a>
+          <a href="/privacy/">Privacy</a>
+          <a href="/legal/">Legal notice</a>
+        </div>
+      </div>
+      <div class="container footer-base">
+        <span>MIT license</span>
+        <span>No account. No server. Your data stays in your browser.</span>
+      </div>
+    </footer>
+
+    <script>
+      const nav = document.querySelector<HTMLElement>("[data-nav]");
+      const onScroll = () => nav?.classList.toggle("scrolled", window.scrollY > 8);
+      onScroll();
+      window.addEventListener("scroll", onScroll, { passive: true });
+
+      document.querySelectorAll<HTMLButtonElement>("[data-copy]").forEach((button) => {
+        button.addEventListener("click", async () => {
+          const text = button.dataset.copy ?? "";
+          try {
+            await navigator.clipboard.writeText(text);
+            button.textContent = "Copied";
+          } catch {
+            button.textContent = "Select and copy";
+          }
+          setTimeout(() => (button.textContent = "Copy"), 1600);
+        });
+      });
+    </script>
+  </body>
+</html>

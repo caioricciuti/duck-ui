@@ -1,0 +1,15 @@
+// docs.duckui.com on Cloudflare Workers, as static assets. The dashboard
+// project is a Worker connected to this repository with root directory
+// /site; its build runs `bun run build` and then `npx wrangler deploy`,
+// which reads this file and uploads dist/. Nothing here runs on a
+// developer's machine.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "duck-ui-docs",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "404-page",
+    "html_handling": "auto-trailing-slash"
+  }
+}

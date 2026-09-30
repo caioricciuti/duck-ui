@@ -1,0 +1,255 @@
+/* The docs, on Starlight's tokens, in the app's palette: true-neutral grays
+   and the Duck-UI yellow as the accent. Values follow duck-ui/src/app.css. */
+
+/* Self-hosted, the same files the app ships (licenses beside them). */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/InterVariable.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/JetBrainsMono-Regular.woff2") format("woff2");
+}
+
+:root {
+  --sl-color-accent-low: #2a2700;
+  --sl-color-accent: #e6d900;
+  --sl-color-accent-high: #fff36b;
+  --sl-color-white: #ededed;
+  --sl-color-gray-1: #d4d4d4;
+  --sl-color-gray-2: #c8c8c8;
+  --sl-color-gray-3: #8f8f8f;
+  --sl-color-gray-4: #5c5c5c;
+  --sl-color-gray-5: #262626;
+  --sl-color-gray-6: #141414;
+  --sl-color-black: #0a0a0a;
+  --sl-color-bg-nav: rgba(10, 10, 10, 0.8);
+  --sl-color-bg-sidebar: #0a0a0a;
+  --sl-color-hairline-light: rgba(255, 255, 255, 0.06);
+  --sl-color-hairline: rgba(255, 255, 255, 0.08);
+  --sl-color-hairline-shade: rgba(255, 255, 255, 0.13);
+  --sl-color-bg-inline-code: rgba(255, 255, 255, 0.06);
+  --sl-font: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --sl-font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --sl-content-width: 46rem;
+  --sl-line-height: 1.7;
+  --duck-yellow: #fff100;
+  --duck-yellow-hover: #fff56b;
+  --duck-frame: rgba(255, 255, 255, 0.1);
+  --duck-card: rgba(255, 255, 255, 0.025);
+}
+
+:root[data-theme="light"] {
+  --sl-color-accent-low: #fdf3c4;
+  --sl-color-accent: #ca8a04;
+  --sl-color-accent-high: #6b4700;
+  --sl-color-white: #18181b;
+  --sl-color-gray-1: #27272a;
+  --sl-color-gray-2: #3f3f46;
+  --sl-color-gray-3: #6b6c76;
+  --sl-color-gray-4: #a0a1a9;
+  --sl-color-gray-5: #e2e2e6;
+  --sl-color-gray-6: #f3f3f5;
+  --sl-color-gray-7: #f9f9fa;
+  --sl-color-black: #ffffff;
+  --sl-color-bg-nav: rgba(255, 255, 255, 0.85);
+  --sl-color-bg-sidebar: #fbfbfc;
+  --sl-color-hairline-light: rgba(0, 0, 0, 0.05);
+  --sl-color-hairline: rgba(0, 0, 0, 0.08);
+  --sl-color-hairline-shade: rgba(0, 0, 0, 0.12);
+  --sl-color-bg-inline-code: rgba(0, 0, 0, 0.05);
+  --duck-yellow: #facc15;
+  --duck-yellow-hover: #fde047;
+  --duck-frame: rgba(0, 0, 0, 0.1);
+  --duck-card: rgba(0, 0, 0, 0.02);
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--duck-yellow) 35%, transparent);
+}
+
+/* ---- Header ------------------------------------------------------------ */
+
+.header {
+  backdrop-filter: saturate(160%) blur(16px);
+  -webkit-backdrop-filter: saturate(160%) blur(16px);
+  border-bottom-color: var(--sl-color-hairline) !important;
+}
+.site-title {
+  gap: 0.55rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--sl-color-white);
+}
+.site-title img {
+  height: 1.7rem;
+  width: auto;
+}
+
+/* ---- Sidebar ----------------------------------------------------------- */
+
+.sidebar-pane {
+  border-inline-end-color: var(--sl-color-hairline) !important;
+}
+.sidebar-content .group-label .large {
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--sl-color-gray-3);
+}
+.sidebar-content a {
+  border-radius: 6px;
+  font-size: 0.9rem;
+  padding: 0.3rem 0.6rem;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.sidebar-content a:hover {
+  background: var(--sl-color-gray-6);
+  color: var(--sl-color-white);
+}
+.sidebar-content a[aria-current="page"],
+.sidebar-content a[aria-current="page"]:hover {
+  background: var(--sl-color-accent-low);
+  color: var(--sl-color-accent-high);
+  font-weight: 600;
+}
+
+/* ---- Content ----------------------------------------------------------- */
+
+.content-panel {
+  border-top-color: var(--sl-color-hairline) !important;
+}
+h1#_top {
+  font-weight: 680;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+.sl-markdown-content :is(h2, h3, h4) {
+  letter-spacing: -0.02em;
+  font-weight: 640;
+}
+.sl-markdown-content .sl-heading-wrapper.level-h2 {
+  margin-top: 2.75rem;
+  padding-top: 1.75rem;
+  border-top: 1px solid var(--sl-color-hairline);
+}
+.sl-markdown-content p,
+.sl-markdown-content li {
+  color: var(--sl-color-gray-2);
+}
+.sl-markdown-content strong {
+  color: var(--sl-color-white);
+  font-weight: 620;
+}
+.sl-markdown-content a:not(:where(.not-content *, .card, .sl-link-card, .sl-link-button)) {
+  color: var(--sl-color-accent-high);
+  text-decoration-color: color-mix(in srgb, var(--sl-color-accent) 50%, transparent);
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+.sl-markdown-content a:not(:where(.not-content *)):hover {
+  text-decoration-color: currentColor;
+}
+.sl-markdown-content :not(pre) > code {
+  border-radius: 4px;
+  padding: 0.12em 0.38em;
+  font-size: 0.86em;
+  border: 1px solid var(--sl-color-hairline);
+}
+
+/* Tables: framed, scrollable when wide. */
+.sl-markdown-content table {
+  display: table;
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--duck-frame);
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+.sl-markdown-content :is(th, td) {
+  border: 0;
+  border-bottom: 1px solid var(--sl-color-hairline);
+  padding: 0.6rem 0.9rem;
+}
+.sl-markdown-content tr:last-child td {
+  border-bottom: 0;
+}
+.sl-markdown-content th {
+  background: var(--duck-card);
+  color: var(--sl-color-gray-3);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 50rem) {
+  .sl-markdown-content table {
+    display: block;
+    overflow-x: auto;
+  }
+}
+
+/* Asides: rounded, the tip in yellow. */
+.starlight-aside {
+  border-radius: 8px;
+  border-inline-start-width: 3px;
+}
+.starlight-aside--tip {
+  --sl-color-asides-text-accent: var(--sl-color-accent-high);
+  --sl-color-asides-border: var(--sl-color-accent);
+  background-color: color-mix(in srgb, var(--sl-color-accent) 10%, transparent);
+}
+
+starlight-toc a[aria-current="true"],
+starlight-toc a[aria-current="true"]:hover {
+  color: var(--sl-color-accent-high);
+}
+
+.pagination-links a {
+  border-radius: 8px;
+  border-color: var(--duck-frame);
+  box-shadow: none;
+}
+.pagination-links a:hover {
+  border-color: color-mix(in srgb, var(--sl-color-accent) 50%, transparent);
+}
+
+/* The analytics opt-out on the privacy page. */
+.duck-optout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+.duck-optout button {
+  padding: 0.4rem 0.9rem;
+  border-radius: 6px;
+  border: 1px solid var(--duck-frame);
+  background: var(--sl-color-gray-6);
+  color: var(--sl-color-white);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+.duck-optout button:hover {
+  border-color: var(--sl-color-accent);
+}
+.duck-optout span {
+  font-size: 0.875rem;
+  color: var(--sl-color-gray-3);
+}
