@@ -24,8 +24,9 @@ FROM oven/bun:1-alpine
 # Set the working directory for the second stage
 WORKDIR /app
 
-# Copy the build directory from the first stage to the second stage
-COPY --from=build /app/dist /app
+# Only dist/ is served. The server, its dependencies and the config files
+# stay one level up, out of reach over HTTP.
+COPY --from=build /app/dist /app/dist
 
 # Copy the injection script and serve config (COOP/COEP headers for OPFS)
 COPY inject-env.js /app/
@@ -55,4 +56,4 @@ USER duck-user
 
 # Run the injection script, then the server installed above. The local binary
 # is used directly so nothing can be fetched when the container starts.
-CMD bun inject-env.js && ./node_modules/.bin/serve -s -l 5522 -c serve.json
+CMD DUCK_UI_ENV_DIR=/app/dist bun inject-env.js && ./node_modules/.bin/serve -s dist -l 5522 -c /app/serve.json

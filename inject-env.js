@@ -18,7 +18,10 @@ const envVars = {
   DUCK_UI_PYODIDE_BASE_URL: process.env.DUCK_UI_PYODIDE_BASE_URL || "",
 };
 
-const envJsPath = path.join(__dirname, "env.js");
+// The Docker image serves dist/ alone and keeps this script beside it, so
+// the target folder can differ from the one this file lives in.
+const outDir = process.env.DUCK_UI_ENV_DIR || __dirname;
+const envJsPath = path.join(outDir, "env.js");
 fs.writeFileSync(envJsPath, `window.env = ${JSON.stringify(envVars)};\n`);
 
 // A custom WASM CDN origin must be allowed by the CSP's script-src, or the
