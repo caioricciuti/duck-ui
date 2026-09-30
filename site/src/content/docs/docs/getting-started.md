@@ -181,6 +181,8 @@ A failed query is underlined in the editor at the position DuckDB reports.
 
 Below the editor, the result panel has **Table**, **Charts**, **Stats** and **Schema** views (and **Map** when the result has a GEOMETRY column). The grid sorts, filters and searches, supports cell selection with copy and a right click menu, and exports to CSV, JSON, XLSX and Parquet, straight to a download or into a mounted folder. When a result was cut at the row limit, sorting and filtering re-run the query in DuckDB over the whole answer, not over the rows on screen.
 
+**Column stats** in the grid footer adds a summary under each column name: a histogram for numbers and dates, the share of `true` for booleans, one bar per value for text with up to 12 distinct values and a distinct count beyond that, plus the share of nulls. Hover it for the numbers. It describes the rows currently in the grid, so it follows the search box and the filters; past 100,000 rows it is drawn from an evenly spaced sample and the tooltip says so. The choice is remembered in the browser.
+
 ### Mobile
 
 Below 768px the rail moves to the bottom of the screen and the explorer becomes a drawer. Duck-UI is also installable as a PWA and works offline after the first visit.

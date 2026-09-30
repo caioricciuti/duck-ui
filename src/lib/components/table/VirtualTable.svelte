@@ -2,6 +2,7 @@
   import { onMount, untrack } from 'svelte'
   import type { ColumnMeta } from '../../types/query'
   import type { ColumnFilter } from '../../utils/result-filters'
+  import { sampleRows, type ColumnStats } from '../../utils/stats'
   import TableHeader from './TableHeader.svelte'
   import TableCell from './TableCell.svelte'
   import FilterPopover from './FilterPopover.svelte'
@@ -34,11 +35,14 @@
     onselectionchange?: (count: number) => void
     /** Offered as "Export" in the cell menu when given. */
     onexport?: () => void
+    /** A summary per column, drawn under its name. */
+    stats?: ColumnStats[]
+    statsScope?: string
   }
 
   let {
     meta, data, sortColumn = '', sortDir = 'asc', onsort, filters = [], onfilterchange,
-    onselectionchange, onexport,
+    onselectionchange, onexport, stats, statsScope,
   }: Props = $props()
 
   let filterPopover = $state<{ column: string; x: number; y: number } | null>(null)
@@ -184,20 +188,9 @@
     return `${normalized.slice(0, 15)}…`
   }
 
-  function sampleRows(rows: unknown[][]): unknown[][] {
-    if (rows.length <= SAMPLE_ROWS) return rows
-    const sampled: unknown[][] = []
-    const step = rows.length / SAMPLE_ROWS
-    for (let i = 0; i < SAMPLE_ROWS; i++) {
-      const idx = Math.floor(i * step)
-      sampled.push(rows[idx] ?? rows[rows.length - 1])
-    }
-    return sampled
-  }
-
   function buildBaseWidths(columns: ColumnMeta[], rows: unknown[][]): number[] {
     if (!columns.length) return []
-    const sampled = sampleRows(rows)
+    const sampled = sampleRows(rows, SAMPLE_ROWS)
 
     return columns.map((col, ci) => {
       const metricWidths: number[] = []
@@ -402,6 +395,8 @@
       onresize={handleResize}
       onfitcolumn={handleFitColumn}
       onfitall={handleFitAll}
+      stats={rowCount > 0 ? stats : undefined}
+      {statsScope}
     />
     {#if rowCount > 0}
       <tbody>

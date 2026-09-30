@@ -165,3 +165,37 @@ test("closing the tab does not ask once the work is stored", async ({ page }) =>
     "kept across a reload"
   );
 });
+
+test("column stats draw a summary under each column name and follow the search", async ({ page }) => {
+  await bootApp(page);
+  const sql =
+    "select range as id, case when range % 4 = 0 then null else 'g' || (range % 3) end as grp from range(200)";
+  const { panel } = await newQuery(page, sql);
+  await page.keyboard.press(`${mod}+Enter`);
+
+  const grid = panel.getByRole("grid", { name: "Query result" });
+  await expect(grid.getByText("g1", { exact: true }).first()).toBeVisible();
+  // Off until asked for.
+  await expect(grid.getByRole("img", { name: /^Distribution of id/ })).toHaveCount(0);
+
+  await panel.getByRole("button", { name: "Column stats" }).click();
+  await expect(
+    grid.getByRole("img", { name: /^Distribution of id: min 0 · max 199 · avg 99\.5/ })
+  ).toBeVisible();
+  await expect(grid.getByRole("img", { name: /^Values of grp: 3 distinct · 50 null/ })).toBeVisible();
+  await expect(grid.getByText("25% null")).toBeVisible();
+
+  // The summary describes the rows in the grid, so a search narrows it.
+  await panel.getByLabel("Search rows").fill("g2");
+  await expect(grid.getByRole("img", { name: /^Values of grp: 1 distinct · 0 null/ })).toBeVisible();
+
+  // The choice is remembered.
+  await page.waitForTimeout(3000);
+  await page.reload();
+  await expect(page.getByRole("tablist", { name: "Open tabs" })).toBeVisible({ timeout: 60_000 });
+  await page.locator('[role="tabpanel"]:not([hidden]) .cm-content').click();
+  await page.keyboard.press(`${mod}+Enter`);
+  await expect(
+    page.getByRole("grid", { name: "Query result" }).getByRole("img", { name: /^Distribution of id/ })
+  ).toBeVisible();
+});
