@@ -150,6 +150,7 @@ export const createDuckBrainSlice: StateCreator<DuckStoreState, [], [], DuckBrai
           apiKey: "apiKey" in config ? config.apiKey : undefined,
           modelId: config.modelId,
           baseUrl: "baseUrl" in config ? config.baseUrl : undefined,
+          signal: generation.signal,
         });
 
         // Stopped while the provider was connecting: nothing to generate.
@@ -297,28 +298,38 @@ export const createDuckBrainSlice: StateCreator<DuckStoreState, [], [], DuckBrai
       return null;
     }
 
+    const signal = options?.signal;
+    const stopped = () => signal?.aborted === true;
     const generationOptions = { maxTokens: options?.maxTokens ?? 1024, temperature: 0.2 };
 
     try {
       if (aiProvider === "webllm") {
         const { duckBrainService } = await import("@/lib/duckBrain");
-        return await duckBrainService.generate(messages, generationOptions);
+        // The in-browser engine has no per-request cancel for a plain
+        // completion; a stopped answer is still dropped.
+        const text = await duckBrainService.generate(messages, generationOptions);
+        return stopped() ? null : text;
       }
 
       const { createProvider } = await import("@/lib/duckBrain/providers");
       const provider = createProvider(aiProvider);
       const config = providerConfigs[aiProvider]!;
-      await provider.initialize({
-        apiKey: "apiKey" in config ? config.apiKey : undefined,
-        modelId: config.modelId,
-        baseUrl: "baseUrl" in config ? config.baseUrl : undefined,
-      });
       try {
-        return await provider.generateText(messages, generationOptions);
+        await provider.initialize({
+          apiKey: "apiKey" in config ? config.apiKey : undefined,
+          modelId: config.modelId,
+          baseUrl: "baseUrl" in config ? config.baseUrl : undefined,
+          signal,
+        });
+        if (stopped()) return null;
+        const text = await provider.generateText(messages, { ...generationOptions, signal });
+        return stopped() ? null : text;
       } finally {
         await provider.cleanup();
       }
     } catch (error) {
+      // Stop is not a failure.
+      if (stopped()) return null;
       toast.error(
         `Duck Brain request failed: ${error instanceof Error ? error.message : "Unknown error"}`
       );

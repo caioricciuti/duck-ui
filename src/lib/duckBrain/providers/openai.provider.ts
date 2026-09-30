@@ -58,6 +58,7 @@ export class OpenAIProvider implements AIProvider {
             messages: [{ role: "user", content: "test" }],
             max_tokens: 1,
           }),
+          signal: config.signal,
         });
 
         if (!testResponse.ok) {
@@ -66,7 +67,10 @@ export class OpenAIProvider implements AIProvider {
         }
       } else {
         // For OpenAI, use the models endpoint
-        const response = await fetch(`${this.baseUrl}/models`, { headers });
+        const response = await fetch(`${this.baseUrl}/models`, {
+          headers,
+          signal: config.signal,
+        });
 
         if (!response.ok) {
           const error = await response.json().catch(() => ({}));
