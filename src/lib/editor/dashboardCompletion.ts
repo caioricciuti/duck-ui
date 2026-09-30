@@ -57,7 +57,11 @@ const thenSuggest = (completion: Completion): Completion => {
   if (typeof apply !== "function") return completion;
   const wrapped: ApplyFunction = (view, picked, from, to) => {
     apply(view, picked, from, to);
-    startCompletion(view);
+    // After the accept has settled. Opened in the same tick, the new list
+    // can be swallowed by the close of the one just accepted.
+    setTimeout(() => {
+      if (view.dom.isConnected) startCompletion(view);
+    }, 0);
   };
   return { ...completion, apply: wrapped };
 };
