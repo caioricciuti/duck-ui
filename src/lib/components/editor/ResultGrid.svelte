@@ -1,9 +1,11 @@
 <script lang="ts">
-  import { Search, X, Hash, FilterX, Database } from 'lucide-svelte'
+  import { Search, X, Hash, FilterX, Database, ChartNoAxesColumn } from 'lucide-svelte'
   import VirtualTable from '../table/VirtualTable.svelte'
   import Button from '../common/Button.svelte'
   import ExportMenu from './ExportMenu.svelte'
   import { getFormatNumbers, toggleFormatNumbers } from '../../stores/number-format.svelte'
+  import { getHeaderStats, toggleHeaderStats } from '../../stores/header-stats.svelte'
+  import { computeColumnStats, sampleRows } from '../../utils/stats'
   import { formatNumber } from '../../utils/format'
   import { cellText } from '../../utils/column-types'
   import {
@@ -116,6 +118,24 @@
   const shown = $derived(!inEngine && sort ? sortRows(filtered, meta, sort) : filtered)
   const narrowed = $derived(inEngine ? filters.length > 0 || search.trim() !== '' : shown.length !== data.length)
 
+  // Enough rows for a faithful picture, few enough to redo on every keystroke
+  // in the search box.
+  const HEADER_STATS_ROWS = 100_000
+
+  // A summary of the rows in the grid, so it follows search and filters.
+  // Sorting does not change it, which is why it reads `filtered`.
+  const headerStats = $derived.by(() => {
+    if (compact || !getHeaderStats()) return null
+    const sample = sampleRows(filtered, HEADER_STATS_ROWS)
+    return {
+      columns: computeColumnStats(meta, sample),
+      scope:
+        sample.length < filtered.length
+          ? `from a sample of ${formatNumber(sample.length)} of ${formatNumber(filtered.length)} rows`
+          : `in ${formatNumber(filtered.length)} ${filtered.length === 1 ? 'row' : 'rows'}`,
+    }
+  })
+
   function onFilterChange(column: string, filter: ColumnFilter | null) {
     const rest = filters.filter((f) => f.column !== column)
     filters = filter ? [...rest, filter] : rest
@@ -150,6 +170,8 @@
     onfilterchange={onFilterChange}
     onselectionchange={(count) => (selectedCells = count)}
     onexport={compact ? undefined : exportCsv}
+    stats={headerStats?.columns}
+    statsScope={headerStats?.scope}
   />
 
   <div class="flex h-8 shrink-0 items-center gap-2 border-t border-edge-subtle bg-sidebar px-2 text-xs text-fg-3">
@@ -218,6 +240,17 @@
         >
           <Hash size={13} />
           1,000
+        </Button>
+        <Button
+          size="xs"
+          variant="ghost"
+          aria-pressed={getHeaderStats()}
+          class={getHeaderStats() ? 'text-accent' : ''}
+          onclick={toggleHeaderStats}
+          title="A summary under each column name: distribution, distinct values, nulls"
+        >
+          <ChartNoAxesColumn size={13} />
+          Column stats
         </Button>
         <ExportMenu rows={engine?.rows ?? rows} visibleColumns={meta.map((c) => c.name)} filteredRows={() => gridToRows(meta, shown)} />
       </div>

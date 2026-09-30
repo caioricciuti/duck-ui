@@ -78,7 +78,7 @@
             {fmt(col.sum)}
           </td>
           <td class="px-3 py-1.5 text-right tabular-nums">
-            {col.distinct !== undefined ? formatNumber(col.distinct) : '\u2014'}
+            {col.distinct !== undefined ? formatNumber(col.distinct) + (col.distinctCapped ? '+' : '') : '\u2014'}
           </td>
         </tr>
       {/each}
