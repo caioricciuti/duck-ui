@@ -12,39 +12,47 @@ Thanks for wanting to help. Duck-UI is maintained by one person with a full-time
 ## Dev setup
 
 ```bash
-bun install        # npm works too, bun is preferred
-bun run dev        # http://localhost:5173
+bun install
+bun run dev        # http://127.0.0.1:5173
 ```
 
 Before pushing:
 
 ```bash
-bun run build          # tsc -b + vite build — the real check, CI runs this
-bun run lint           # errors fail CI, warnings don't
+bun run lint           # svelte-check, warnings fail too
 bun run format:check   # Prettier, gates CI
+bun run typecheck      # svelte-check plus the config files
 bun run test           # Vitest
+bun run build          # Vite, the real check
+bun run test:e2e       # Playwright against the build, needs Google Chrome locally
 ```
 
-Run all four. `bun run typecheck` alone is not enough; some errors only surface in the full build.
+CI runs all of them. The e2e suite is the one that catches what the others cannot: a component that compiles but does not do what it says.
 
 ## Project layout
 
 - `src/store/`: one framework-free store (`createStore.ts`), one slice per domain. Types in `src/store/types.ts`. Svelte reads it through `src/lib/stores/duck.svelte.ts`.
-- `src/services/duckdb/` — DuckDB WASM, OPFS, and external-connection layers.
-- `src/services/persistence/` — IndexedDB persistence, repositories, crypto.
-- `src/lib/` — shared utilities (share codec, SQL sanitization, app config, Duck Brain providers).
+- `src/services/engine/` and `src/services/duckdb/`: DuckDB WASM, OPFS, HTTP and peer sessions.
+- `src/services/persistence/`: IndexedDB persistence, repositories, crypto.
+- `src/services/collaboration/`, `src/services/dashboard/`, `src/services/python/`: live sessions, dashboard documents, Pyodide kernel.
+- `src/lib/`: framework free helpers (share codec, SQL sanitization, app config, Duck Brain providers).
 - `src/lib/components/`: UI in Svelte 5. Shared primitives live in `src/lib/components/common/`, design tokens in `src/app.css`.
 - `src/lib/routes.ts` and `src/lib/stores/router.svelte.ts`: pages and their sidebar sections.
 - `src/lib/editor/`: CodeMirror theme, completion and the collaborative binding.
+- `e2e/`: Playwright suite. Add a test here when a change is visible in the browser.
 - Tests live in `__tests__/` directories next to the code they test, named `*.test.ts`.
 
-More detail in `CLAUDE.md` and the README architecture section.
+More detail in `docs/architecture/`.
 
 ## Code conventions
 
 - TypeScript strict mode, no `any`.
 - Named exports over default exports.
-- Tailwind for styling; no custom CSS unless there's no other way.
+- Svelte 5 runes only (`$props`, `$state`, `$derived`, `$effect`). No `export let`, no `svelte/store`.
+- Tailwind for styling, colors only through the tokens in `src/app.css`. No custom CSS unless there's no other way.
+- Logic stays in `src/store`, `src/services` and `src/lib`, free of Svelte imports. Components call store actions.
+- Anything shown as HTML from a model or a shared document goes through `renderMarkdown` (marked plus DOMPurify).
+- Screens that most sessions never open load on first use through `src/lib/components/common/Lazy.svelte`.
 - Keep new files under ~500 lines. If your change makes a file bigger than that, split it.
 - Escape all SQL values through `sqlEscapeString` / `sqlEscapeIdentifier` (`src/lib/sqlSanitize.ts`). Never interpolate user input into SQL directly.
 - Unused variables are prefixed with `_`.
