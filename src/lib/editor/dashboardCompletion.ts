@@ -60,7 +60,7 @@ const thenSuggest = (completion: Completion): Completion => {
     // After the accept has settled. Opened in the same tick, the new list
     // can be swallowed by the close of the one just accepted.
     setTimeout(() => {
-      if (view.dom.isConnected) startCompletion(view);
+      if (view.dom?.isConnected !== false) startCompletion(view);
     }, 0);
   };
   return { ...completion, apply: wrapped };
