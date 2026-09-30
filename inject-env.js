@@ -16,6 +16,13 @@ const envVars = {
   DUCK_UI_DUCKDB_WASM_USE_CDN: process.env.DUCK_UI_DUCKDB_WASM_USE_CDN === "true" || false,
   DUCK_UI_DUCKDB_WASM_BASE_URL: process.env.DUCK_UI_DUCKDB_WASM_BASE_URL || "",
   DUCK_UI_PYODIDE_BASE_URL: process.env.DUCK_UI_PYODIDE_BASE_URL || "",
+  // Live sessions. Passed through as given, and left out when unset:
+  // JSON.stringify drops undefined, and the client reads an empty STUN list
+  // as "no STUN", which differs from "not configured" (use Google's).
+  DUCK_UI_STUN_URLS: process.env.DUCK_UI_STUN_URLS,
+  DUCK_UI_TURN_URLS: process.env.DUCK_UI_TURN_URLS,
+  DUCK_UI_TURN_USERNAME: process.env.DUCK_UI_TURN_USERNAME,
+  DUCK_UI_TURN_CREDENTIAL: process.env.DUCK_UI_TURN_CREDENTIAL,
 };
 
 // The Docker image serves dist/ alone and keeps this script beside it, so
