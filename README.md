@@ -30,7 +30,7 @@ Open `http://localhost:5522`. That's the whole setup.
 - **Dashboards.** Markdown reports with named SQL blocks, charts, tables, inputs and auto refresh. Shareable as a link.
 - **Query parameters.** `$name` placeholders get an input bar, in SQL tabs and notebooks.
 - **Compare results.** Pin a result and diff it against a later run: schema, row counts, changed cells.
-- **Charts.** Bar, grouped, stacked, line, area, stacked area, pie, donut and scatter, with per series settings, aggregation and PNG or SVG export. Charts follow the theme.
+- **Charts.** Bar, grouped, stacked, line, area, stacked area, pie, donut and scatter, with per series settings, aggregation and PNG export. Charts follow the theme.
 - **Maps and extensions.** GEOMETRY results render on a map. Install and load DuckDB extensions from the Data page.
 - **Import anything.** CSV, JSON, Parquet, Arrow, XLSX and `.duckdb` files. Drop a file on the explorer, paste a URL, or read straight from S3, GCS, Azure, R2 or MinIO. Local folders through the File System Access API.
 - **History.** Every run is kept with duration and row count, searchable across reloads.
