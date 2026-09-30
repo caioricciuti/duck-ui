@@ -43,19 +43,20 @@
 
   const localModelName = $derived(AVAILABLE_MODELS.find((m) => m.id === currentModel)?.displayName)
 
-  // Display name for the current provider and model.
+  // Display name for the current provider and model. A saved id that is no
+  // longer in the model list (one picked in 1.x, say) is shown as it is.
   const providerDisplayInfo = $derived.by(() => {
     if (aiProvider === 'openai') {
       const config = providerConfigs.openai
       if (config?.apiKey) {
         const model = OPENAI_MODELS.find((m) => m.id === config.modelId)
-        return { name: model?.name || 'GPT-4o Mini', isCloud: true }
+        return { name: model?.name || config.modelId || 'OpenAI', isCloud: true }
       }
     } else if (aiProvider === 'anthropic') {
       const config = providerConfigs.anthropic
       if (config?.apiKey) {
         const model = ANTHROPIC_MODELS.find((m) => m.id === config.modelId)
-        return { name: model?.name || 'Claude Sonnet 4', isCloud: true }
+        return { name: model?.name || config.modelId || 'Anthropic', isCloud: true }
       }
     } else if (aiProvider === 'openai-compatible') {
       const config = providerConfigs['openai-compatible']
@@ -76,11 +77,11 @@
     }
     if (providerConfigs.openai?.apiKey) {
       const model = OPENAI_MODELS.find((m) => m.id === providerConfigs.openai?.modelId)
-      providers.push({ value: 'openai', label: model?.name || 'GPT-4o Mini' })
+      providers.push({ value: 'openai', label: model?.name || providerConfigs.openai.modelId || 'OpenAI' })
     }
     if (providerConfigs.anthropic?.apiKey) {
       const model = ANTHROPIC_MODELS.find((m) => m.id === providerConfigs.anthropic?.modelId)
-      providers.push({ value: 'anthropic', label: model?.name || 'Claude Sonnet 4' })
+      providers.push({ value: 'anthropic', label: model?.name || providerConfigs.anthropic.modelId || 'Anthropic' })
     }
     const compatible = providerConfigs['openai-compatible']
     if (compatible?.baseUrl && compatible?.modelId) {
