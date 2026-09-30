@@ -37,7 +37,9 @@
   --sl-color-bg-inline-code: rgba(255, 255, 255, 0.06);
   --sl-font: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --sl-font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
-  --sl-content-width: 46rem;
+  /* Starlight gives the table of contents whatever the content column does
+     not take, so a narrow column leaves a wide, empty right rail. */
+  --sl-content-width: 54rem;
   --sl-line-height: 1.7;
   --duck-yellow: #fff100;
   --duck-yellow-hover: #fff56b;
@@ -144,6 +146,12 @@ h1#_top {
   margin-top: 2.75rem;
   padding-top: 1.75rem;
   border-top: 1px solid var(--sl-color-hairline);
+}
+/* A page that opens with a section heading gets no rule above it. */
+.sl-markdown-content > .sl-heading-wrapper.level-h2:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
 }
 .sl-markdown-content p,
 .sl-markdown-content li {
