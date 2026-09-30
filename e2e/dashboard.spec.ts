@@ -164,25 +164,34 @@ test.describe("markdown dashboards", () => {
     await expect(suggest).toBeVisible({ timeout: 30_000 });
     await expect(suggest.getByText("BarChart").first()).toBeVisible();
 
-    // ...and accepting it scaffolds data/x/y with tabstops, not just the word.
-    await page.keyboard.press("Enter");
-    await expect(editor).toContainText("BarChart data=", { timeout: 30_000 });
+    // CodeMirror ignores Enter for 75 ms after the list opens, so a key meant
+    // for typing cannot accept a suggestion by accident. Wait it out.
+    await page.waitForTimeout(200);
 
-    // The data slot is a choice of the queries that exist in this document.
-    // The picker opens on its own after the accept; on CI's Chromium that
-    // reopen has been seen not to happen, so the explicit trigger is used
-    // as a fallback. Either way the choice must offer the starter's query.
-    if (!(await suggest.isVisible())) await page.keyboard.press("Control+Space");
+    // ...and accepting it scaffolds data/x/y with tabstops, not just the word.
+    // The starter's prose already mentions `<BarChart data={my_query}`, so the
+    // check counts occurrences rather than looking for the text once.
+    await page.keyboard.press("Enter");
+    await expect
+      .poll(async () => (await editor.innerText()).split("<BarChart data={").length - 1, {
+        timeout: 30_000,
+      })
+      .toBe(2);
+
+    // The data slot is a choice of the queries that exist in this document,
+    // so the picker with the starter's query opens without any typing.
     await expect(suggest).toBeVisible({ timeout: 30_000 });
-    // Diagnostic: what the editor and the list hold when the choice is missing.
-    const doc = await editor.innerText();
-    const listed = await suggest.innerText();
-    expect(listed, `editor:\n${doc}\n\nlist:\n${listed}`).toContain("my_query");
     await expect(suggest.getByText("my_query").first()).toBeVisible();
 
-    // Accepting the choice completes a runnable component reference.
+    // Accepting the choice completes a runnable component reference. The
+    // starter already binds `my_query` twice, so the new one makes three.
+    await page.waitForTimeout(200);
     await page.keyboard.press("Enter");
-    await expect(editor).toContainText("data={my_query}", { timeout: 30_000 });
+    await expect
+      .poll(async () => (await editor.innerText()).split("data={my_query}").length - 1, {
+        timeout: 30_000,
+      })
+      .toBe(3);
   });
 
   test("a failing query shows its error in place, not a blank page", async ({ page }) => {
