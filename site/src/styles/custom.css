@@ -37,9 +37,7 @@
   --sl-color-bg-inline-code: rgba(255, 255, 255, 0.06);
   --sl-font: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --sl-font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
-  /* Starlight gives the table of contents whatever the content column does
-     not take, so a narrow column leaves a wide, empty right rail. */
-  --sl-content-width: 54rem;
+  --sl-content-width: 58rem;
   --sl-line-height: 1.7;
   --duck-yellow: #fff100;
   --duck-yellow-hover: #fff56b;
@@ -126,6 +124,21 @@ body {
   background: var(--sl-color-accent-low);
   color: var(--sl-color-accent-high);
   font-weight: 600;
+}
+
+/* ---- Layout ------------------------------------------------------------ */
+
+/* Starlight hands half of any spare width to the table of contents, so on
+   a wide screen the right rail outgrows the left sidebar. Both rails get
+   the same width; the middle takes the rest and centres the text. */
+@media (min-width: 72rem) {
+  .right-sidebar-container {
+    width: var(--sl-sidebar-width);
+  }
+  [data-has-sidebar][data-has-toc] .main-pane {
+    --sl-content-margin-inline: auto;
+    width: calc(100% - var(--sl-sidebar-width));
+  }
 }
 
 /* ---- Content ----------------------------------------------------------- */
