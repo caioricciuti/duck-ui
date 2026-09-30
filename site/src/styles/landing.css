@@ -165,7 +165,8 @@ button:focus-visible {
   text-decoration: none;
 }
 .brand img {
-  width: 22px;
+  /* The logo is 263 x 196; keep that ratio. */
+  width: auto;
   height: 22px;
 }
 .nav-links {
