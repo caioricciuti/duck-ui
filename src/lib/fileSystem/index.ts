@@ -33,7 +33,7 @@ export interface MountedFolder {
   hasPermission: boolean;
 }
 
-// Supported file extensions for DuckDB
+// Extensions the folder import can read. Legacy .xls has no DuckDB reader.
 export const SUPPORTED_EXTENSIONS = [
   ".csv",
   ".tsv",
@@ -47,7 +47,6 @@ export const SUPPORTED_EXTENSIONS = [
   ".db",
   ".ddb",
   ".xlsx",
-  ".xls",
 ];
 
 // Check if File System Access API is supported
