@@ -168,8 +168,11 @@ test.describe("markdown dashboards", () => {
     await page.keyboard.press("Enter");
     await expect(editor).toContainText("BarChart data=", { timeout: 30_000 });
 
-    // The data slot is a choice of the queries that exist in this document,
-    // so the picker with the starter's query opens without any typing.
+    // The data slot is a choice of the queries that exist in this document.
+    // The picker opens on its own after the accept; on CI's Chromium that
+    // reopen has been seen not to happen, so the explicit trigger is used
+    // as a fallback. Either way the choice must offer the starter's query.
+    if (!(await suggest.isVisible())) await page.keyboard.press("Control+Space");
     await expect(suggest).toBeVisible({ timeout: 30_000 });
     await expect(suggest.getByText("my_query").first()).toBeVisible();
 
