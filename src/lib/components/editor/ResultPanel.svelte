@@ -134,10 +134,10 @@
 
     <!-- Sits at the bottom rather than as a full-width band above the
          results. The results are the part worth giving space to. -->
-    <div class="flex h-8 shrink-0 items-center gap-0.5 border-t border-edge-subtle px-2" role="tablist" aria-label="Result views">
+    <div class="flex h-8 shrink-0 items-center gap-0.5 overflow-x-auto border-t border-edge-subtle px-2 [scrollbar-width:none]" role="tablist" aria-label="Result views">
       {#each views as v (v.id)}
         <button
-          class="inline-flex h-6 items-center gap-1.5 rounded-md px-2 text-xs transition-colors {activeView === v.id ? 'bg-active text-fg' : 'text-fg-3 hover:bg-hover hover:text-fg'}"
+          class="inline-flex h-6 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-2 text-xs transition-colors {activeView === v.id ? 'bg-active text-fg' : 'text-fg-3 hover:bg-hover hover:text-fg'}"
           role="tab"
           aria-selected={activeView === v.id}
           onclick={() => onviewchange(v.id)}
@@ -147,7 +147,7 @@
         </button>
       {/each}
       {#if actions}
-        <div class="ml-auto flex items-center gap-0.5">{@render actions(result)}</div>
+        <div class="ml-auto flex shrink-0 items-center gap-0.5 pl-2">{@render actions(result)}</div>
       {/if}
     </div>
   </div>
