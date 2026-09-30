@@ -4,6 +4,15 @@ import { generateUUID } from "@/lib/utils";
 import { isGatedTabHidden } from "@/lib/appConfig";
 import { isPageTabType, openPageFor } from "@/lib/pageNavigation";
 import { disposePythonKernel } from "@/services/python/kernel";
+import {
+  closeInPanes,
+  isHomeTab,
+  joinPanes,
+  moveToPane,
+  paneOf,
+  settlePanes,
+  splitToSide,
+} from "../tabPanes";
 import type { DuckStoreState, TabSlice, EditorTab, NotebookCell, NotebookCellType } from "../types";
 
 function parseNotebookCells(tab: EditorTab): NotebookCell[] {
@@ -44,6 +53,14 @@ function updateNotebookContent(
   });
 }
 
+/** A new tab opens next to the one being worked in, and takes the focus. */
+function openInActivePane(state: DuckStoreState, tab: EditorTab) {
+  const active = state.tabs.find((entry) => entry.id === state.activeTabId);
+  const placed: EditorTab =
+    active && paneOf(active) === "right" && !isHomeTab(tab) ? { ...tab, pane: "right" } : tab;
+  return settlePanes([...state.tabs, placed], placed.id, [state.activeTabId, state.otherPaneTabId]);
+}
+
 export const createTabSlice: StateCreator<DuckStoreState, [], [], TabSlice> = (set, get) => ({
   tabs: [
     {
@@ -54,6 +71,7 @@ export const createTabSlice: StateCreator<DuckStoreState, [], [], TabSlice> = (s
     },
   ],
   activeTabId: "home",
+  otherPaneTabId: null,
 
   createTab: (type = "sql", content = "", title) => {
     // Kiosk mode: refuse to open gated surfaces; keep the current tab focused.
@@ -79,10 +97,7 @@ export const createTabSlice: StateCreator<DuckStoreState, [], [], TabSlice> = (s
       type,
       content: defaultContent,
     };
-    set((state) => ({
-      tabs: [...state.tabs, newTab],
-      activeTabId: newTab.id,
-    }));
+    set((state) => openInActivePane(state, newTab));
     return newTab.id;
   },
 
@@ -96,7 +111,7 @@ export const createTabSlice: StateCreator<DuckStoreState, [], [], TabSlice> = (s
         tab.content.table === table
     );
     if (existing) {
-      set({ activeTabId: existing.id });
+      get().setActiveTab(existing.id);
       return existing.id;
     }
     const newTab: EditorTab = {
@@ -105,43 +120,53 @@ export const createTabSlice: StateCreator<DuckStoreState, [], [], TabSlice> = (s
       type: "table",
       content: { database, schema: schema || "main", table },
     };
-    set((state) => ({
-      tabs: [...state.tabs, newTab],
-      activeTabId: newTab.id,
-    }));
+    set((state) => openInActivePane(state, newTab));
     return newTab.id;
   },
 
   closeTab: (tabId) => {
+    const tab = get().tabs.find((entry) => entry.id === tabId);
+    if (!tab || isHomeTab(tab)) return;
     // A notebook's Python kernel dies with its tab.
     disposePythonKernel(tabId);
     set((state) => {
-      const updatedTabs = state.tabs.filter((tab) => tab.id !== tabId);
-      let newActiveTabId = state.activeTabId;
-      if (updatedTabs.length === 0) {
-        const newTab: EditorTab = {
-          id: generateUUID(),
-          title: "Query 1",
-          type: "sql",
-          content: "",
-        };
-        return {
-          tabs: [newTab],
-          activeTabId: newTab.id,
-        };
-      }
-      if (state.activeTabId === tabId) {
-        newActiveTabId = updatedTabs[0]?.id || null;
-      }
-      return {
-        tabs: updatedTabs,
-        activeTabId: newActiveTabId,
+      const next = closeInPanes(state, tabId);
+      if (next.tabs.length > 0) return next;
+      // Only reachable for a workspace that lost its Home tab.
+      const newTab: EditorTab = {
+        id: generateUUID(),
+        title: "Query 1",
+        type: "sql",
+        content: "",
       };
+      return { tabs: [newTab], activeTabId: newTab.id, otherPaneTabId: null };
     });
   },
 
   setActiveTab: (tabId) => {
-    set({ activeTabId: tabId });
+    // Focusing a tab in the other pane leaves the current one showing there.
+    set((state) =>
+      state.tabs.some((tab) => tab.id === tabId)
+        ? settlePanes(state.tabs, tabId, [state.activeTabId, state.otherPaneTabId])
+        : state
+    );
+  },
+
+  moveTabToPane: (tabId, pane) => {
+    set((state) => moveToPane(state, tabId, pane));
+  },
+
+  splitTab: (tabId) => {
+    const tab = get().tabs.find((entry) => entry.id === tabId);
+    if (tab) get().moveTabToPane(tabId, paneOf(tab) === "right" ? "left" : "right");
+  },
+
+  splitTabToSide: (tabId, side) => {
+    set((state) => splitToSide(state, tabId, side));
+  },
+
+  joinPanes: () => {
+    set((state) => joinPanes(state));
   },
 
   updateTabQuery: (tabId, query) => {
@@ -174,6 +199,10 @@ export const createTabSlice: StateCreator<DuckStoreState, [], [], TabSlice> = (s
 
   moveTab: (oldIndex, newIndex) => {
     set((state) => {
+      const moved = state.tabs[oldIndex];
+      const target = state.tabs[newIndex];
+      // Home keeps its place at the front.
+      if (!moved || !target || isHomeTab(moved) || isHomeTab(target)) return state;
       const newTabs = [...state.tabs];
       const [movedTab] = newTabs.splice(oldIndex, 1);
       newTabs.splice(newIndex, 0, movedTab);
@@ -183,10 +212,7 @@ export const createTabSlice: StateCreator<DuckStoreState, [], [], TabSlice> = (s
 
   closeAllTabs: () => {
     try {
-      set((state) => ({
-        tabs: state.tabs.filter((tab) => tab.type === "home"),
-        activeTabId: "home",
-      }));
+      set((state) => settlePanes(state.tabs.filter(isHomeTab), null));
       toast.success("All tabs closed successfully!");
     } catch (error: unknown) {
       toast.error(
