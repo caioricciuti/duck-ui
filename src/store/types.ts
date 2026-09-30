@@ -345,6 +345,8 @@ export interface EditorTab {
   title: string;
   type: EditorTabType;
   content: string | TableTabRef;
+  /** Set while the tab sits in the right pane of a split workspace. */
+  pane?: "right";
   result?: QueryResult | null;
   chartConfig?: ChartConfig;
   /**
@@ -474,13 +476,24 @@ export interface SchemaSlice {
 
 export interface TabSlice {
   tabs: EditorTab[];
+  /** The tab being worked in. With two panes, the one in the focused pane. */
   activeTabId: string | null;
+  /** With two panes, the tab the other pane shows. */
+  otherPaneTabId: string | null;
 
   createTab: (type?: EditorTabType, content?: string, title?: string) => string;
   /** Opens a table as a tab, or focuses the tab that already shows it. */
   openTableTab: (database: string, schema: string | undefined, table: string) => string;
   closeTab: (tabId: string) => void;
   setActiveTab: (tabId: string) => void;
+  /** Moves a tab to a pane and focuses it. Opens the right pane when needed. */
+  moveTabToPane: (tabId: string, pane: "left" | "right") => void;
+  /** Sends a tab to the other pane. */
+  splitTab: (tabId: string) => void;
+  /** A tab dropped on the left or right edge of the workspace. */
+  splitTabToSide: (tabId: string, side: "left" | "right") => void;
+  /** Back to one pane. */
+  joinPanes: () => void;
   updateTabQuery: (tabId: string, query: string) => void;
   updateTabTitle: (tabId: string, title: string) => void;
   updateTabChartConfig: (tabId: string, chartConfig: ChartConfig | undefined) => void;

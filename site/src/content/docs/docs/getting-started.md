@@ -147,6 +147,20 @@ Queries, notebooks, dashboards and tables open as **tabs** in the workspace. Tab
 
 The current page lives in the URL, for example `?page=settings&section=ai`, so a reload on any static host lands on the same page.
 
+### Split view
+
+Two tabs can sit side by side, each pane with its own tab bar:
+
+- Drag a tab to the left or right edge of the workspace, or right click it and choose **Split right**, or press `⌥S`.
+- Drag a tab onto the other bar, or press `⌥S` again, to move it across. **Join panes** in the tab menu goes back to one pane.
+- The pane you last clicked is the focused one: its tab has the yellow line, and new tabs open there.
+- Drag the handle between the panes to resize them; double-click it for an even split.
+- Closing the last tab of the right pane closes the pane.
+
+Both panes keep running: a query on the left keeps going while you work on the right. The layout is saved with your tabs. On a phone the tabs share one pane.
+
+The **Home** tab is pinned: it is always the first tab, shows only its icon, and cannot be closed or moved.
+
 ### Tables
 
 Double-click a table in the explorer, or pick it in the command menu, to open it as a tab. Right click offers **Open table** and **Query table**. A table tab has four views:
@@ -173,6 +187,7 @@ Double-click a table in the explorer, or pick it in the command menu, to open it
 | `⌘K` | Open the command menu (pages, tabs, tables, saved queries, dashboards, recent queries) |
 | `⌥N` | New query tab |
 | `⌥W` | Close the current tab |
+| `⌥S` | Move the current tab to the other pane, splitting the workspace if needed |
 | `⌘B` | Toggle the explorer |
 
 A failed query is underlined in the editor at the position DuckDB reports.

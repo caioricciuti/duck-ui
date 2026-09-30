@@ -1,5 +1,6 @@
 import type { StateCreator } from "@/store/createStore";
 import type { DuckStoreState, ProfileSlice, Profile } from "../types";
+import { restorePanes } from "../tabPanes";
 import {
   createProfile as createProfileRepo,
   getProfile as getProfileRepo,
@@ -115,11 +116,11 @@ export const createProfileSlice: StateCreator<DuckStoreState, [], [], ProfileSli
           validTypes.has(tab.type)
         );
         set({
-          tabs: tabs.length > 0 ? tabs : [{ id: "home", title: "Home", type: "home", content: "" }],
           // Connections and Settings became pages, so a workspace saved while
-          // one of them was the active tab points at a tab that is gone.
-          activeTabId:
-            tabs.find((tab) => tab.id === workspace.active_tab_id)?.id ?? tabs[0]?.id ?? "home",
+          // one of them was the active tab points at a tab that is gone:
+          // the first tab takes over. Home is pinned since split view, so a
+          // workspace saved without it gets it back.
+          ...restorePanes(tabs, workspace.active_tab_id),
           currentDatabase: workspace.current_database ?? "memory",
         });
       } catch {

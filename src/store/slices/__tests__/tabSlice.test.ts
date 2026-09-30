@@ -55,3 +55,83 @@ describe("openTableTab", () => {
     expect(new Set([main, staging, other]).size).toBe(3);
   });
 });
+
+describe("panes", () => {
+  const titles = (store: ReturnType<typeof setup>, pane?: "right") =>
+    store
+      .getState()
+      .tabs.filter((tab) => tab.pane === pane)
+      .map((tab) => tab.title);
+
+  it("opens a new tab in the pane being worked in", () => {
+    const store = setup();
+    const left = store.getState().createTab("sql", "", "left");
+    const right = store.getState().createTab("sql", "", "right");
+    store.getState().splitTab(right);
+
+    store.getState().createTab("sql", "", "next to right");
+    expect(titles(store, "right")).toEqual(["right", "next to right"]);
+
+    store.getState().setActiveTab(left);
+    store.getState().createTab("sql", "", "next to left");
+    expect(titles(store)).toEqual(["Home", "left", "next to left"]);
+  });
+
+  it("focusing the other pane keeps the tab that was active on screen there", () => {
+    const store = setup();
+    const left = store.getState().createTab("sql", "", "left");
+    const right = store.getState().createTab("sql", "", "right");
+    store.getState().splitTab(right);
+
+    store.getState().setActiveTab(left);
+
+    expect(store.getState().activeTabId).toBe(left);
+    expect(store.getState().otherPaneTabId).toBe(right);
+  });
+
+  it("splitTab sends a tab across and back, and the right pane closes when empty", () => {
+    const store = setup();
+    const id = store.getState().createTab("sql", "", "only");
+
+    store.getState().splitTab(id);
+    expect(titles(store, "right")).toEqual(["only"]);
+
+    store.getState().splitTab(id);
+    expect(titles(store, "right")).toEqual([]);
+    expect(store.getState().otherPaneTabId).toBeNull();
+  });
+
+  it("does not close, move or split Home", () => {
+    const store = setup();
+    const id = store.getState().createTab("sql", "", "query");
+
+    store.getState().closeTab("home");
+    store.getState().splitTab("home");
+    store.getState().moveTab(0, 1);
+    store.getState().moveTab(1, 0);
+
+    expect(titles(store)).toEqual(["Home", "query"]);
+    expect(store.getState().activeTabId).toBe(id);
+  });
+
+  it("closeAllTabs leaves Home, in one pane", () => {
+    const store = setup();
+    store.getState().splitTab(store.getState().createTab("sql", "", "a"));
+    store.getState().createTab("sql", "", "b");
+
+    store.getState().closeAllTabs();
+
+    expect(store.getState().tabs.map((tab) => tab.title)).toEqual(["Home"]);
+    expect(store.getState().activeTabId).toBe("home");
+    expect(store.getState().otherPaneTabId).toBeNull();
+  });
+
+  it("ignores a request to focus a tab that does not exist", () => {
+    const store = setup();
+    const id = store.getState().createTab("sql", "", "query");
+
+    store.getState().setActiveTab("gone");
+
+    expect(store.getState().activeTabId).toBe(id);
+  });
+});

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import Sidebar from './Sidebar.svelte'
-  import TabBar from './TabBar.svelte'
+  import TabBar, { TAB_DRAG_TYPE } from './TabBar.svelte'
   import TabContent from './TabContent.svelte'
   import CommandPalette from './CommandPalette.svelte'
   import ContextPanel from './ContextPanel.svelte'
@@ -17,6 +17,75 @@
   import { toggleExplorer, isMobile } from '../../stores/layout.svelte'
   import { flushAutoSave, hasUnsavedChanges } from '@/store'
   import { initRouter, isOnWorkspace, goWorkspace, goTo } from '../../stores/router.svelte'
+  import { isSplit, type Pane } from '@/store/tabPanes'
+
+  const PANE_KEY = 'duck-ui-pane-split-percent'
+  const MIN_PANE = 20
+  const MAX_PANE = 80
+  // Dropping a tab this close to the left or right edge of the workspace splits it.
+  const EDGE_WIDTH = 72
+  const TAB_BAR_HEIGHT = 36
+
+  // Two panes need the width. A phone shows every tab in one.
+  const split = $derived(duck((s) => isSplit(s.tabs)) && !isMobile())
+
+  const savedPane = parseFloat(localStorage.getItem(PANE_KEY) ?? '')
+  let panePercent = $state(Number.isNaN(savedPane) ? 50 : Math.max(MIN_PANE, Math.min(MAX_PANE, savedPane)))
+  let resizing = $state(false)
+  let workspaceEl: HTMLElement | undefined = $state()
+  let dropEdge = $state<Pane | null>(null)
+
+  function onResizeStart(e: MouseEvent) {
+    e.preventDefault()
+    resizing = true
+    document.addEventListener('mousemove', onResizeMove)
+    document.addEventListener('mouseup', onResizeEnd)
+  }
+
+  function onResizeMove(e: MouseEvent) {
+    if (!workspaceEl) return
+    const rect = workspaceEl.getBoundingClientRect()
+    panePercent = Math.max(MIN_PANE, Math.min(MAX_PANE, ((e.clientX - rect.left) / rect.width) * 100))
+  }
+
+  function onResizeEnd() {
+    resizing = false
+    localStorage.setItem(PANE_KEY, panePercent.toFixed(1))
+    document.removeEventListener('mousemove', onResizeMove)
+    document.removeEventListener('mouseup', onResizeEnd)
+  }
+
+  function resetPanes() {
+    panePercent = 50
+    localStorage.setItem(PANE_KEY, '50')
+  }
+
+  /** The edge a dragged tab is over, below the tab bars. */
+  function edgeUnder(e: DragEvent): Pane | null {
+    if (!workspaceEl || isMobile() || !e.dataTransfer?.types.includes(TAB_DRAG_TYPE)) return null
+    const rect = workspaceEl.getBoundingClientRect()
+    if (e.clientY - rect.top < TAB_BAR_HEIGHT) return null
+    const x = e.clientX - rect.left
+    if (x <= EDGE_WIDTH) return 'left'
+    if (x >= rect.width - EDGE_WIDTH) return 'right'
+    return null
+  }
+
+  function onTabDragOver(e: DragEvent) {
+    dropEdge = edgeUnder(e)
+    if (!dropEdge) return
+    e.preventDefault()
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
+  }
+
+  function onTabDrop(e: DragEvent) {
+    const edge = edgeUnder(e)
+    const tabId = e.dataTransfer?.getData(TAB_DRAG_TYPE)
+    dropEdge = null
+    if (!edge || !tabId) return
+    e.preventDefault()
+    duckActions().splitTabToSide(tabId, edge)
+  }
 
   function handleGlobalShortcuts(e: KeyboardEvent) {
     const mod = e.metaKey || e.ctrlKey
@@ -49,6 +118,13 @@
       e.preventDefault()
       const { activeTabId, closeTab } = duckActions()
       if (activeTabId) closeTab(activeTabId)
+      return
+    }
+
+    if (e.altKey && !mod && e.code === 'KeyS' && isOnWorkspace() && !isMobile()) {
+      e.preventDefault()
+      const { activeTabId, splitTab } = duckActions()
+      if (activeTabId) splitTab(activeTabId)
       return
     }
 
@@ -125,13 +201,51 @@
 
   <!-- Workspace: stays mounted while a page is shown, so running queries and
        results survive navigation. -->
-  <main class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-canvas" hidden={!isOnWorkspace()}>
-    <TabBar />
-    <div class="min-h-0 flex-1">
-      <TabContent />
-    </div>
+  <!-- A grid: the tab bars in the first row, the tab panels in the second.
+       With two panes there are three columns, the middle one the handle. -->
+  <main
+    bind:this={workspaceEl}
+    class="relative grid min-h-0 min-w-0 flex-1 overflow-hidden bg-canvas"
+    style="grid-template-rows: auto minmax(0, 1fr); grid-template-columns: {split
+      ? `minmax(0, ${panePercent}fr) auto minmax(0, ${100 - panePercent}fr)`
+      : 'minmax(0, 1fr)'}"
+    hidden={!isOnWorkspace()}
+    ondragover={onTabDragOver}
+    ondragleave={() => (dropEdge = null)}
+    ondrop={onTabDrop}
+  >
+    <TabBar pane={split ? 'left' : undefined} />
+    {#if split}
+      <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+      <div
+        class="group/pane flex w-1 cursor-col-resize items-center justify-center transition-colors hover:bg-active {resizing ? 'bg-accent/60' : 'bg-edge-subtle'}"
+        style="grid-row: 1 / span 2; grid-column: 2"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize panes"
+        onmousedown={onResizeStart}
+        ondblclick={resetPanes}
+      >
+        <div class="h-8 w-0.5 rounded-full transition-colors {resizing ? 'bg-accent' : 'bg-edge-strong group-hover/pane:bg-accent/60'}"></div>
+      </div>
+      <TabBar pane="right" />
+    {/if}
+    <TabContent {split} />
+
+    {#if dropEdge}
+      <div
+        class="pointer-events-none absolute bottom-0 top-9 z-30 border-accent/50 bg-accent-soft {dropEdge === 'left' ? 'left-0 border-r' : 'right-0 border-l'}"
+        style="width: {EDGE_WIDTH}px"
+      ></div>
+    {/if}
   </main>
 </div>
+
+<svelte:window ondragend={() => (dropEdge = null)} />
+
+{#if resizing}
+  <div class="fixed inset-0 z-50 cursor-col-resize"></div>
+{/if}
 
 <CommandPalette />
 {#if brainRequested}

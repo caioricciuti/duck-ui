@@ -174,7 +174,8 @@
     statsScope={headerStats?.scope}
   />
 
-  <div class="flex h-8 shrink-0 items-center gap-2 border-t border-edge-subtle bg-sidebar px-2 text-xs text-fg-3">
+  <!-- One line at any width: in a narrow pane it scrolls sideways. -->
+  <div class="flex h-8 shrink-0 items-center gap-2 overflow-x-auto whitespace-nowrap border-t border-edge-subtle bg-sidebar px-2 text-xs text-fg-3 [scrollbar-width:none] [&>*]:shrink-0">
     <span class="tabular-nums">
       {#if inEngine}
         <span class="text-fg">{formatNumber(shown.length)}</span>{engine?.truncated ? '+' : ''} {shown.length === 1 ? 'row' : 'rows'}
