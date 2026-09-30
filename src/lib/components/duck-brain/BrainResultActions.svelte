@@ -3,7 +3,7 @@
   import Button from '../common/Button.svelte'
   import ContextMenu, { type ContextMenuItem } from '../common/ContextMenu.svelte'
   import Modal from '../common/Modal.svelte'
-  import MarkdownContent from './MarkdownContent.svelte'
+  import Lazy from '../common/Lazy.svelte'
   import { duck, duckActions } from '../../stores/duck.svelte'
   import * as toast from '../../stores/toast.svelte'
   import type { QueryResult } from '@/store'
@@ -285,6 +285,12 @@
     {/snippet}
   </Modal>
 
+  <!-- This sits in every SQL tab. The markdown renderer is fetched when an
+       answer is shown, so it stays out of the startup bundle. -->
+  {#snippet markdown(content: string)}
+    <Lazy load={() => import('./MarkdownContent.svelte')} props={{ content }} />
+  {/snippet}
+
   <Modal
     open={outcome !== null}
     title={outcome?.kind === 'optimize' ? 'Optimized query' : 'Result explanation'}
@@ -298,13 +304,13 @@
     footer={outcome?.kind === 'optimize' && !outcome.unchanged ? applyFooter : undefined}
   >
     {#if outcome?.kind === 'explain'}
-      <MarkdownContent content={outcome.summary} />
+      {@render markdown(outcome.summary)}
     {:else if outcome?.kind === 'optimize'}
       <div class="space-y-3">
         <!-- SQL from the model is rendered as text, never as HTML. -->
         <pre class="overflow-x-auto whitespace-pre-wrap rounded-md bg-surface-2 p-3 font-mono text-xs text-fg">{outcome.sql}</pre>
         {#if outcome.reasons}
-          <MarkdownContent content={outcome.reasons} />
+          {@render markdown(outcome.reasons)}
         {/if}
       </div>
     {/if}
