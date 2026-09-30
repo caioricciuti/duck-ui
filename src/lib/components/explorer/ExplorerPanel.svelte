@@ -160,13 +160,16 @@
       {:else}
         <SchemaTree {search} />
       {/if}
-
-      {#if canImport && foldersSupported}
-        <div class="border-t border-edge-subtle">
-          <FolderBrowser />
-        </div>
-      {/if}
     </div>
+
+    <!-- Files sit at the bottom of the panel, under a schema of any length.
+         With many folders the section scrolls on its own and leaves the
+         schema most of the height. -->
+    {#if canImport && foldersSupported}
+      <div class="max-h-[45%] shrink-0 overflow-auto border-t border-edge-subtle">
+        <FolderBrowser />
+      </div>
+    {/if}
 
     {#if !drawer}
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
