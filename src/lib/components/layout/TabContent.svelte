@@ -19,6 +19,8 @@
       <SqlTab tabId={tab.id} />
     {:else if tab.type === 'notebook'}
       <Lazy load={() => import('../notebook/NotebookTab.svelte')} props={{ tabId: tab.id }} />
+    {:else if tab.type === 'table'}
+      <Lazy load={() => import('../workspace/TableTab.svelte')} props={{ tabId: tab.id, visible: tab.id === activeTabId }} />
     {:else if tab.type === 'dashboard'}
       <Lazy load={() => import('../dashboard/DashboardTab.svelte')} props={{ tabId: tab.id, onsharelive: openShareLive }} />
     {/if}

@@ -210,7 +210,15 @@ export interface MountedFolderInfo {
 // Editor & Chart Types
 //
 
-export type EditorTabType = "sql" | "notebook" | "dashboard" | "home" | "connections" | "settings";
+export type EditorTabType =
+  "sql" | "notebook" | "dashboard" | "table" | "home" | "connections" | "settings";
+
+/** What a `table` tab points at. The data itself is read when the tab opens. */
+export interface TableTabRef {
+  database?: string;
+  schema?: string;
+  table?: string;
+}
 
 export type NotebookCellType = "sql" | "markdown" | "python";
 
@@ -336,7 +344,7 @@ export interface EditorTab {
   id: string;
   title: string;
   type: EditorTabType;
-  content: string | { database?: string; table?: string };
+  content: string | TableTabRef;
   result?: QueryResult | null;
   chartConfig?: ChartConfig;
   /**
@@ -442,6 +450,12 @@ export interface SchemaSlice {
     columnType: string,
     schema?: string
   ) => Promise<ColumnDistribution | null>;
+  /** The CREATE statement of a table or view, or null when the connection cannot tell. */
+  fetchTableDdl: (
+    databaseName: string,
+    tableName: string,
+    schema?: string
+  ) => Promise<string | null>;
   deleteTable: (tableName: string, database?: string, schema?: string) => Promise<void>;
   /** `duckdb_extensions()` on the active connection. Throws on failure. */
   fetchExtensions: () => Promise<ExtensionInfo[]>;
@@ -463,6 +477,8 @@ export interface TabSlice {
   activeTabId: string | null;
 
   createTab: (type?: EditorTabType, content?: string, title?: string) => string;
+  /** Opens a table as a tab, or focuses the tab that already shows it. */
+  openTableTab: (database: string, schema: string | undefined, table: string) => string;
   closeTab: (tabId: string) => void;
   setActiveTab: (tabId: string) => void;
   updateTabQuery: (tabId: string, query: string) => void;

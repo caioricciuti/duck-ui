@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ChevronRight, Database, Table, SquareTerminal, FileText, Trash2 } from 'lucide-svelte'
+  import { ChevronRight, Database, Table, Table2, SquareTerminal, Trash2 } from 'lucide-svelte'
   import ContextMenu, { type ContextMenuItem } from '../common/ContextMenu.svelte'
   import ConfirmDialog from '../common/ConfirmDialog.svelte'
   import ColumnNode from './ColumnNode.svelte'
@@ -86,8 +86,8 @@
     void runInNewTab(`SELECT * FROM ${qualifyTable(database, table.schema, table.name)} LIMIT 100`, table.name)
   }
 
-  function describeTable(database: string, table: TableInfo) {
-    void runInNewTab(`DESCRIBE ${qualifyTable(database, table.schema, table.name)}`, `${table.name} Schema`)
+  function openTable(database: string, table: TableInfo) {
+    duckActions().openTableTab(database, table.schema, table.name)
   }
 
   async function confirmDelete() {
@@ -106,8 +106,8 @@
   function openMenu(e: MouseEvent, database: string, table: TableInfo) {
     e.preventDefault()
     const items: ContextMenuItem[] = [
+      { id: 'open', label: 'Open table', icon: Table2, onSelect: () => openTable(database, table) },
       { id: 'query', label: 'Query table', icon: SquareTerminal, onSelect: () => queryTable(database, table) },
-      { id: 'schema', label: 'Show schema', icon: FileText, onSelect: () => describeTable(database, table) },
     ]
     if (!ui.readOnly) {
       items.push(
@@ -141,7 +141,7 @@
               <button
                 class={row}
                 onclick={() => toggle(key, false)}
-                ondblclick={() => queryTable(db.name, table)}
+                ondblclick={() => openTable(db.name, table)}
                 oncontextmenu={(e) => openMenu(e, db.name, table)}
                 title="{table.schema}.{table.name}"
               >
