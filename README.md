@@ -9,7 +9,7 @@ No install, no signup, no backend. Your data never leaves the tab.
 [![Release](https://img.shields.io/github/v/release/caioricciuti/duck-ui)](https://github.com/caioricciuti/duck-ui/releases)
 [![Docker](https://img.shields.io/badge/docker-ghcr.io-blue)](https://github.com/caioricciuti/duck-ui/pkgs/container/duck-ui)
 
-**[Try it now → duckui.com](https://duckui.com?utm_source=github&utm_medium=readme)** · [Docs](https://duckui.com?utm_source=github&utm_medium=readme) · [Contributing](CONTRIBUTING.md)
+**[Try it now → duckui.com](https://duckui.com?utm_source=github&utm_medium=readme)** · [Docs](https://docs.duckui.com?utm_source=github&utm_medium=readme) · [Contributing](CONTRIBUTING.md)
 
 ![Duck-UI screenshot](./public/screenshot.png)
 
