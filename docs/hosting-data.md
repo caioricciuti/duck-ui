@@ -75,5 +75,5 @@ Both attach read-only in the visitor's browser. For a permanent, branded setup, 
 Open your query in Duck-UI → Share → Badge tab. It builds the `?load=` link and a Markdown badge you can paste into a README:
 
 ```markdown
-[![Open in Duck-UI](https://demo.duckui.com/badge.svg)](https://demo.duckui.com/?load=https://pub-xxxx.r2.dev/yourfile.parquet)
+[![Open in Duck-UI](https://duckui.com/badge.svg)](https://duckui.com/?load=https://pub-xxxx.r2.dev/yourfile.parquet)
 ```
