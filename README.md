@@ -23,19 +23,26 @@ Open `http://localhost:5522`. That's the whole setup.
 
 ## What you get
 
-- **SQL editor**: CodeMirror with schema-aware autocomplete, DuckDB formatting, multi-tab workspace, query history, saved queries, EXPLAIN viewer.
-- **Notebooks** — SQL, Python (Pyodide, with `sql()` returning pandas DataFrames) and markdown cells with per-cell results and charts.
-- **Query parameters** — `$name` placeholders get an input bar, in SQL tabs and notebooks.
-- **Compare results** — pin a result and diff it against a later run: schema, row counts, changed cells.
-- **Maps and extensions** — GEOMETRY results render on a map; install/load DuckDB extensions from Settings.
-- **Import anything** — CSV, JSON, Parquet, Arrow, XLSX, and `.duckdb` files. Drag-drop, from URL, or straight from S3/GCS/Azure/R2/MinIO.
-- **Results grid** — virtualized scrolling, sorting, filtering, cell inspector, exports to CSV, JSON, XLSX, and Parquet.
-- **Charts** — 16 chart types with per-series config, transforms, annotations, and PNG/SVG export.
-- **Duck Brain (AI)** — text-to-SQL and one-click error fixing with your choice of provider: WebLLM fully in-browser (no API key, works offline), OpenAI, Anthropic, Chrome built-in AI, or any OpenAI-compatible endpoint (Ollama, DeepSeek, ...). By default only your schema is sent, never your data; the optional "Explain results" action sends a small row sample and asks for consent every time. With WebLLM nothing leaves the browser. It can also explain results, suggest a faster query from the `EXPLAIN` plan, and pick a chart.
-- **Share and embed** — encode a whole analysis (query, notebook, chart config) into a URL. No server involved. Embed live, runnable queries in any page with an iframe or the `<duck-embed>` web component.
-- **Persistence** — OPFS-backed local databases that survive reloads, profiles, encrypted credential storage (AES-256-GCM in your browser).
-- **Connections** — in-memory WASM, persistent OPFS, external [DuckDB httpserver](https://github.com/quackscience/duckdb-extension-httpserver) instances. DuckLake catalogs attach via the embedded-database manifest, `?load=ducklake:` links, or plain ATTACH SQL.
-- **Deploy anywhere** — Docker image, static hosting, GitHub Pages subpaths, air-gapped/offline setups, kiosk mode for publishing read-only datasets.
+- **Workspace and pages.** Queries, notebooks and dashboards are tabs. Connections, extensions, settings, saved queries, history and the dashboards list are pages with their own sidebar. `⌘K` finds any of them, plus tables, saved queries and recent queries.
+- **SQL editor.** CodeMirror with completion from your catalog and from DuckDB itself, DuckDB dialect formatting, `EXPLAIN ANALYZE` viewer. `⌘Enter` runs the statement under the cursor, `⌘Shift+Enter` the whole tab. A failed query is underlined where DuckDB points.
+- **Results grid.** Virtualized, with sort, filter, search, cell selection and copy, column statistics, exports to CSV, JSON, XLSX and Parquet. A result cut at the row limit is sorted and filtered in DuckDB over the whole answer, not over the rows on screen.
+- **Notebooks.** SQL, Python (Pyodide, with `sql()` returning pandas DataFrames) and markdown cells, each with its own result and chart.
+- **Dashboards.** Markdown reports with named SQL blocks, charts, tables, inputs and auto refresh. Shareable as a link.
+- **Query parameters.** `$name` placeholders get an input bar, in SQL tabs and notebooks.
+- **Compare results.** Pin a result and diff it against a later run: schema, row counts, changed cells.
+- **Charts.** Bar, grouped, stacked, line, area, stacked area, pie, donut and scatter, with per series settings, aggregation and PNG or SVG export. Charts follow the theme.
+- **Maps and extensions.** GEOMETRY results render on a map. Install and load DuckDB extensions from the Data page.
+- **Import anything.** CSV, JSON, Parquet, Arrow, XLSX and `.duckdb` files. Drop a file on the explorer, paste a URL, or read straight from S3, GCS, Azure, R2 or MinIO. Local folders through the File System Access API.
+- **History.** Every run is kept with duration and row count, searchable across reloads.
+- **Duck Brain (AI).** Text to SQL and one click error fixing with your choice of provider: WebLLM fully in the browser (no API key, works offline), OpenAI, Anthropic, or any OpenAI compatible endpoint (Ollama, DeepSeek, ...). By default only your schema is sent, never your data; the optional "Explain results" action sends a small row sample and asks for consent every time. With WebLLM nothing leaves the browser.
+- **Live sessions.** Invite another browser into your workspace over WebRTC. Shared editors with peer cursors, shared tables, no server.
+- **Share and embed.** Encode a whole analysis (query, notebook, chart config) into a URL. No server involved. Embed live, runnable queries in any page with an iframe or the `<duck-embed>` web component.
+- **Persistence.** OPFS backed local databases that survive reloads, profiles, encrypted credential storage (AES-256-GCM in your browser). The workspace saves itself.
+- **Connections.** In memory WASM, persistent OPFS, external [DuckDB httpserver](https://github.com/quackscience/duckdb-extension-httpserver) instances. DuckLake catalogs attach via the embedded database manifest, `?load=ducklake:` links, or plain ATTACH SQL.
+- **Works on a phone.** Below 768px the rail moves to the bottom and the explorer becomes a drawer.
+- **Deploy anywhere.** Docker image, static hosting, GitHub Pages subpaths, air gapped and offline setups (installable PWA), kiosk mode for publishing read only datasets.
+
+The whole app is built on Svelte 5 and CodeMirror 6. The startup bundle is about 350 kB of JavaScript; everything else, including the AI runtime, loads the first time you use it.
 
 ## Why Duck-UI and not the official `duckdb -ui`?
 
@@ -54,18 +61,18 @@ If you just want a quick local UI and don't care about any of that, the official
 
 ## "Open in Duck-UI" links
 
-Any hosted dataset can become a one-click, runnable analysis. Add `?load=` (and optionally `&sql=`) to the app URL — [try this one](https://demo.duckui.com/?load=https://blobs.duckdb.org/stations.parquet&sql=SELECT%20country%2C%20count(*)%20AS%20stations%20FROM%20stations%20GROUP%20BY%20country%20ORDER%20BY%20stations%20DESC):
+Any hosted dataset can become a one-click, runnable analysis. Add `?load=` (and optionally `&sql=`) to the app URL. [Try this one](https://demo.duckui.com/?load=https://blobs.duckdb.org/stations.parquet&sql=SELECT%20country%2C%20count(*)%20AS%20stations%20FROM%20stations%20GROUP%20BY%20country%20ORDER%20BY%20stations%20DESC):
 
 ```
 https://demo.duckui.com/?load=https://blobs.duckdb.org/stations.parquet
   &sql=SELECT country, count(*) AS stations FROM stations GROUP BY country ORDER BY stations DESC
 ```
 
-Openers see exactly what will load and what will run, confirm once, and get a live editor over your data — nothing touches a server. Parquet, CSV, JSON, `.duckdb` files, and `ducklake:` catalogs are supported. The Share dialog generates the link and a README badge for you:
+Openers see exactly what will load and what will run, confirm once, and get a live editor over your data. Nothing touches a server. Parquet, CSV, JSON, `.duckdb` files, and `ducklake:` catalogs are supported. The Share dialog generates the link and a README badge for you:
 
 [![Open in Duck-UI](./public/badge.svg)](https://demo.duckui.com/)
 
-The data host needs CORS enabled — see [hosting your data](docs/hosting-data.md) for a free R2/GitHub Pages setup. More examples in the [gallery](docs/gallery.md).
+The data host needs CORS enabled, see [hosting your data](docs/hosting-data.md) for a free R2/GitHub Pages setup. More examples in the [gallery](docs/gallery.md).
 
 ## Run locally from the command line
 
@@ -73,7 +80,7 @@ The `cli/` launcher serves the built app on `127.0.0.1` and opens it with your l
 
 ```bash
 bun run build                                   # once; the CLI serves dist/
-node cli/duck-ui.js sales.csv events.parquet    # or: npx duck-ui … once published
+node cli/duck-ui.js sales.csv events.parquet    # or: npx duck-ui ... once published
 node cli/duck-ui.js db.duckdb --port 6000 --no-open --sql "SHOW ALL TABLES"
 ```
 
@@ -92,7 +99,7 @@ Duck-UI doubles as a zero-backend data-publishing appliance. Drop a manifest nex
 }
 ```
 
-Bundled `.db` files, remote files over HTTPS, S3, and DuckLake catalogs are all supported — remote sources are attached in place and read-only by default. See [`public/databases/README.md`](public/databases/README.md) for the full manifest format and deploy steps.
+Bundled `.db` files, remote files over HTTPS, S3, and DuckLake catalogs are all supported. Remote sources are attached in place and read-only by default. See [`public/databases/README.md`](public/databases/README.md) for the full manifest format and deploy steps.
 
 ## Configuration
 
@@ -111,7 +118,7 @@ Runtime environment variables (Docker):
 | `DUCK_UI_DUCKDB_WASM_BASE_URL` | Custom CDN base URL (the origin is added to the CSP automatically at container start) | auto jsDelivr |
 | `DUCK_UI_PYODIDE_BASE_URL` | Where Python notebook cells load Pyodide from: a URL or same-origin path (e.g. `/pyodide/`) of a Pyodide 0.29.5 "full" distribution folder. A cross-origin URL's origin is added to the CSP at container start | `https://cdn.jsdelivr.net/pyodide/v0.29.5/full/` |
 
-**Python cells.** Notebooks can hold Python cells, run by [Pyodide](https://pyodide.org) in a Web Worker that is only started (and only downloads Pyodide, ~10 MB plus packages) when the first Python cell runs. `sql("SELECT …")` returns a pandas DataFrame from the notebook's active connection (Arrow IPC via pyarrow; columnar JSON as a fallback); `await sql_async(…)` works where the page is not cross-origin isolated. Imported packages that ship with Pyodide (numpy, pandas, matplotlib, …) load on demand; open matplotlib figures render as PNGs. **Interrupt** terminates the worker, so variables from earlier cells are lost; runs also stop after 5 minutes. For air-gapped deployments, download the matching `pyodide-0.29.5.tar.bz2` release, serve its `pyodide/` folder (e.g. at `/pyodide/`) and set `DUCK_UI_PYODIDE_BASE_URL`. CSP: the shipped policy already allows the default source (`script-src https://cdn.jsdelivr.net`, `'wasm-unsafe-eval'`, `connect-src https:`); behind your own proxy, keep those (or your mirror's origin) in `script-src`/`connect-src`. `'unsafe-eval'` is not granted — a third-party package whose native code relies on `eval` will fail to load under the policy.
+**Python cells.** Notebooks can hold Python cells, run by [Pyodide](https://pyodide.org) in a Web Worker that is only started (and only downloads Pyodide, ~10 MB plus packages) when the first Python cell runs. `sql("SELECT ...")` returns a pandas DataFrame from the notebook's active connection (Arrow IPC via pyarrow; columnar JSON as a fallback); `await sql_async(...)` works where the page is not cross-origin isolated. Imported packages that ship with Pyodide (numpy, pandas, matplotlib, ...) load on demand; open matplotlib figures render as PNGs. **Interrupt** terminates the worker, so variables from earlier cells are lost; runs also stop after 5 minutes. For air-gapped deployments, download the matching `pyodide-0.29.5.tar.bz2` release, serve its `pyodide/` folder (e.g. at `/pyodide/`) and set `DUCK_UI_PYODIDE_BASE_URL`. CSP: the shipped policy already allows the default source (`script-src https://cdn.jsdelivr.net`, `'wasm-unsafe-eval'`, `connect-src https:`); behind your own proxy, keep those (or your mirror's origin) in `script-src`/`connect-src`. `'unsafe-eval'` is not granted, so a third-party package whose native code relies on `eval` will fail to load under the policy.
 
 Build-time: `DUCK_UI_BASEPATH=/subpath/` for subpath deploys, `DUCK_UI_DUCKDB_WASM_CDN_ONLY=true` for CDN-only artifacts.
 
@@ -122,15 +129,22 @@ Deployment guides: [reverse proxy / nginx](docs/reverse-proxy.md) · [hosting yo
 ```bash
 git clone https://github.com/caioricciuti/duck-ui.git
 cd duck-ui
-bun install   # npm works too
+bun install
 bun run dev   # http://localhost:5173
 ```
 
-Build with `bun run build`, test with `bun run test`. Architecture notes live in [CLAUDE.md](CLAUDE.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
+Checks, all of which CI runs:
+
+```bash
+bun run lint && bun run format:check && bun run typecheck && bun run test && bun run build
+bun run test:e2e   # Playwright, against the production build
+```
+
+Architecture notes live in [docs/architecture](docs/architecture) and [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Contributing
 
-Issues and PRs welcome — read [CONTRIBUTING.md](CONTRIBUTING.md) first (it's short and it will save you time). Bug reports with a reproducible query are gold.
+Issues and PRs welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) first (it's short and it will save you time). Bug reports with a reproducible query are gold.
 
 ## License
 
