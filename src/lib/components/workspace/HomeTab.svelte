@@ -82,7 +82,6 @@
   ])
 
   const resources = [
-    { title: 'Embed an analysis', description: 'Put a live chart in any page with one iframe.', link: 'https://docs.duckui.com/docs/embedding/', icon: PackageCheck },
     { title: 'Star us on GitHub', description: 'Support the project with a star.', link: 'https://github.com/caioricciuti/duck-ui', icon: Star },
     { title: 'DuckDB docs', description: 'The DuckDB documentation.', link: 'https://duckdb.org/docs/', icon: BookOpen },
     { title: 'Duck-UI documentation', description: 'Learn how to make the most of Duck-UI.', link: 'https://docs.duckui.com/', icon: ExternalLink },
@@ -91,9 +90,7 @@
   const products = [
     { title: 'CH-UI', description: 'Your ClickHouse, one workspace: SQL editor, dashboards, pipelines, governance, scheduling, and an AI copilot.', link: 'https://ch-ui.com?utm_source=duck-ui&utm_medium=app&utm_campaign=cross-promo', icon: Database },
     { title: 'Caio Ricciuti', description: 'Data engineering and analytics solutions.', link: 'https://caioricciuti.com?utm_source=duck-ui&utm_medium=app&utm_campaign=cross-promo', icon: Building2 },
-    { title: 'Etiquetta', description: 'Simple, privacy-friendly web analytics.', link: 'https://github.com/caioricciuti/etiquetta', icon: ChartColumn },
     { title: 'Dev Cockpit', description: 'Get under the hood of your Apple Silicon.', link: 'https://devcockpit.app?utm_source=duck-ui&utm_medium=app&utm_campaign=cross-promo', icon: Logs },
-    { title: 'Glyphic', description: 'A visual interface to configure, manage, and use Claude Code.', link: 'https://github.com/caioricciuti/glyphic', icon: Bot },
   ]
 
   async function openDemo(dataset: DemoDataset) {

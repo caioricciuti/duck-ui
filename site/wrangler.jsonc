@@ -5,7 +5,8 @@
 // developer's machine.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "duck-ui-docs",
+  // Must match the Worker's name in the Cloudflare dashboard.
+  "name": "duck-ui",
   "compatibility_date": "2026-09-01",
   "assets": {
     "directory": "./dist",
