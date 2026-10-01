@@ -210,6 +210,9 @@
 
 {#snippet chart()}
   <div class="flex h-full flex-col">
+    {#if config.title}
+      <p class="shrink-0 truncate px-1 pb-1 text-xs font-medium text-fg-2" title={config.title}>{config.title}</p>
+    {/if}
     <div class="min-h-0 flex-1">
       {#if isPie}
         <PieChart
@@ -349,6 +352,17 @@
           {/snippet}
           <div class="flex flex-col gap-3">
             <h4 class="text-[13px] font-semibold text-fg">Chart settings</h4>
+
+            <div class="flex flex-col gap-1">
+              <label class="text-xs text-fg-3" for="{uid}-title">Title</label>
+              <Input
+                id="{uid}-title"
+                size="sm"
+                placeholder="No title"
+                value={config.title ?? ''}
+                oninput={(e) => updateConfig({ title: e.currentTarget.value || undefined })}
+              />
+            </div>
 
             <div class="flex flex-col gap-1">
               <label class="flex items-center gap-1 text-xs text-fg-3" for="{uid}-sort">
