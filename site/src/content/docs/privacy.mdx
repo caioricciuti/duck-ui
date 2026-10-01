@@ -30,7 +30,7 @@ The app is a set of static files. Once loaded, DuckDB runs as WebAssembly inside
 
 These requests go straight from your browser to the party named, so that party sees your IP address and ordinary request data (browser, time, the address requested), under its own privacy terms. I do not receive what they receive.
 
-- **DuckDB extensions**: when the app starts, DuckDB downloads some of its extensions (for example Parquet, Arrow, Excel and DuckLake support) from `extensions.duckdb.org`, run by the DuckDB project.
+- **DuckDB extensions**: when the app starts, DuckDB downloads some of its extensions (for example Parquet, Excel and DuckLake support) from `extensions.duckdb.org`, run by the DuckDB project.
 - **Data you query by URL**: if you query a remote file, your browser fetches it from the server you named.
 - **Sample datasets**, when you load one: `blobs.duckdb.org` or `raw.githubusercontent.com` (GitHub).
 - **Live sessions**, only if you start or join one: browsers connect directly to each other over WebRTC, so participants can see each other's IP addresses. To find a route between you, each browser asks Google's public STUN server (`stun.l.google.com`) for its own public address. No query or data passes through Google or through me; the connection codes you exchange travel in the URL fragment, which browsers do not send to servers.
