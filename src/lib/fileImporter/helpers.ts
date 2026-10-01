@@ -58,8 +58,9 @@ export const getErrorSuggestion = (errorMessage: string): string | null => {
     return "The file may be too large to process. Try importing a smaller file or use sampling options.";
   }
 
-  // Table name errors
-  if (lowerError.includes("table") && lowerError.includes("exist")) {
+  // Table name errors. "does not exist" is a different family (a missing
+  // function or file), so only the exact phrase counts.
+  if (lowerError.includes("already exists")) {
     return "A table with this name already exists. Choose a different name or the existing table will be replaced.";
   }
 

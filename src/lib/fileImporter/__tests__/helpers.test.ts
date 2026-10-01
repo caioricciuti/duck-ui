@@ -30,6 +30,13 @@ describe("getErrorSuggestion", () => {
     expect(getErrorSuggestion("could not convert type")).toMatch(/Column type detection/);
     expect(getErrorSuggestion("HTTP 403")).toMatch(/Access denied/);
     expect(getErrorSuggestion("HTTP 404")).toMatch(/not found/);
+    expect(getErrorSuggestion('Table with name "t" already exists')).toMatch(/already exists/);
+  });
+
+  it("does not read a missing function as a name clash", () => {
+    expect(
+      getErrorSuggestion("Catalog Error: Table Function with name read_arrow does not exist")
+    ).toBeNull();
     expect(getErrorSuggestion("out of memory")).toMatch(/too large/);
     expect(getErrorSuggestion("Table foo already exists")).toMatch(/already exists/);
   });
