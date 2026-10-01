@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { groupByColumn, transformData } from "@/lib/chartDataTransform";
-import type { QueryResult } from "@/store";
+import { groupByColumn, reconcileChartConfig, transformData } from "@/lib/chartDataTransform";
+import type { ChartConfig, QueryResult } from "@/store";
 
 const result = (data: Record<string, unknown>[]): QueryResult => ({
   columns: Object.keys(data[0] ?? {}),
@@ -105,5 +105,62 @@ describe("groupByColumn", () => {
       "sum"
     );
     expect(rows).toEqual([{ k: "a", v: 3 }]);
+  });
+});
+
+describe("reconcileChartConfig", () => {
+  const grouped: ChartConfig = {
+    type: "bar",
+    xAxis: "region",
+    series: [{ column: "revenue" }, { column: "cost" }],
+    transform: { groupBy: "region", aggregation: "sum", sortBy: "cost", sortOrder: "desc" },
+  };
+
+  it("leaves an ungrouped config alone", () => {
+    const config: ChartConfig = {
+      type: "bar",
+      xAxis: "region",
+      yAxis: "year",
+      transform: { sortBy: "year" },
+    };
+    expect(reconcileChartConfig(config)).toBe(config);
+  });
+
+  it("moves the group column with the x axis", () => {
+    const next = reconcileChartConfig({ ...grouped, xAxis: "year" });
+    expect(next.transform?.groupBy).toBe("year");
+  });
+
+  it("drops a sort on a column that grouping removes", () => {
+    const next = reconcileChartConfig({ ...grouped, series: [{ column: "revenue" }] });
+    expect(next.transform?.sortBy).toBeUndefined();
+    expect(next.transform?.sortOrder).toBeUndefined();
+    expect(next.transform?.aggregation).toBe("sum");
+  });
+
+  it("keeps a sort on the x axis or on a value column", () => {
+    expect(reconcileChartConfig(grouped).transform?.sortBy).toBe("cost");
+    const byX = reconcileChartConfig({
+      ...grouped,
+      transform: { ...grouped.transform, sortBy: "region" },
+    });
+    expect(byX.transform?.sortBy).toBe("region");
+  });
+
+  it("removes the x column from the value columns", () => {
+    const next = reconcileChartConfig({ ...grouped, xAxis: "cost" });
+    expect(next.series).toEqual([{ column: "revenue" }]);
+    expect(next.transform?.groupBy).toBe("cost");
+    // The sort column is now the x axis, which grouped rows still hold.
+    expect(next.transform?.sortBy).toBe("cost");
+
+    const single = reconcileChartConfig({
+      type: "bar",
+      xAxis: "year",
+      yAxis: "year",
+      transform: { groupBy: "year", aggregation: "count" },
+    });
+    expect(single.yAxis).toBeUndefined();
+    expect(single.series).toBeUndefined();
   });
 });
