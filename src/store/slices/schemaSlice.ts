@@ -233,6 +233,22 @@ export const createSchemaSlice: StateCreator<DuckStoreState, [], [], SchemaSlice
       const { db, connection } = requireLocalDuckSession(session).local;
 
       const buffer = new Uint8Array(fileContent);
+      const importMode = options.importMode || "table";
+
+      // DuckDB WASM has no `read_arrow`: Arrow IPC goes straight into the
+      // engine through its own insert. The bytes are decoded first, which
+      // accepts the file format as well as the stream format the insert
+      // expects. A view would have nothing to point at, so both modes make
+      // a table.
+      if (fileType.toLowerCase() === "arrow") {
+        const { tableFromIPC, tableToIPC } = await import("apache-arrow");
+        const ipc = tableToIPC(tableFromIPC(buffer), "stream");
+        await connection.query(`DROP TABLE IF EXISTS ${sqlEscapeIdentifier(tableName)}`);
+        await connection.insertArrowFromIPCStream(ipc, { name: tableName, create: true });
+        await get().fetchDatabasesAndTablesInfo();
+        return;
+      }
+
       try {
         await db.dropFile(fileName);
       } catch {
@@ -248,7 +264,6 @@ export const createSchemaSlice: StateCreator<DuckStoreState, [], [], SchemaSlice
         return;
       }
 
-      const importMode = options.importMode || "table";
       const createType = importMode === "view" ? "VIEW" : "TABLE";
 
       if (fileType.toLowerCase() === "csv") {

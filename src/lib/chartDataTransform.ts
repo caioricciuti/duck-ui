@@ -4,7 +4,7 @@
  */
 
 import type { QueryResult } from "@/store";
-import type { DataTransform, AggregationType, SeriesConfig } from "@/store";
+import type { ChartConfig, DataTransform, AggregationType, SeriesConfig } from "@/store";
 
 export type TransformedData = Record<string, unknown>[];
 
@@ -151,6 +151,47 @@ export const sortData = (
  */
 export const limitData = (data: TransformedData, limit: number): TransformedData => {
   return data.slice(0, Math.max(1, limit));
+};
+
+/** Columns a config plots on the y axis, in config order. */
+export const chartValueColumns = (config: ChartConfig): string[] => {
+  if (config.series?.length) return config.series.map((s) => s.column);
+  return config.yAxis ? [config.yAxis] : [];
+};
+
+/**
+ * Keeps a chart config consistent with itself after an edit. With
+ * aggregation on, the rows are grouped by the x axis and hold only the x
+ * column and the value columns, so:
+ *
+ * - the group column follows the x axis,
+ * - the x column cannot also be a value column (its slot in the grouped
+ *   row holds the key),
+ * - a sort on any other column would sort on missing values and is dropped.
+ *
+ * Every settings control runs its result through here, so the rules live
+ * once instead of in each handler.
+ */
+export const reconcileChartConfig = (config: ChartConfig): ChartConfig => {
+  const transform = config.transform;
+  if (!transform?.groupBy) return config;
+
+  const groupBy = config.xAxis;
+  const values = chartValueColumns(config).filter((column) => column !== groupBy);
+  const series = config.series?.filter((s) => s.column !== groupBy);
+  const sortBy = transform.sortBy;
+  const sortKept = !sortBy || sortBy === groupBy || values.includes(sortBy);
+
+  return {
+    ...config,
+    yAxis: config.yAxis === groupBy ? undefined : config.yAxis,
+    series: series?.length ? series : undefined,
+    transform: {
+      ...transform,
+      groupBy,
+      ...(sortKept ? {} : { sortBy: undefined, sortOrder: undefined }),
+    },
+  };
 };
 
 /**

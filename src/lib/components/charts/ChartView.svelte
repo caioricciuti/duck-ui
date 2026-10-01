@@ -19,7 +19,7 @@
   } from 'lucide-svelte'
   import type { AggregationType, ChartConfig, ChartType, DataTransform, QueryResult } from '@/store/types'
   import { autoDetectChartConfig } from '@/lib/chartAutoConfig'
-  import { isNumericColumn, transformData } from '@/lib/chartDataTransform'
+  import { chartValueColumns, isNumericColumn, reconcileChartConfig, transformData } from '@/lib/chartDataTransform'
   import { exportChartAsPNG } from '@/lib/chartExport'
   import { formatNumberWithSuffix } from '@/lib/chartUtils'
   import { getTheme } from '../../stores/theme.svelte'
@@ -31,7 +31,7 @@
   import Popover from './Popover.svelte'
   import UPlotChart from './UPlotChart.svelte'
   import { chartTheme, resolvePalette } from './palette'
-  import { buildXYChart, describeSeries, seriesColumns } from './xyChart'
+  import { buildXYChart, describeSeries } from './xyChart'
 
   interface Props {
     result: QueryResult
@@ -87,13 +87,15 @@
   const typeInfo = $derived(CHART_TYPES.find((t) => t.value === config.type))
   const isPie = $derived(config.type === 'pie' || config.type === 'donut')
   const isLineOrArea = $derived(['line', 'area', 'stacked_area'].includes(config.type))
-  const selectedColumns = $derived(seriesColumns(config))
+  const selectedColumns = $derived(chartValueColumns(config))
+  const grouped = $derived(Boolean(config.transform?.groupBy))
+
+  // Grouped rows keep the x column as their key, so it cannot be a value too.
+  const valueColumns = $derived(grouped ? numericColumns.filter((col) => col !== config.xAxis) : numericColumns)
 
   // Grouped rows hold only the x column and the value columns, so sorting by
   // anything else would sort on missing values.
-  const sortColumns = $derived(
-    config.transform?.groupBy ? [config.xAxis, ...selectedColumns.filter((c) => c !== config.xAxis)] : result.columns,
-  )
+  const sortColumns = $derived(grouped ? [config.xAxis, ...selectedColumns] : result.columns)
 
   const rows = $derived(transformData(result, config.transform, config.xAxis, config.yAxis || config.series))
 
@@ -126,12 +128,14 @@
     if (!chartConfig && hasData) onconfigchange(autoConfig)
   })
 
+  // Every edit passes through reconcileChartConfig, which keeps the group
+  // column, the value columns and the sort column consistent.
   function updateConfig(updates: Partial<ChartConfig>) {
-    onconfigchange({ ...config, ...updates })
+    onconfigchange(reconcileChartConfig({ ...config, ...updates }))
   }
 
   function updateTransform(updates: Partial<DataTransform>) {
-    onconfigchange({ ...config, transform: { ...config.transform, ...updates } })
+    updateConfig({ transform: { ...config.transform, ...updates } })
   }
 
   function toggleColumn(column: string) {
@@ -205,41 +209,48 @@
 {/snippet}
 
 {#snippet chart()}
-  {#if isPie}
-    <PieChart
-      slices={pieSlices}
-      colors={pieColors}
-      donut={config.type === 'donut'}
-      innerRadius={config.innerRadius ? config.innerRadius / 120 : 0.45}
-    />
-  {:else if xy}
-    <div class="flex h-full flex-col">
-      <div class="min-h-0 flex-1">
-        <UPlotChart options={xy.options} data={xy.data} class="h-full w-full" />
-      </div>
-      {#if xy.series.length > 1}
-        <div class="flex flex-wrap justify-center gap-x-4 gap-y-1 py-1 text-xs">
-          {#each xy.series as s (s.column)}
-            {@const shown = !hidden.has(s.column)}
-            <button
-              type="button"
-              class="flex items-center gap-1.5 transition-opacity hover:opacity-80 {shown ? '' : 'opacity-35'}"
-              aria-pressed={shown}
-              title={shown ? 'Hide series' : 'Show series'}
-              onclick={() => toggleSeries(s.column)}
-            >
-              <span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background-color: {s.color}"></span>
-              <span class="text-fg-3">{s.label}</span>
-            </button>
-          {/each}
+  <div class="flex h-full flex-col">
+    {#if config.title}
+      <p class="shrink-0 truncate px-1 pb-1 text-xs font-medium text-fg-2" title={config.title}>{config.title}</p>
+    {/if}
+    <div class="min-h-0 flex-1">
+      {#if isPie}
+        <PieChart
+          slices={pieSlices}
+          colors={pieColors}
+          donut={config.type === 'donut'}
+          innerRadius={config.innerRadius ? config.innerRadius / 120 : 0.45}
+        />
+      {:else if xy}
+        <div class="flex h-full flex-col">
+          <div class="min-h-0 flex-1">
+            <UPlotChart options={xy.options} data={xy.data} class="h-full w-full" />
+          </div>
+          {#if xy.series.length > 1}
+            <div class="flex flex-wrap justify-center gap-x-4 gap-y-1 py-1 text-xs">
+              {#each xy.series as s (s.column)}
+                {@const shown = !hidden.has(s.column)}
+                <button
+                  type="button"
+                  class="flex items-center gap-1.5 transition-opacity hover:opacity-80 {shown ? '' : 'opacity-35'}"
+                  aria-pressed={shown}
+                  title={shown ? 'Hide series' : 'Show series'}
+                  onclick={() => toggleSeries(s.column)}
+                >
+                  <span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background-color: {s.color}"></span>
+                  <span class="text-fg-3">{s.label}</span>
+                </button>
+              {/each}
+            </div>
+          {/if}
+        </div>
+      {:else}
+        <div class="flex h-full items-center justify-center text-[13px] text-fg-3">
+          Pick a column for the X axis and at least one value column.
         </div>
       {/if}
     </div>
-  {:else}
-    <div class="flex h-full items-center justify-center text-[13px] text-fg-3">
-      Pick a column for the X axis and at least one value column.
-    </div>
-  {/if}
+  </div>
 {/snippet}
 
 {#if !hasData}
@@ -276,12 +287,7 @@
           placeholder="Column"
           value={config.xAxis}
           options={result.columns.map((col) => ({ value: col, label: col }))}
-          onchange={(value) =>
-            // Aggregation groups by the x axis, so the two move together.
-            updateConfig({
-              xAxis: value,
-              ...(config.transform?.groupBy ? { transform: { ...config.transform, groupBy: value } } : {}),
-            })}
+          onchange={(value) => updateConfig({ xAxis: value })}
         />
       </div>
 
@@ -301,11 +307,13 @@
             <ChevronDown size={13} class="shrink-0 text-fg-4" />
           </button>
         {/snippet}
-        {#if numericColumns.length === 0}
-          <p class="px-2 py-3 text-center text-xs text-fg-3">No numeric columns in this result</p>
+        {#if valueColumns.length === 0}
+          <p class="px-2 py-3 text-center text-xs text-fg-3">
+            {numericColumns.length ? 'The X column is the group key' : 'No numeric columns in this result'}
+          </p>
         {:else}
           <ul class="max-h-56 overflow-y-auto">
-            {#each numericColumns as col (col)}
+            {#each valueColumns as col (col)}
               {@const info = seriesInfo.find((s) => s.column === col)}
               <li>
                 <button
@@ -344,6 +352,17 @@
           {/snippet}
           <div class="flex flex-col gap-3">
             <h4 class="text-[13px] font-semibold text-fg">Chart settings</h4>
+
+            <div class="flex flex-col gap-1">
+              <label class="text-xs text-fg-3" for="{uid}-title">Title</label>
+              <Input
+                id="{uid}-title"
+                size="sm"
+                placeholder="No title"
+                value={config.title ?? ''}
+                oninput={(e) => updateConfig({ title: e.currentTarget.value || undefined })}
+              />
+            </div>
 
             <div class="flex flex-col gap-1">
               <label class="flex items-center gap-1 text-xs text-fg-3" for="{uid}-sort">
@@ -404,17 +423,11 @@
                 size="sm"
                 value={config.transform?.aggregation ?? 'none'}
                 options={AGGREGATIONS}
-                onchange={(value) => {
-                  const groupBy = value !== 'none' ? config.xAxis : undefined
-                  const sortBy = config.transform?.sortBy
-                  // A sort column that grouping removes goes with it.
-                  const sortLost = groupBy && sortBy && sortBy !== config.xAxis && !selectedColumns.includes(sortBy)
+                onchange={(value) =>
                   updateTransform({
                     aggregation: value as AggregationType,
-                    groupBy,
-                    ...(sortLost ? { sortBy: undefined, sortOrder: undefined } : {}),
-                  })
-                }}
+                    groupBy: value !== 'none' ? config.xAxis : undefined,
+                  })}
               />
             </div>
 

@@ -132,7 +132,9 @@ export const createDuckdbSlice: StateCreator<DuckStoreState, [], [], DuckdbSlice
       console.warn("[DuckDB] Failed to read max_result_rows");
     }
 
-    for (const ext of ["arrow", "parquet", "ducklake"]) {
+    // No arrow here: Arrow IPC goes through the engine's own insert, and the
+    // extension of that name provides no reader in DuckDB WASM.
+    for (const ext of ["parquet", "ducklake"]) {
       try {
         await connection.query(`INSTALL ${ext}`);
         if (ext === "ducklake") {

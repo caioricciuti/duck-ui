@@ -96,12 +96,7 @@
     {/if}
   </div>
 {:else}
-  <figure class="my-3 flex h-80 flex-col rounded-md border border-edge p-2">
-    {#if title}
-      <figcaption class="shrink-0 px-1 pb-1 text-xs font-medium text-fg-2">{title}</figcaption>
-    {/if}
-    <div class="min-h-0 flex-1">
-      <ChartView result={chart.data} chartConfig={chart.config} onconfigchange={() => {}} readonly />
-    </div>
+  <figure class="my-3 h-80 rounded-md border border-edge p-2" aria-label={title}>
+    <ChartView result={chart.data} chartConfig={chart.config} onconfigchange={() => {}} readonly />
   </figure>
 {/if}

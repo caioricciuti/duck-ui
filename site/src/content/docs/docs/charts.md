@@ -80,10 +80,13 @@ Every change applies immediately. There is no Apply button.
 ### Chart settings
 
 Click the settings icon to open:
+- **Title**, drawn above the chart and included in the PNG export
 - **Sort by** and order
 - **Limit rows**
 - **Aggregation** (None, Sum, Average, Count, Min, Max)
 - **Show values**, **Show grid**, and **Smooth lines** for line and area charts
+
+With an aggregation on, the rows are grouped by the X column, so the sort column can only be the X column or one of the value columns, and the X column cannot also be a value column. A choice that grouping removes is dropped when you change the X column or the values.
 
 ### Reset and export
 

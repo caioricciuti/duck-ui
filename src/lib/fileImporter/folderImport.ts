@@ -76,7 +76,7 @@ export async function listFolderChildren(entry: FolderEntry): Promise<FSEntry[]>
 
 /**
  * The reader for a folder file's extension. Variants go to the reader they
- * share: line-delimited JSON to read_json, Arrow IPC to read_arrow, and TSV
+ * share: line-delimited JSON to read_json, Arrow IPC to the Arrow insert, and TSV
  * to read_csv with a tab, since the CSV options otherwise pin a comma.
  */
 export function folderImportType(extension: string): {

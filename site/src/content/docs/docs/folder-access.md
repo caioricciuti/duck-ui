@@ -59,15 +59,15 @@ Two ways to import a file:
 
 | Extension | Format | Description |
 |-----------|--------|-------------|
-| `.csv` | CSV | Comma-separated values |
+| `.csv`, `.tsv` | CSV | Comma or tab separated values |
 | `.json` | JSON | JSON objects/arrays |
 | `.jsonl`, `.ndjson` | JSON Lines | Newline-delimited JSON |
 | `.parquet` | Parquet | Apache Parquet columnar format |
-| `.arrow` | Arrow | Apache Arrow IPC format |
+| `.arrow`, `.ipc` | Arrow | Apache Arrow IPC, file or stream format. Always imported as a table, since a view has nothing to point at |
 | `.xlsx` | Excel | Microsoft Excel spreadsheets |
 | `.duckdb`, `.db`, `.ddb` | DuckDB | DuckDB database files, attached rather than copied |
 
-Files with other extensions are hidden from the tree view. `.tsv`, `.ipc` and `.xls` files also appear in the tree, but importing them fails in this version because DuckDB has no `read_tsv`, `read_ipc` or `read_xls` function.
+Files with other extensions are hidden from the tree view. Legacy `.xls` has no DuckDB reader.
 
 ## How It Works
 
