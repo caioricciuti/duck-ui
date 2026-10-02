@@ -89,7 +89,7 @@ describe("decimal coercion (#13)", () => {
     expect(result.data[0].price).toBe(2.1);
     expect(result.data[1].price).toBe(-2.1);
     expect(result.data[2].price).toBeNull();
-    expect(result.columnTypes[0]).toContain("Decimal");
+    expect(result.columnTypes[0]).toBe("DECIMAL(3,1)");
   });
 
   it("SELECT 1.23 comes back as 1.23 (the issue's exact repro)", () => {
@@ -118,7 +118,7 @@ describe("timestamp coercion (#15)", () => {
   it("TIMESTAMPTZ (Timestamp<MICROSECOND, UTC>) becomes a Date, not raw epoch millis", () => {
     const vector = vectorFromArray([instant], new TimestampMicrosecond("UTC"));
     const result = resultToJSON(new Table({ now: vector }));
-    expect(result.columnTypes[0]).toBe("Timestamp<MICROSECOND, UTC>");
+    expect(result.columnTypes[0]).toBe("TIMESTAMP WITH TIME ZONE");
     expect(result.data[0].now).toBeInstanceOf(Date);
     expect((result.data[0].now as Date).getTime()).toBe(instant.getTime());
   });
