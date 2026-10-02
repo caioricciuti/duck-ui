@@ -287,7 +287,7 @@
     {/if}
   </div>
   <div class="relative min-h-0 flex-1">
-    <div bind:this={container} class="absolute inset-0"></div>
+    <div bind:this={container} class="map-canvas absolute inset-0"></div>
     {#if mapError}
       <div class="absolute inset-0 flex flex-col items-center justify-center gap-2 p-4 text-center">
         <MapPinOff size={28} class="text-fg-3" />
@@ -304,6 +304,12 @@
 </div>
 
 <style>
+  /* maplibre's stylesheet sets position: relative on the container and, being
+     unlayered, beats Tailwind's layered utilities. Left to it, the map is 0 px
+     tall and shows nothing. */
+  .map-canvas {
+    position: absolute;
+  }
   /* maplibre builds its popups and controls itself and ships them on a white
      ground. These put them on the app's surfaces. */
   .geo-map :global(.maplibregl-popup-content) {
