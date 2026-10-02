@@ -165,9 +165,19 @@ export function startAutoSave(): void {
   });
 }
 
-/** True while an edit has not reached storage yet. */
-export function hasUnsavedChanges(): boolean {
-  return savePending || saveInFlight !== null;
+let leavingOnPurpose = false;
+
+/**
+ * Marks a navigation the app starts itself, such as the reload for a new
+ * version, so the leave prompt does not ask about it.
+ */
+export function leaveWithoutPrompt(): void {
+  leavingOnPurpose = true;
+}
+
+/** False once the app has started its own navigation away. */
+export function shouldAskBeforeLeaving(): boolean {
+  return !leavingOnPurpose;
 }
 
 /** Writes pending changes now and resolves once they are stored. */

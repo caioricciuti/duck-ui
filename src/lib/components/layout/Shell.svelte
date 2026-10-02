@@ -13,7 +13,7 @@
   import { duck, duckActions } from '../../stores/duck.svelte'
   import { openCommandPalette, toggleCommandPalette } from '../../stores/command-palette.svelte'
   import { toggleExplorer, isMobile } from '../../stores/layout.svelte'
-  import { flushAutoSave, hasUnsavedChanges } from '@/store'
+  import { flushAutoSave, shouldAskBeforeLeaving } from '@/store'
   import { initRouter, isOnWorkspace, goWorkspace, goTo } from '../../stores/router.svelte'
   import { isSplit, type Pane } from '@/store/tabPanes'
 
@@ -165,11 +165,12 @@
     if (brainOpen) brainRequested = true
   })
 
-  // The workspace saves itself, so closing the tab is normally silent. The
-  // browser only asks when an edit from the last moments has not been stored
-  // yet, and that write is started here so the answer rarely matters.
+  // Closing or reloading the tab always asks first, as a guard against a
+  // stray close. The workspace saves itself, so this is not about data loss;
+  // the pending write starts here either way. Browsers only show it once
+  // the page has had a click or a key press.
   function handleBeforeUnload(e: BeforeUnloadEvent) {
-    if (!hasUnsavedChanges()) return
+    if (!shouldAskBeforeLeaving()) return
     void flushAutoSave()
     e.preventDefault()
   }
