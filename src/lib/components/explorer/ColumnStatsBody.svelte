@@ -19,9 +19,15 @@
 
   const nullPercentage = $derived(parse(stats.null_percentage))
   const fillPercentage = $derived(100 - nullPercentage)
-  const uniqueCount = $derived(stats.approx_unique ? parse(stats.approx_unique) : 0)
   const totalCount = $derived(parse(stats.count))
-  const cardinality = $derived(totalCount > 0 ? (uniqueCount / totalCount) * 100 : 0)
+  const nullCount = $derived(Math.round((nullPercentage / 100) * totalCount))
+  // SUMMARIZE's approx_unique is a HyperLogLog estimate and can exceed the
+  // number of rows that have a value, which read as "41 unique of 40". It is
+  // capped at that number and shown as an estimate.
+  const uniqueCount = $derived(
+    Math.min(stats.approx_unique ? parse(stats.approx_unique) : 0, Math.max(0, totalCount - nullCount))
+  )
+  const cardinality = $derived(totalCount > 0 ? Math.min(100, (uniqueCount / totalCount) * 100) : 0)
   const fillTone = $derived(fillPercentage >= 90 ? 'bg-success' : fillPercentage >= 50 ? 'bg-warning' : 'bg-danger')
   const histogramMax = $derived(distribution?.kind === 'histogram' ? Math.max(...distribution.bins) : 0)
 
@@ -80,9 +86,9 @@
 
 <div class="grid grid-cols-2 gap-x-3 gap-y-1">
   {@render row('Total', fmt(totalCount))}
-  {@render row('Unique', fmt(uniqueCount))}
-  {@render row('Nulls', fmt((nullPercentage / 100) * totalCount))}
-  {@render row('Cardinality', `${cardinality.toFixed(1)}%`)}
+  {@render row('Unique', `≈ ${fmt(uniqueCount)}`)}
+  {@render row('Nulls', fmt(nullCount))}
+  {@render row('Cardinality', `≈ ${cardinality.toFixed(1)}%`)}
 </div>
 
 {#if numeric && stats.avg}
