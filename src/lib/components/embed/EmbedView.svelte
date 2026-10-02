@@ -3,11 +3,12 @@
   import { ChartColumn, DatabaseZap, ExternalLink, Table, TriangleAlert } from 'lucide-svelte'
   import Tabs from '../common/Tabs.svelte'
   import Spinner from '../common/Spinner.svelte'
+  import Lazy from '../common/Lazy.svelte'
   import ResultGrid from '../editor/ResultGrid.svelte'
   import ChartView from '../charts/ChartView.svelte'
   import { duck, duckActions } from '../../stores/duck.svelte'
   import { runQuery } from '@/services/engine'
-  import { appRootUrl, decodeShare, readShareParam, queryReadsRemoteSource } from '@/lib/share'
+  import { appRootUrl, decodeShare, readShareParam, queryReadsRemoteSource, type SharedParam } from '@/lib/share'
   import { resultToGrid } from '@/lib/resultTable/gridData'
   import type { ChartConfig, QueryResult } from '@/store/types'
   import logo from '../../../assets/logo.png'
@@ -41,8 +42,11 @@
   let liveChartConfig = $state.raw<ChartConfig | undefined>()
   let view = $state('table')
 
-  const grid = $derived(embed.status === 'ready' ? resultToGrid(embed.result) : null)
+  // Interactive filters the share exposes. `embed.sql` stays the query as
+  // shared; the filter bar wraps it on each run and hands the result back.
+  let params = $state.raw<SharedParam[]>([])
 
+  const grid = $derived(embed.status === 'ready' ? resultToGrid(embed.result) : null)
   // The full-app deep link that "Open in Duck-UI" points back to.
   const shareParam = readShareParam()
   // The app root, not the origin: under a sub path the origin is another site.
@@ -93,6 +97,7 @@
         liveChartConfig = payload.chartConfig
         view = payload.chartConfig ? 'charts' : 'table'
         embed = { status: 'ready', title, sql, result }
+        params = payload.params ?? []
       } catch (err) {
         if (cancelled) return
         const message = err instanceof Error ? err.message : 'Query failed'
@@ -115,6 +120,20 @@
   {#if embed.status === 'ready' && grid}
     <div class="flex min-h-0 flex-1 flex-col">
       <h1 class="shrink-0 truncate px-4 pt-3 pb-1 text-[13px] font-semibold text-fg">{embed.title}</h1>
+      {#if params.length > 0 && currentSession}
+        <Lazy
+          load={() => import('./EmbedFilters.svelte')}
+          props={{
+            session: currentSession,
+            sql: embed.sql,
+            params,
+            maxRows: maxResultRows,
+            onresult: (result: QueryResult) => {
+              if (embed.status === 'ready') embed = { ...embed, result }
+            },
+          }}
+        />
+      {/if}
       <Tabs items={VIEWS} value={view} onchange={(id) => (view = id)} size="sm" class="shrink-0 px-3" />
       <div class="min-h-0 flex-1" role="tabpanel" aria-label={view === 'charts' ? 'Chart' : 'Table'}>
         {#if view === 'charts'}
