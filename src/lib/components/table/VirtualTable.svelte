@@ -14,7 +14,7 @@
     type CellPoint, type CellRange,
   } from '@/lib/resultTable/cellSelection'
   import { getFormatNumbers } from '../../stores/number-format.svelte'
-  import { getDisplayType, cellText } from '../../utils/column-types'
+  import { getDisplayType, cellText, groupsDigits } from '../../utils/column-types'
 
   const ROW_HEIGHT = 34
   const OVERSCAN = 5
@@ -167,10 +167,10 @@
     return Math.max(0, Math.ceil(text.length * 7.4))
   }
 
-  function estimateValueWidth(value: unknown): number {
+  function estimateValueWidth(value: unknown, grouped: boolean): number {
     if (value === null || value === undefined) return 34
     if (typeof value === 'number' || typeof value === 'bigint') {
-      const display = getFormatNumbers() ? value.toLocaleString() : String(value)
+      const display = grouped ? value.toLocaleString() : String(value)
       return Math.max(60, estimateTextWidth(display) + 18)
     }
     if (typeof value === 'boolean') return 58
@@ -202,8 +202,9 @@
         headerMinWidth,
       )
 
+      const grouped = getFormatNumbers() && groupsDigits(col.name, col.type)
       for (let ri = 0; ri < sampled.length; ri++) {
-        const valueWidth = estimateValueWidth(sampled[ri]?.[ci])
+        const valueWidth = estimateValueWidth(sampled[ri]?.[ci], grouped)
         metricWidths.push(valueWidth)
         width = Math.max(width, valueWidth)
       }
@@ -420,6 +421,7 @@
             {#each meta as col, ci}
               <TableCell
                 value={row[ci]}
+                name={col.name}
                 type={col.type}
                 width={effectiveWidths[ci] ?? 120}
                 selected={selection.length > 0 && isSelected(selection, absIdx, ci)}

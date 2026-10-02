@@ -472,7 +472,7 @@ Only the in-browser provider needs WebGPU. A local server (Ollama, LM Studio), O
 
 #### Problem: "The page asks 'Leave site?' when closing"
 
-The prompt appears only while an edit has not reached storage yet, within about two seconds of typing. Wait a moment and close again.
+Duck-UI asks before every close or reload, so a stray shortcut does not close the workspace. Your work saves itself either way: choosing Leave loses nothing.
 
 ### Docker Issues
 

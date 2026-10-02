@@ -1,9 +1,10 @@
 <script lang="ts">
-  import { getDisplayType, cellText } from '../../utils/column-types'
+  import { getDisplayType, cellText, groupsDigits } from '../../utils/column-types'
   import { getFormatNumbers } from '../../stores/number-format.svelte'
 
   interface Props {
     value: unknown
+    name: string
     type: string
     width: number
     selected?: boolean
@@ -12,9 +13,10 @@
     oncontextmenu?: (e: MouseEvent) => void
   }
 
-  let { value, type, width, selected = false, onmousedown, onmouseenter, oncontextmenu }: Props = $props()
+  let { value, name, type, width, selected = false, onmousedown, onmouseenter, oncontextmenu }: Props = $props()
 
   const displayType = $derived(getDisplayType(type))
+  const grouped = $derived(getFormatNumbers() && groupsDigits(name, type))
 
   const rawValue = $derived.by(() => {
     if (value === null || value === undefined) return 'NULL'
@@ -25,11 +27,11 @@
     if (value === null || value === undefined) return null
     if (displayType === 'number') {
       if (typeof value === 'number' || typeof value === 'bigint') {
-        return getFormatNumbers() ? value.toLocaleString() : String(value)
+        return grouped ? value.toLocaleString() : String(value)
       }
       // Decimals past 2^53 arrive as strings to stay lossless.
       if (typeof value === 'string' && /^-?\d+$/.test(value)) {
-        return getFormatNumbers() ? BigInt(value).toLocaleString() : value
+        return grouped ? BigInt(value).toLocaleString() : value
       }
     }
     return cellText(value)

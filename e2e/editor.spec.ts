@@ -75,7 +75,9 @@ test("history keeps every run and can be searched", async ({ page }) => {
 
   await newQuery(page, "select * FORM broken_on_purpose");
   await page.keyboard.press(`${mod}+Enter`);
-  await expect(page.locator('[role="tabpanel"]:not([hidden])').getByText("Query error")).toBeVisible();
+  await expect(
+    page.locator('[role="tabpanel"]:not([hidden])').getByText("Query error")
+  ).toBeVisible();
 
   await page.getByRole("button", { name: "Library" }).click();
   await page.getByRole("button", { name: "History", exact: true }).click();
@@ -97,7 +99,9 @@ test("history keeps every run and can be searched", async ({ page }) => {
   // History survives a reload: it is read from storage, not from memory.
   await page.reload();
   await expect(page.getByRole("heading", { name: "History" })).toBeVisible({ timeout: 60_000 });
-  await expect(page.getByRole("main").getByRole("listitem").filter({ hasText: "needle_in_history" })).toHaveCount(1);
+  await expect(
+    page.getByRole("main").getByRole("listitem").filter({ hasText: "needle_in_history" })
+  ).toHaveCount(1);
 });
 
 test("the command menu finds an earlier query and opens it", async ({ page }) => {
@@ -113,7 +117,9 @@ test("the command menu finds an earlier query and opens it", async ({ page }) =>
   await page.keyboard.press("Enter");
 
   await expect(menu).toBeHidden();
-  await expect(page.locator('[role="tabpanel"]:not([hidden]) .cm-content')).toContainText("findable_from_menu");
+  await expect(page.locator('[role="tabpanel"]:not([hidden]) .cm-content')).toContainText(
+    "findable_from_menu"
+  );
 });
 
 test("sorting a result cut at the row limit sorts the whole answer", async ({ page }) => {
@@ -124,7 +130,10 @@ test("sorting a result cut at the row limit sorts the whole answer", async ({ pa
   await page.getByRole("button", { name: "Performance" }).click();
   const limit = page.locator("#max-result-rows");
   await limit.fill("1000");
-  await limit.locator("xpath=ancestor::*[.//button][1]").getByRole("button", { name: "Save" }).click();
+  await limit
+    .locator("xpath=ancestor::*[.//button][1]")
+    .getByRole("button", { name: "Save" })
+    .click();
 
   await page.getByRole("button", { name: "Query", exact: true }).click();
   const { panel } = await newQuery(page, "select range as id from range(5000)");
@@ -138,35 +147,38 @@ test("sorting a result cut at the row limit sorts the whole answer", async ({ pa
   await header.click(); // ascending
   await header.click(); // descending
   await expect(panel.getByText("over the full result")).toBeVisible();
-  await expect(grid.getByText("4,999", { exact: true })).toBeVisible();
+  // An integer column named id prints without thousands separators.
+  await expect(grid.getByText("4999", { exact: true })).toBeVisible();
   await expect(grid.getByText("999", { exact: true })).toHaveCount(0);
 });
 
-test("closing the tab does not ask once the work is stored", async ({ page }) => {
+test("reloading asks first, and the work is still there after", async ({ page }) => {
   await bootApp(page);
   await newQuery(page, "select 'kept across a reload' as note");
 
-  // Counts the browser's leave prompt, and answers it so a regression fails
-  // on the count instead of hanging.
+  // Counts the browser's leave prompt and accepts it, so a missing prompt
+  // fails on the count and an unanswered one cannot hang the test.
   let asked = 0;
   page.on("dialog", (dialog) => {
-    asked++;
+    if (dialog.type() === "beforeunload") asked++;
     void dialog.accept();
   });
 
-  // After the save delay there is nothing left to lose.
+  // After the save delay, as a person reading the prompt would. Accepting
+  // within the delay can still lose the last edit.
   await page.waitForTimeout(3000);
   await page.reload();
   await expect(page.getByRole("tablist", { name: "Open tabs" })).toBeVisible({ timeout: 60_000 });
-  expect(asked).toBe(0);
+  expect(asked).toBe(1);
 
-  // And the text is still there.
   await expect(page.locator('[role="tabpanel"]:not([hidden]) .cm-content')).toContainText(
     "kept across a reload"
   );
 });
 
-test("column stats draw a summary under each column name and follow the search", async ({ page }) => {
+test("column stats draw a summary under each column name and follow the search", async ({
+  page,
+}) => {
   await bootApp(page);
   const sql =
     "select range as id, case when range % 4 = 0 then null else 'g' || (range % 3) end as grp from range(200)";
@@ -182,12 +194,16 @@ test("column stats draw a summary under each column name and follow the search",
   await expect(
     grid.getByRole("img", { name: /^Distribution of id: min 0 · max 199 · avg 99\.5/ })
   ).toBeVisible();
-  await expect(grid.getByRole("img", { name: /^Values of grp: 3 distinct · 50 null/ })).toBeVisible();
+  await expect(
+    grid.getByRole("img", { name: /^Values of grp: 3 distinct · 50 null/ })
+  ).toBeVisible();
   await expect(grid.getByText("25% null")).toBeVisible();
 
   // The summary describes the rows in the grid, so a search narrows it.
   await panel.getByLabel("Search rows").fill("g2");
-  await expect(grid.getByRole("img", { name: /^Values of grp: 1 distinct · 0 null/ })).toBeVisible();
+  await expect(
+    grid.getByRole("img", { name: /^Values of grp: 1 distinct · 0 null/ })
+  ).toBeVisible();
 
   // The choice is remembered.
   await page.waitForTimeout(3000);
@@ -196,6 +212,8 @@ test("column stats draw a summary under each column name and follow the search",
   await page.locator('[role="tabpanel"]:not([hidden]) .cm-content').click();
   await page.keyboard.press(`${mod}+Enter`);
   await expect(
-    page.getByRole("grid", { name: "Query result" }).getByRole("img", { name: /^Distribution of id/ })
+    page
+      .getByRole("grid", { name: "Query result" })
+      .getByRole("img", { name: /^Distribution of id/ })
   ).toBeVisible();
 });

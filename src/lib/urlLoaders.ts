@@ -1,4 +1,4 @@
-import { flushAutoSave } from "@/store";
+import { flushAutoSave, leaveWithoutPrompt } from "@/store";
 import { useDuckStore } from "@/store";
 import * as toast from "@/lib/stores/toast.svelte";
 import { getUiConfig } from "@/lib/appConfig";
@@ -165,7 +165,10 @@ export function reloadOnServiceWorkerUpdate(): void {
     }
     if (reloadingForNewVersion) return;
     reloadingForNewVersion = true;
-    // Stored first, so the reload has nothing unsaved to ask about.
-    void flushAutoSave().finally(() => window.location.reload());
+    // Stored first, so nothing is lost by reloading without asking.
+    void flushAutoSave().finally(() => {
+      leaveWithoutPrompt();
+      window.location.reload();
+    });
   });
 }
