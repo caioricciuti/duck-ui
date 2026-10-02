@@ -136,6 +136,11 @@ export const createConnectionSlice: StateCreator<DuckStoreState, [], [], Connect
           currentConnection: toCurrentConnection(connection),
           currentDatabase: currentDatabaseLabel(connection),
         });
+        // The explorer shows the new database right away, as a switch does;
+        // it used to stay on the previous catalog until the next query ran.
+        await get()
+          .fetchDatabasesAndTablesInfo()
+          .catch(() => {});
       } else if (definition.config.kind !== "wasm") {
         await testConnection(definition, credentials);
       }
