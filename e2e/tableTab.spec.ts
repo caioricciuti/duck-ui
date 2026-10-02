@@ -56,8 +56,9 @@ test("a table opens as a tab with data, schema, stats and DDL", async ({ page })
 
   // Schema: one row per column.
   await panel.getByRole("tab", { name: "Schema" }).click();
-  await expect(grid.getByText("BIGINT", { exact: true })).toBeVisible();
-  await expect(grid.getByText("VARCHAR", { exact: true })).toBeVisible();
+  // first(): the header badges of the schema grid itself also read VARCHAR.
+  await expect(grid.getByText("BIGINT", { exact: true }).first()).toBeVisible();
+  await expect(grid.getByText("VARCHAR", { exact: true }).first()).toBeVisible();
 
   // Stats: a card per column, with the distribution once it has loaded.
   await panel.getByRole("tab", { name: "Stats" }).click();

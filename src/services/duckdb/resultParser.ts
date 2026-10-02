@@ -1,4 +1,4 @@
-import { DataType, TimeUnit } from "apache-arrow";
+import { DataType, Precision, TimeUnit } from "apache-arrow";
 import type { QueryResult, ExternalQueryResponse } from "@/store/types";
 import { wkbToWkt, blobToString, varintToString, intervalToString } from "./cellDecoders";
 
@@ -256,9 +256,61 @@ const isVarintField = (field: any): boolean => {
   }
 };
 
+const INT_NAMES: Record<number, string> = {
+  8: "TINYINT",
+  16: "SMALLINT",
+  32: "INTEGER",
+  64: "BIGINT",
+};
+const TIMESTAMP_NAMES: Record<number, string> = {
+  [TimeUnit.SECOND]: "TIMESTAMP_S",
+  [TimeUnit.MILLISECOND]: "TIMESTAMP_MS",
+  [TimeUnit.MICROSECOND]: "TIMESTAMP",
+  [TimeUnit.NANOSECOND]: "TIMESTAMP_NS",
+};
+
 /**
- * Reports the DuckDB type where Arrow's own name would mislead — a GEOMETRY
- * column should not read as "Binary" in the grid header.
+ * The DuckDB name of an Arrow type, as DESCRIBE would print it, so the grid
+ * says DECIMAL(18,2) and VARCHAR like every other view instead of Arrow's
+ * Decimal[18e+2] and Utf8. Types without a one-to-one DuckDB name (unions,
+ * for one) keep Arrow's own description.
+ */
+const duckDbTypeName = (type: any): string => {
+  if (DataType.isNull(type)) return "NULL";
+  if (DataType.isInt(type))
+    return `${type.isSigned ? "" : "U"}${INT_NAMES[type.bitWidth] ?? "INTEGER"}`;
+  if (DataType.isFloat(type)) return type.precision === Precision.DOUBLE ? "DOUBLE" : "FLOAT";
+  if (DataType.isDecimal(type)) return `DECIMAL(${type.precision},${type.scale})`;
+  if (DataType.isUtf8(type) || DataType.isLargeUtf8(type)) return "VARCHAR";
+  if (DataType.isBinary(type) || DataType.isLargeBinary(type) || DataType.isFixedSizeBinary(type)) {
+    return "BLOB";
+  }
+  if (DataType.isBool(type)) return "BOOLEAN";
+  if (DataType.isDate(type)) return "DATE";
+  if (DataType.isTime(type)) return "TIME";
+  if (DataType.isTimestamp(type)) {
+    return type.timezone ? "TIMESTAMP WITH TIME ZONE" : (TIMESTAMP_NAMES[type.unit] ?? "TIMESTAMP");
+  }
+  if (DataType.isInterval(type) || DataType.isDuration(type)) return "INTERVAL";
+  if (DataType.isList(type)) return `${duckDbTypeName(type.valueType)}[]`;
+  if (DataType.isFixedSizeList(type)) return `${duckDbTypeName(type.valueType)}[${type.listSize}]`;
+  if (DataType.isStruct(type)) {
+    const fields = type.children.map((c: any) => `${c.name} ${duckDbTypeName(c.type)}`);
+    return `STRUCT(${fields.join(", ")})`;
+  }
+  if (DataType.isMap(type)) {
+    const [key, value] = type.children[0]?.type?.children ?? [];
+    return key && value ? `MAP(${duckDbTypeName(key.type)}, ${duckDbTypeName(value.type)})` : "MAP";
+  }
+  // DuckDB sends ENUM columns dictionary-encoded; nothing else arrives that way.
+  if (DataType.isDictionary(type)) return "ENUM";
+  return type.toString();
+};
+
+/**
+ * Reports the DuckDB type for a result column: the grid header, the schema
+ * description and the Duck Brain prompts all read this. GEOMETRY and VARINT
+ * travel as Arrow extension types and are named first.
  *
  * Exported so the engine layer can describe a result's schema (before any row
  * arrives) with exactly the labels the grid will later show.
@@ -266,7 +318,7 @@ const isVarintField = (field: any): boolean => {
 export const columnTypeLabel = (field: any): string => {
   if (getExtensionName(field) === "geoarrow.wkb") return "GEOMETRY";
   if (isVarintField(field)) return "VARINT";
-  return field.type.toString();
+  return duckDbTypeName(field.type);
 };
 
 /**

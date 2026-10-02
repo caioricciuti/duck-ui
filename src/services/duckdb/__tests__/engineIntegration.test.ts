@@ -205,6 +205,35 @@ describe("byte-backed types match DuckDB's own rendering", () => {
     expect(run("SELECT 1::VARINT AS v").columnTypes[0]).toBe("VARINT");
   });
 
+  it("columns are labelled with DuckDB names, not Arrow's", () => {
+    const result = run(
+      "SELECT 1::INTEGER AS i, 1::BIGINT AS b, 1::UTINYINT AS u, 1.5::DECIMAL(18,2) AS d, " +
+        "1.5::DOUBLE AS f8, 1.5::FLOAT AS f4, 'a' AS s, true AS t, DATE '2025-01-01' AS dt, " +
+        "TIMESTAMP '2025-01-01 00:00:00' AS ts, TIMESTAMPTZ '2025-01-01 00:00:00+00' AS tz, " +
+        "TIME '01:02:03' AS tm, INTERVAL '1' DAY AS iv, 'x'::BLOB AS bl, [1, 2] AS li, " +
+        "{'a': 1, 'b': 'x'} AS st, MAP {'k': 1} AS mp"
+    );
+    expect(result.columnTypes).toEqual([
+      "INTEGER",
+      "BIGINT",
+      "UTINYINT",
+      "DECIMAL(18,2)",
+      "DOUBLE",
+      "FLOAT",
+      "VARCHAR",
+      "BOOLEAN",
+      "DATE",
+      "TIMESTAMP",
+      "TIMESTAMP WITH TIME ZONE",
+      "TIME",
+      "INTERVAL",
+      "BLOB",
+      "INTEGER[]",
+      "STRUCT(a INTEGER, b VARCHAR)",
+      "MAP(VARCHAR, INTEGER)",
+    ]);
+  });
+
   const BLOBS = ["'\\xAA\\xBB'::BLOB", "'hello'::BLOB", "''::BLOB", "'a\\x00b'::BLOB"];
 
   it.each(BLOBS)("BLOB renders like DuckDB: %s", (expression) => {

@@ -29,5 +29,6 @@ describe("groupsDigits", () => {
   it("only applies the name rule to integers", () => {
     expect(groupsDigits("year", "DOUBLE")).toBe(true);
     expect(groupsDigits("id", "Decimal[18e+2]")).toBe(true);
+    expect(groupsDigits("id", "DECIMAL(18,2)")).toBe(true);
   });
 });

@@ -284,11 +284,28 @@ export function queryReadsRemoteSource(sql: string): boolean {
 }
 
 /**
+ * What follows each FROM or JOIN: a quoted name or path, a dotted identifier
+ * (optionally with a call's open paren) or a parenthesised subquery.
+ */
+const FROM_TARGET = /\b(?:from|join)\s+(?:("[^"]+"|'[^']+')|([\w.]+)(\s*\()?|\()/gi;
+
+/** Whether some FROM/JOIN reads a table by name or a file by path (not a table function). */
+function readsNamedTable(sql: string): boolean {
+  for (const match of sql.matchAll(FROM_TARGET)) {
+    const [, quoted, identifier, call] = match;
+    if (quoted !== undefined) return true;
+    if (identifier !== undefined && !call) return true;
+  }
+  return false;
+}
+
+/**
  * Whether a shared query will reproduce in a viewer's browser: it either
- * reads from a remote source, or has no FROM/JOIN clause at all (constant
- * expressions like SELECT 42 read no table). Conservative: anything with a
- * FROM on a non-remote source still warns.
+ * reads from a remote source, or reads no table at all. Constant expressions
+ * (SELECT 42) and table functions (range, generate_series) read no table;
+ * a named table or a quoted file path is local to this browser. Conservative
+ * on the rest: a CTE name still reads as a table.
  */
 export function queryReproducesForViewers(sql: string): boolean {
-  return queryReadsRemoteSource(sql) || !/\b(from|join)\b/i.test(sql);
+  return queryReadsRemoteSource(sql) || !readsNamedTable(sql);
 }
