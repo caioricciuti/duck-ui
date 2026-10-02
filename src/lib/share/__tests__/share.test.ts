@@ -135,10 +135,22 @@ describe("queryReproducesForViewers", () => {
     expect(queryReproducesForViewers("SELECT version()")).toBe(true);
   });
 
+  it("accepts table functions, which need no local data", () => {
+    expect(queryReproducesForViewers("SELECT * FROM generate_series(1, 10)")).toBe(true);
+    expect(queryReproducesForViewers("SELECT * FROM range(10)")).toBe(true);
+    expect(queryReproducesForViewers("SELECT i FROM range (3) t(i)")).toBe(true);
+  });
+
   it("rejects local-table queries", () => {
     expect(queryReproducesForViewers("SELECT * FROM my_table")).toBe(false);
     expect(queryReproducesForViewers("SELECT a FROM t1 JOIN t2 USING (id)")).toBe(false);
-    expect(queryReproducesForViewers("SELECT * FROM generate_series(1, 10)")).toBe(false);
+    expect(queryReproducesForViewers("SELECT * FROM main.sales s")).toBe(false);
+    expect(queryReproducesForViewers('SELECT * FROM "My Table"')).toBe(false);
+    expect(queryReproducesForViewers("SELECT * FROM 'uploaded.csv'")).toBe(false);
+    expect(queryReproducesForViewers("SELECT * FROM range(10) r JOIN sales USING (id)")).toBe(
+      false
+    );
+    expect(queryReproducesForViewers("SELECT * FROM (SELECT * FROM sales) s")).toBe(false);
   });
 });
 
