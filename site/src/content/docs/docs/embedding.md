@@ -31,7 +31,7 @@ An embed can be **interactive**, not just a static chart. In the Share dialog's 
 - **Search**: free-text "contains" matching.
 - **Range**: numeric min/max inputs.
 
-Viewers change a filter and the embed re-runs the query live in their browser, the perfect "fork and tweak" moment. Filters are wrapped around your query automatically, so they work with JOINs and CTEs too. (Filtering applies to columns present in the query's result.)
+Viewers change a filter and the embed re-runs the query live in their browser, the perfect "fork and tweak" moment. Filters are wrapped around your query automatically, so they work with JOINs and CTEs too. (Filtering applies to columns present in the query's result.) A dropdown lists up to 500 distinct values; a search matches case-insensitively; an empty range bound is ignored. **Reset** clears every filter.
 
 ## The one rule: read from a URL, not a local file
 
