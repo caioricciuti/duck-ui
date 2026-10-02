@@ -1,6 +1,7 @@
 import type { StateCreator } from "@/store/createStore";
 import type { DuckStoreState, ProfileSlice, Profile } from "../types";
 import { restorePanes } from "../tabPanes";
+import { isBuiltInConnection, mergeConnections } from "./connectionSlice";
 import {
   createProfile as createProfileRepo,
   getProfile as getProfileRepo,
@@ -128,22 +129,27 @@ export const createProfileSlice: StateCreator<DuckStoreState, [], [], ProfileSli
       }
     }
 
-    // Load connections
+    // Load connections. The engine may already have put WASM and the ENV
+    // connection in the list (or will, and merges in turn); those stay. A
+    // previous profile's own connections go, so switching profiles does not
+    // carry them over.
     const savedConns = await getConnections(profileId, cryptoKey);
-    if (savedConns.length > 0) {
-      const connections: ConnectionProvider[] = savedConns.map((c) => ({
-        environment: (c.environment as "APP" | "ENV" | "BUILT_IN") ?? "APP",
-        id: c.id,
-        name: c.name,
-        scope: c.scope as "WASM" | "External" | "OPFS",
-        ...(c.config as Record<string, unknown>),
-        ...(c.credentials ?? {}),
-      }));
-
-      set({
-        connectionList: { connections },
-      });
-    }
+    const connections: ConnectionProvider[] = savedConns.map((c) => ({
+      environment: (c.environment as "APP" | "ENV" | "BUILT_IN") ?? "APP",
+      id: c.id,
+      name: c.name,
+      scope: c.scope as "WASM" | "External" | "OPFS",
+      ...(c.config as Record<string, unknown>),
+      ...(c.credentials ?? {}),
+    }));
+    set((state) => ({
+      connectionList: {
+        connections: mergeConnections(
+          state.connectionList.connections.filter(isBuiltInConnection),
+          connections
+        ),
+      },
+    }));
 
     // Load query history
     const history = await getHistory(profileId, 100);
