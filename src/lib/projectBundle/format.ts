@@ -125,6 +125,25 @@ const oneLine = (text: string): string => text.replace(/\s*\n\s*/g, " ").trim();
 
 const HEADER_LINE = /^-- (name|description|tags|folder):(?: (.*))?$/;
 
+/** Either form the serializer writes: a JSON array, or names separated by commas. */
+function parseTags(value: string): string[] {
+  const trimmed = value.trim();
+  if (trimmed.startsWith("[")) {
+    try {
+      const parsed: unknown = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed.map((tag) => String(tag).trim()).filter(Boolean);
+      }
+    } catch {
+      // Not JSON after all: a tag list that happens to start with a bracket.
+    }
+  }
+  return trimmed
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
+
 export function serializeQuery(query: BundleQuery): string {
   const header = [`-- name: ${oneLine(query.name)}`];
   if (query.description) {
@@ -132,7 +151,14 @@ export function serializeQuery(query: BundleQuery): string {
       header.push(line ? `-- description: ${line}` : "-- description:");
     }
   }
-  if (query.tags.length > 0) header.push(`-- tags: ${query.tags.map(oneLine).join(", ")}`);
+  if (query.tags.length > 0) {
+    // A comma inside a tag would read back as two tags, so such a list is
+    // written as JSON; the plain form stays for every other file.
+    const tags = query.tags.map(oneLine);
+    header.push(
+      `-- tags: ${tags.some((tag) => tag.includes(",")) ? JSON.stringify(tags) : tags.join(", ")}`
+    );
+  }
   if (query.folder && query.folder !== "default")
     header.push(`-- folder: ${oneLine(query.folder)}`);
   return withFinalNewline(`${header.join("\n")}\n\n${query.sql}`);
@@ -158,10 +184,7 @@ export function parseQuery(text: string, fallbackName: string): BundleQuery {
         description.push(value);
         break;
       case "tags":
-        tags = value
-          .split(",")
-          .map((tag) => tag.trim())
-          .filter(Boolean);
+        tags = parseTags(value);
         break;
       case "folder":
         folder = value.trim() || "default";
@@ -188,6 +211,29 @@ export function parseQuery(text: string, fallbackName: string): BundleQuery {
 
 const CELL_MARKER = /^<!-- cell:(sql|python|markdown)( collapsed)? -->$/;
 const CODE_FENCE_OPEN = /^(`{3,}|~{3,})\s*(sql|python|py)\b.*$/i;
+/** A content line that is a marker, or a marker already behind backslashes. */
+const MARKER_LIKE_LINE = /^(\\*)(<!-- cell:(?:sql|python|markdown)(?: collapsed)? -->)$/;
+
+/**
+ * A cell whose text contains a line that is exactly a cell marker would be
+ * cut in two on import. Such a line gets one more backslash in the file
+ * (so lines that already start with backslashes stay distinct), and
+ * `unescapeMarkers` takes one away. Files from before this never contain
+ * the escaped form, so they read as they always did.
+ */
+function escapeMarkers(content: string): string {
+  return content
+    .split("\n")
+    .map((line) => line.replace(MARKER_LIKE_LINE, "\\$1$2"))
+    .join("\n");
+}
+
+function unescapeMarkers(content: string): string {
+  return content
+    .split("\n")
+    .map((line) => (MARKER_LIKE_LINE.test(line) && line.startsWith("\\") ? line.slice(1) : line))
+    .join("\n");
+}
 
 type CodeCellType = "sql" | "python";
 
@@ -205,11 +251,12 @@ export function serializeNotebook(notebook: BundleNotebook): string {
   const parts = [`# ${oneLine(notebook.title) || "Untitled Notebook"}`];
   for (const cell of notebook.cells) {
     const marker = `<!-- cell:${cell.type}${cell.collapsed ? " collapsed" : ""} -->`;
+    const content = escapeMarkers(cell.content);
     if (cell.type === "sql" || cell.type === "python") {
-      const fence = fenceFor(cell.content);
-      parts.push(`${marker}\n${fence}${cell.type}\n${cell.content}\n${fence}`);
+      const fence = fenceFor(content);
+      parts.push(`${marker}\n${fence}${cell.type}\n${content}\n${fence}`);
     } else {
-      parts.push(`${marker}\n${cell.content}`);
+      parts.push(`${marker}\n${content}`);
     }
   }
   return withFinalNewline(parts.join("\n\n"));
@@ -273,7 +320,7 @@ export function parseNotebook(text: string, fallbackTitle: string): BundleNotebo
     const cellType = type === "sql" || type === "python" ? type : "markdown";
     return {
       type: cellType,
-      content: cellType === "markdown" ? body.join("\n") : parseCodeBody(body),
+      content: unescapeMarkers(cellType === "markdown" ? body.join("\n") : parseCodeBody(body)),
       ...(collapsed ? { collapsed: true } : {}),
     };
   });

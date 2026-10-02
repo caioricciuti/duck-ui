@@ -51,8 +51,15 @@ describe("queries", () => {
     ["empty", query({ sql: "" })],
     ["header-like SQL", query({ sql: "-- name: not a header\nSELECT 1" })],
     ["folder", query({ folder: "team/finance" })],
+    ["tag with a comma", query({ tags: ["sales, weekly", "q4"] })],
+    ["tag that looks like JSON", query({ tags: ["[draft]", "b"] })],
   ])("round-trips %s", (_label, original) => {
     expect(parseQuery(serializeQuery(original), "fallback")).toEqual(original);
+  });
+
+  it("writes a plain tag list unless a tag holds a comma", () => {
+    expect(serializeQuery(query({ tags: ["a", "b"] }))).toContain("-- tags: a, b\n");
+    expect(serializeQuery(query({ tags: ["a, b", "c"] }))).toContain('-- tags: ["a, b","c"]\n');
   });
 
   it("reads hand-written files without a header", () => {
@@ -102,6 +109,23 @@ describe("notebooks", () => {
 
   it("round-trips every cell exactly", () => {
     expect(parseNotebook(serializeNotebook(notebook), "fallback")).toEqual(notebook);
+  });
+
+  it("round-trips a cell whose text contains a cell marker line", () => {
+    const tricky = {
+      title: "Markers",
+      cells: [
+        {
+          type: "markdown" as const,
+          content: "How cells are stored:\n<!-- cell:python -->\nthat line",
+        },
+        { type: "python" as const, content: "# <!-- cell:sql -->\n<!-- cell:sql collapsed -->" },
+        { type: "markdown" as const, content: "\\<!-- cell:markdown -->" },
+      ],
+    };
+    const text = serializeNotebook(tricky);
+    expect(text).toContain("\n\\<!-- cell:python -->\n");
+    expect(parseNotebook(text, "x")).toEqual(tricky);
   });
 
   it("round-trips an empty notebook", () => {
