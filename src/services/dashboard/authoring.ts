@@ -246,7 +246,11 @@ export const authoringSnippets = (): AuthoringSnippet[] => {
       insertText:
         chart === "PieChart" || chart === "DonutChart" || chart === "FunnelChart"
           ? `<${chart} data={\${1:query_name}} x=\${2:label_column} y=\${3:value_column}/>`
-          : `<${chart} data={\${1:query_name}} x=\${2:x_column} y=\${3:y_column}/>`,
+          : chart === "Heatmap"
+            ? `<${chart} data={\${1:query_name}} x=\${2:x_column} y=\${3:y_column} value=\${4:value_column}/>`
+            : chart === "BoxPlot"
+              ? `<${chart} data={\${1:query_name}} x=\${2:category_column} y=\${3:value_column}/>`
+              : `<${chart} data={\${1:query_name}} x=\${2:x_column} y=\${3:y_column}/>`,
       detail: chartDetail[chart] ?? "Chart",
       sort: "1",
     });
@@ -262,6 +266,8 @@ const CHART_PROPS = ["data", "x", "y", "series", "title", "type"];
 
 /** Props the renderer reads for each tag, offered inside an open tag. */
 export const propsForComponent = (tag: string): string[] => {
+  if (tag === "BoxPlot") return ["data", "x", "y", "title"];
+  if (tag === "Heatmap") return ["data", "x", "y", "value", "title"];
   if (tag in CHART_COMPONENTS) return CHART_PROPS;
   if (INPUT_COMPONENTS.has(tag)) {
     if (tag === "Slider") return ["name", "min", "max", "step", "defaultValue", "title"];

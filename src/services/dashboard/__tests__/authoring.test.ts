@@ -93,6 +93,11 @@ describe("propsForComponent", () => {
     expect(propsForComponent("LineChart")).toContain("series");
   });
 
+  it("offers value on a heatmap and no series on a box plot", () => {
+    expect(propsForComponent("Heatmap")).toContain("value");
+    expect(propsForComponent("BoxPlot")).not.toContain("series");
+  });
+
   it("knows input props per input kind", () => {
     expect(propsForComponent("Slider")).toContain("max");
     expect(propsForComponent("Dropdown")).toContain("options");

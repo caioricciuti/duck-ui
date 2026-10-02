@@ -141,3 +141,28 @@ export function inkOn(color: string): string {
   // Crossover where black and white text have equal contrast.
   return luminance > 0.179 ? INK_ON_LIGHT : INK_ON_DARK;
 }
+
+/** Lowest cell of a heatmap, so it still stands apart from an empty one. */
+const HEAT_FLOOR = 0.12;
+
+/**
+ * Sequential heatmap fill at `level` (0 to 1), from the surface to the
+ * accent. One hue, so the order reads the same under every kind of color
+ * blindness. Returns hex when the tokens are hex, so `inkOn` can pick a
+ * readable label color for the cell.
+ */
+export function heatColor(level: number): string {
+  const t = HEAT_FLOOR + (1 - HEAT_FLOOR) * Math.min(1, Math.max(0, level));
+  const accent = themeColor("--accent");
+  const from = toHex6(themeColor("--surface"));
+  const to = toHex6(accent);
+  if (!from || !to) return withAlpha(accent, t);
+  const mix = (offset: number) => {
+    const a = parseInt(from.slice(offset, offset + 2), 16);
+    const b = parseInt(to.slice(offset, offset + 2), 16);
+    return Math.round(a + (b - a) * t)
+      .toString(16)
+      .padStart(2, "0");
+  };
+  return `#${mix(1)}${mix(3)}${mix(5)}`;
+}
