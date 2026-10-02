@@ -48,6 +48,7 @@ export const createProfileSlice: StateCreator<DuckStoreState, [], [], ProfileSli
   profiles: [],
   isProfileLoaded: false,
   encryptionKey: null,
+  savedConnectionId: null,
   savedQueriesVersion: 0,
 
   bumpSavedQueriesVersion: () => set({ savedQueriesVersion: get().savedQueriesVersion + 1 }),
@@ -123,6 +124,8 @@ export const createProfileSlice: StateCreator<DuckStoreState, [], [], ProfileSli
           // workspace saved without it gets it back.
           ...restorePanes(tabs, workspace.active_tab_id),
           currentDatabase: workspace.current_database ?? "memory",
+          // Picked up by the engine's initialize, which runs after this.
+          savedConnectionId: workspace.current_connection_id,
         });
       } catch {
         // Invalid workspace JSON, use defaults

@@ -600,6 +600,11 @@ export interface ProfileSlice {
   profiles: Profile[];
   isProfileLoaded: boolean;
   encryptionKey: CryptoKey | null;
+  /**
+   * The connection that was active when the workspace was last saved. The
+   * engine reconnects to it once it has started; null when it was WASM.
+   */
+  savedConnectionId: string | null;
 
   loadProfile: (profileId: string, password?: string) => Promise<void>;
   createProfile: (name: string, password?: string, avatarEmoji?: string) => Promise<string>;
