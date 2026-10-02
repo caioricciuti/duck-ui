@@ -237,4 +237,4 @@ LIMIT 10;
 
 ## Not in this version
 
-The chart builder offers the nine types above. Dashboard tags for box plots and heatmaps render a placeholder, bubble charts draw as scatter plots and funnel charts as bars. Combo charts, dual Y axes, annotations and zooming are not available.
+The chart builder offers the nine types above. Box plots and heatmaps are available as dashboard tags only; in dashboards, bubble charts draw as scatter plots and funnel charts as bars. Combo charts, dual Y axes, annotations and zooming are not available.
