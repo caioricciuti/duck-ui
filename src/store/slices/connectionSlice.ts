@@ -9,6 +9,7 @@ import {
   testConnection,
   toConnectionDefinition,
   toCredentialMaterial,
+  WASM_CONNECTION_ID,
   type DataSession,
 } from "@/services/engine";
 import type {
@@ -80,6 +81,26 @@ const closeOtherOpfsSessions = async (keepConnectionId: string): Promise<void> =
       .map((session) => closeSession(session.connectionId))
   );
 };
+
+/**
+ * `kept` first, then every `incoming` connection whose id is not already
+ * there. The engine's `initialize` and the profile's `loadProfile` each
+ * contribute part of the list and run in either order, so both merge
+ * instead of replacing: a replace from whichever ran second used to drop
+ * the other's connections, which is how saved connections vanished on
+ * every reload.
+ */
+export const mergeConnections = (
+  kept: ConnectionProvider[],
+  incoming: ConnectionProvider[]
+): ConnectionProvider[] => {
+  const seen = new Set(kept.map((c) => c.id));
+  return [...kept, ...incoming.filter((c) => !seen.has(c.id))];
+};
+
+/** Connections that belong to the running app, not to a profile's saved rows. */
+export const isBuiltInConnection = (connection: ConnectionProvider): boolean =>
+  connection.id === WASM_CONNECTION_ID || connection.environment !== "APP";
 
 export const createConnectionSlice: StateCreator<DuckStoreState, [], [], ConnectionSlice> = (
   set,

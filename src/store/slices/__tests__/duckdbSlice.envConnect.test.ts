@@ -36,9 +36,16 @@ vi.mock("@/services/engine", () => ({
   WASM_CONNECTION_ID: "WASM",
 }));
 
-vi.mock("../connectionSlice", () => ({
+vi.mock("../connectionSlice", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../connectionSlice")>()),
   localHandles: vi.fn().mockReturnValue({ db: {}, connection: mockConnection }),
   toCurrentConnection: vi.fn((provider) => provider),
+}));
+
+vi.mock("@/services/persistence/repositories/connectionRepository", () => ({
+  saveConnection: vi.fn(),
+  deleteConnection: vi.fn(),
+  updateConnection: vi.fn(),
 }));
 
 import { createDuckdbSlice } from "../duckdbSlice";
@@ -112,5 +119,30 @@ describe("duckdbSlice.initialize — ENV connection auto-connect", () => {
 
     expect(setCurrentConnection).not.toHaveBeenCalled();
     expect(fetchDatabasesAndTablesInfo).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the connections the profile loaded before the engine started", async () => {
+    const setCurrentConnection = vi.fn().mockResolvedValue(undefined);
+    const fetchDatabasesAndTablesInfo = vi.fn().mockResolvedValue(undefined);
+    const saved = { environment: "APP", id: "c1", name: "Warehouse", scope: "External" };
+
+    let state: Record<string, unknown> = {
+      currentProfileId: null,
+      connectionList: { connections: [saved] },
+    };
+    const set = (partial: unknown) => {
+      const next = typeof partial === "function" ? partial(state) : partial;
+      state = { ...state, ...next };
+    };
+    const get = () => ({ ...state, setCurrentConnection, fetchDatabasesAndTablesInfo });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const slice = createDuckdbSlice(set as any, get as any, undefined as any);
+    await slice.initialize();
+
+    const ids = (state.connectionList as { connections: { id: string }[] }).connections.map(
+      (c) => c.id
+    );
+    expect(ids).toEqual(["WASM", "prod", "c1"]);
   });
 });

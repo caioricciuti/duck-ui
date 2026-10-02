@@ -7,7 +7,7 @@ import {
   WASM_CONNECTION_ID,
 } from "@/services/engine";
 import type { DuckStoreState, DuckdbSlice, ConnectionProvider } from "../types";
-import { localHandles, toCurrentConnection } from "./connectionSlice";
+import { localHandles, mergeConnections, toCurrentConnection } from "./connectionSlice";
 import { getSetting } from "@/services/persistence/repositories/settingsRepository";
 import { clampMaxResultRows, DEFAULT_MAX_RESULT_ROWS } from "./querySlice";
 import { loadAppConfig } from "@/lib/appConfig";
@@ -65,9 +65,13 @@ export const createDuckdbSlice: StateCreator<DuckStoreState, [], [], DuckdbSlice
       });
     }
 
-    set({
-      connectionList: { connections: initialConnections },
-    });
+    // The profile usually loads first and has already put its saved
+    // connections here; keep them behind the built-in ones.
+    set((state) => ({
+      connectionList: {
+        connections: mergeConnections(initialConnections, state.connectionList?.connections ?? []),
+      },
+    }));
 
     if (initialConnections.length === 0) {
       set({ isLoading: false, isInitialized: true });
