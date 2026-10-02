@@ -57,6 +57,18 @@ import { createDuckdbSlice } from "../duckdbSlice";
 (globalThis as { window?: { env?: Window["env"] } }).window ??= {};
 (globalThis as { self?: typeof globalThis }).self ??= globalThis;
 
+/** No ENV connection configured. */
+const NO_ENV: Window["env"] = {
+  DUCK_UI_EXTERNAL_CONNECTION_NAME: "",
+  DUCK_UI_EXTERNAL_HOST: "",
+  DUCK_UI_EXTERNAL_PORT: "",
+  DUCK_UI_EXTERNAL_USER: "",
+  DUCK_UI_EXTERNAL_PASS: "",
+  DUCK_UI_EXTERNAL_API_KEY: "",
+  DUCK_UI_EXTERNAL_DATABASE_NAME: "",
+  DUCK_UI_ALLOW_UNSIGNED_EXTENSIONS: false,
+};
+
 describe("duckdbSlice.initialize — ENV connection auto-connect", () => {
   beforeEach(() => {
     window.env = {
@@ -144,5 +156,84 @@ describe("duckdbSlice.initialize — ENV connection auto-connect", () => {
       (c) => c.id
     );
     expect(ids).toEqual(["WASM", "prod", "c1"]);
+  });
+
+  it("reconnects to the connection that was active before the reload", async () => {
+    window.env = NO_ENV;
+    const setCurrentConnection = vi.fn().mockImplementation(async (id: string) => {
+      state = { ...state, currentConnection: { id } };
+    });
+    const fetchDatabasesAndTablesInfo = vi.fn().mockResolvedValue(undefined);
+    const saved = { environment: "APP", id: "c1", name: "Warehouse", scope: "External" };
+
+    let state: Record<string, unknown> = {
+      currentProfileId: null,
+      savedConnectionId: "c1",
+      connectionList: { connections: [saved] },
+    };
+    const set = (partial: unknown) => {
+      const next = typeof partial === "function" ? partial(state) : partial;
+      state = { ...state, ...next };
+    };
+    const get = () => ({ ...state, setCurrentConnection, fetchDatabasesAndTablesInfo });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const slice = createDuckdbSlice(set as any, get as any, undefined as any);
+    await slice.initialize();
+
+    expect(setCurrentConnection).toHaveBeenCalledWith("c1");
+    expect(fetchDatabasesAndTablesInfo).not.toHaveBeenCalled();
+  });
+
+  it("stays on WASM and loads its catalog when the saved connection cannot be reached", async () => {
+    window.env = NO_ENV;
+    // The real action swallows the failure, shows a toast and leaves WASM active.
+    const setCurrentConnection = vi.fn().mockResolvedValue(undefined);
+    const fetchDatabasesAndTablesInfo = vi.fn().mockResolvedValue(undefined);
+    const saved = { environment: "APP", id: "c1", name: "Warehouse", scope: "External" };
+
+    let state: Record<string, unknown> = {
+      currentProfileId: null,
+      savedConnectionId: "c1",
+      currentDatabase: "warehouse",
+      connectionList: { connections: [saved] },
+    };
+    const set = (partial: unknown) => {
+      const next = typeof partial === "function" ? partial(state) : partial;
+      state = { ...state, ...next };
+    };
+    const get = () => ({ ...state, setCurrentConnection, fetchDatabasesAndTablesInfo });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const slice = createDuckdbSlice(set as any, get as any, undefined as any);
+    await slice.initialize();
+
+    expect(setCurrentConnection).toHaveBeenCalledWith("c1");
+    expect(fetchDatabasesAndTablesInfo).toHaveBeenCalledTimes(1);
+    expect(state.currentDatabase).toBe("memory");
+  });
+
+  it("ignores a saved id that the profile no longer has", async () => {
+    window.env = NO_ENV;
+    const setCurrentConnection = vi.fn().mockResolvedValue(undefined);
+    const fetchDatabasesAndTablesInfo = vi.fn().mockResolvedValue(undefined);
+
+    let state: Record<string, unknown> = {
+      currentProfileId: null,
+      savedConnectionId: "gone",
+      connectionList: { connections: [] },
+    };
+    const set = (partial: unknown) => {
+      const next = typeof partial === "function" ? partial(state) : partial;
+      state = { ...state, ...next };
+    };
+    const get = () => ({ ...state, setCurrentConnection, fetchDatabasesAndTablesInfo });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const slice = createDuckdbSlice(set as any, get as any, undefined as any);
+    await slice.initialize();
+
+    expect(setCurrentConnection).not.toHaveBeenCalled();
+    expect(fetchDatabasesAndTablesInfo).toHaveBeenCalledTimes(1);
   });
 });

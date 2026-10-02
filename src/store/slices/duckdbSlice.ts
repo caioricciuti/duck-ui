@@ -158,9 +158,26 @@ export const createDuckdbSlice: StateCreator<DuckStoreState, [], [], DuckdbSlice
 
     // An ENV-configured external server takes over as the active connection.
     // The WASM provider is always pushed first, so index 0 is never it.
+    // Otherwise the connection that was active before the reload comes back,
+    // when the profile still has it (a live session peer never does).
     const envConnection = initialConnections.find((c) => c.environment === "ENV");
+    const savedId = get().savedConnectionId;
+    const saved =
+      !envConnection && savedId && savedId !== WASM_CONNECTION_ID
+        ? get().connectionList.connections.find(
+            (c) => c.id === savedId && c.environment !== "SESSION"
+          )
+        : undefined;
     if (envConnection) {
       await get().setCurrentConnection(envConnection.id);
+    } else if (saved) {
+      await get().setCurrentConnection(saved.id);
+      if (get().currentConnection?.id !== saved.id) {
+        // Reconnect failed (server down, file locked): the warning is shown
+        // and the workspace stays on WASM, whose catalog still has to load.
+        set({ currentDatabase: "memory" });
+        await get().fetchDatabasesAndTablesInfo();
+      }
     } else {
       await get().fetchDatabasesAndTablesInfo();
     }

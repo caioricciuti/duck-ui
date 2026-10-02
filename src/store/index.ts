@@ -40,7 +40,7 @@ export const useDuckStore = create<DuckStoreState>()(storeCreator);
 // ─── Auto-save: debounced writes to system DB ────────────────────────────────
 
 let saveTimer: ReturnType<typeof setTimeout>;
-let lastSavedTabs: string | undefined;
+let lastSavedWorkspace: string | undefined;
 let lastSavedAiProvider: string | undefined;
 let lastSavedMessages: number | undefined;
 
@@ -68,14 +68,18 @@ async function persistWorkspaceState(state: DuckStoreState): Promise<void> {
         return { ...tab, result: undefined };
       })
     );
-    if (tabsJson !== lastSavedTabs) {
+    // Keyed on the connection too: switching connections without touching a
+    // tab used to leave the stored current_connection_id behind.
+    const connectionId = state.currentConnection?.id ?? null;
+    const workspaceKey = `${connectionId ?? ""}\u0000${tabsJson}`;
+    if (workspaceKey !== lastSavedWorkspace) {
       await saveWorkspace(currentProfileId, {
         tabs: tabsJson,
         activeTabId: state.activeTabId,
-        currentConnectionId: state.currentConnection?.id ?? null,
+        currentConnectionId: connectionId,
         currentDatabase: state.currentDatabase ?? null,
       });
-      lastSavedTabs = tabsJson;
+      lastSavedWorkspace = workspaceKey;
     }
 
     // Save AI provider configs when changed

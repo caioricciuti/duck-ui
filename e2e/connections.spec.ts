@@ -35,7 +35,11 @@ test("a saved browser-storage connection is still listed after a reload", async 
   await sheet.getByLabel("Database File").fill("kept.db");
   await sheet.getByRole("button", { name: "Connect" }).click();
   await expect(sheet).toBeHidden({ timeout: 60_000 });
-  await expect(list.getByRole("row", { name: /Kept/ })).toBeVisible();
+  const kept = list.getByRole("row", { name: /Kept/ });
+  await expect(kept).toBeVisible();
+  await expect(kept.getByRole("button", { name: "Connected" })).toBeVisible();
+  // The workspace, including the active connection, is saved 2 s after a change.
+  await page.waitForTimeout(2500);
 
   await page.reload();
   await bootConnections(page);
@@ -43,4 +47,12 @@ test("a saved browser-storage connection is still listed after a reload", async 
   await expect(list.getByRole("row", { name: /Kept/ })).toBeVisible({ timeout: 30_000 });
   // One row, not a duplicate from the engine and the profile each adding it.
   await expect(list.getByRole("row", { name: /Kept/ })).toHaveCount(1);
+  // And it is active again, not just listed: adding it made it current, and
+  // the reload reconnects to what was current.
+  await expect(
+    list.getByRole("row", { name: /Kept/ }).getByRole("button", { name: "Connected" })
+  ).toBeVisible({ timeout: 60_000 });
+  await expect(
+    list.getByRole("row", { name: /WASM/ }).getByRole("button", { name: "Connect", exact: true })
+  ).toBeVisible();
 });
