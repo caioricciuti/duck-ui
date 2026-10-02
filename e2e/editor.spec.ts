@@ -138,7 +138,8 @@ test("sorting a result cut at the row limit sorts the whole answer", async ({ pa
   await header.click(); // ascending
   await header.click(); // descending
   await expect(panel.getByText("over the full result")).toBeVisible();
-  await expect(grid.getByText("4,999", { exact: true })).toBeVisible();
+  // An integer column named id prints without thousands separators.
+  await expect(grid.getByText("4999", { exact: true })).toBeVisible();
   await expect(grid.getByText("999", { exact: true })).toHaveCount(0);
 });
 

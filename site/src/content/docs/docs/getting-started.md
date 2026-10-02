@@ -199,6 +199,8 @@ Below the editor, the result panel has **Table**, **Charts**, **Stats** and **Sc
 
 **Column stats** in the grid footer adds a summary under each column name: a histogram for numbers and dates, the share of `true` for booleans, one bar per value for text with up to 12 distinct values and a distinct count beyond that, plus the share of nulls. Hover it for the numbers. It describes the rows currently in the grid, so it follows the search box and the filters; past 100,000 rows it is drawn from an evenly spaced sample and the tooltip says so. The choice is remembered in the browser.
 
+**1,000** in the grid footer turns thousands separators on or off. They are on by default, except for integer columns named like an id, a year or a postal code (`id`, `user_id`, `orderId`, `year`, `year_built`, `zip`, `postcode`), which always print as plain digits.
+
 ### Mobile
 
 Below 768px the rail moves to the bottom of the screen and the explorer becomes a drawer. Duck-UI is also installable as a PWA and works offline after the first visit.

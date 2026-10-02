@@ -34,6 +34,25 @@ export function getDisplayType(columnType: string): DisplayType {
   return "unknown";
 }
 
+const INTEGER_TYPE = /^(U?INT(8|16|32|64)?|U?(TINY|SMALL|BIG|HUGE)INT|INTEGER)\b/;
+const IDENTIFIER_WORDS = new Set(["id", "uid", "pk", "year", "yr", "zip", "zipcode", "postcode"]);
+
+/**
+ * Whether the grid may print a column's numbers with thousands separators.
+ * Integer columns named like an id, a year or a postal code are labels, not
+ * quantities: `4,999` for an id or `2,024` for a year reads wrong. The name
+ * is split on snake_case, kebab-case, spaces and camelCase, so `user_id`,
+ * `userId`, `ID` and `year_built` all count.
+ */
+export function groupsDigits(columnName: string, columnType: string): boolean {
+  if (!INTEGER_TYPE.test(columnType.trim().toUpperCase())) return true;
+  const words = columnName
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/);
+  return !words.some((word) => IDENTIFIER_WORDS.has(word));
+}
+
 /** Numbers are right-aligned so digits line up. */
 export function isRightAligned(columnType: string): boolean {
   return getDisplayType(columnType) === "number";
