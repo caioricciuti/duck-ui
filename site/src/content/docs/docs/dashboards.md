@@ -83,8 +83,8 @@ All charts bind the same way: `data={query_name}` plus column props.
 | `<PieChart/>` | pie | `x` labels, `y` values |
 | `<DonutChart/>` | donut | pie with a hole |
 | `<FunnelChart/>` | bars | drawn as a bar chart in this version |
-| `<BoxPlot/>` | placeholder | no renderer in this version; the tag shows a placeholder box |
-| `<Heatmap/>` | placeholder | no renderer in this version; the tag shows a placeholder box |
+| `<BoxPlot/>` | box plot | `x` categories, `y` raw values; see below |
+| `<Heatmap/>` | heatmap | `x` and `y` categories, `value` the number; see below |
 
 Common props: `x`, `y`, `series` (split into one series per distinct value), `title` (drawn as a caption). Without `y`, the first numeric column is used.
 
@@ -94,6 +94,22 @@ SELECT region, month, sum(amount) AS total FROM sales GROUP BY 1, 2
 ```
 
 <LineChart data={by_region} x=month y=total series=region title='Monthly by region'/>
+````
+
+#### Box plots
+
+`<BoxPlot data={q} x=category y=value/>` draws one box per distinct `x`, from the raw values of `y`, so the query returns one row per observation rather than pre-computed quartiles. Quartiles are interpolated the way DuckDB's `quantile_cont` does it. Whiskers reach the furthest value within 1.5 times the box height (the interquartile range); values beyond are drawn as dots. Without `x` the whole column is one box; without `y` the first numeric column that is not `x` is used. Hover a box for n, min, quartiles and max.
+
+#### Heatmaps
+
+`<Heatmap data={q} x=hour y=day value=total/>` draws a grid of `value` by the categories of `x` and `y`. Rows that share a pair are summed and missing pairs stay empty. The color runs from the background to the accent, with the range in a legend below. Without `value` the first numeric column that is neither `x` nor `y` is used. Up to 50 categories per axis are drawn; past that the chart says so, and filtering or grouping the query brings the rest in.
+
+````markdown
+```sql activity
+SELECT dayname(ts) AS day, hour(ts) AS hour, count(*) AS events FROM events GROUP BY 1, 2
+```
+
+<Heatmap data={activity} x=hour y=day value=events title='Events by hour'/>
 ````
 
 ### Tables and values

@@ -217,6 +217,33 @@ test.describe("markdown dashboards", () => {
       page.getByRole("tabpanel").getByText(/does not exist|Catalog Error/i).first()
     ).toBeVisible({ timeout: 60_000 });
   });
+  test("box plots and heatmaps draw from their queries", async ({ page }) => {
+    await bootWithResult(page, `SELECT 1 AS n`);
+    await addToNewDashboard(page, "Distributions");
+    await expect(page.getByRole("tabpanel").getByText("1").first()).toBeVisible({
+      timeout: 60_000,
+    });
+
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    const editor = sourceEditor(page);
+    await expect(editor).toBeVisible({ timeout: 60_000 });
+    await editor.click();
+    await page.keyboard.press(process.platform === "darwin" ? "Meta+a" : "Control+a");
+    await page.keyboard.type(
+      "```sql spread\nSELECT CASE WHEN i % 2 = 0 THEN 'even' ELSE 'odd' END AS g, i * 1.5 AS v FROM range(40) t(i)\n```\n\n" +
+        "<BoxPlot data={spread} x=g y=v/>\n\n" +
+        "```sql grid\nSELECT 'd' || (i % 3) AS day, i % 4 AS hour, i AS n FROM range(24) t(i)\n```\n\n" +
+        "<Heatmap data={grid} x=hour y=day value=n/>\n"
+    );
+    await page.getByRole("button", { name: "Done", exact: true }).click();
+
+    const panel = page.getByRole("tabpanel");
+    await expect(panel.getByRole("img", { name: "Box plot of v, 2 boxes" })).toBeVisible({
+      timeout: 60_000,
+    });
+    await expect(panel.getByRole("img", { name: /^Heatmap of n by hour and day/ })).toBeVisible();
+    await expect(panel.getByText("has no renderer")).toHaveCount(0);
+  });
 });
 
 test.describe("inputs and sharing", () => {
