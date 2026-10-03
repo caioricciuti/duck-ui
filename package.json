@@ -1,8 +1,8 @@
 {
   "name": "duck-ui",
   "private": true,
-  "version": "2.2.0",
-  "release_date": "2026-10-02",
+  "version": "2.3.0",
+  "release_date": "2026-10-03",
   "type": "module",
   "bin": {
     "duck-ui": "cli/duck-ui.js"
