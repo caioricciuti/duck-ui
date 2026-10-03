@@ -151,8 +151,15 @@ export const createDashboardSlice: StateCreator<DuckStoreState, [], [], Dashboar
     const isLatest = () => latestUpdate.get(dashboard.id) === token;
 
     // Optimistic: the editor must feel immediate. Persistence catches up.
+    // The tab showing this dashboard is named after it, so a rename lands
+    // there too; it used to keep the name the dashboard was opened with.
     set((state) => ({
       dashboards: state.dashboards.map((entry) => (entry.id === dashboard.id ? dashboard : entry)),
+      tabs: state.tabs.map((tab) =>
+        tab.type === "dashboard" && tab.content === dashboard.id && tab.title !== dashboard.name
+          ? { ...tab, title: dashboard.name }
+          : tab
+      ),
     }));
     if (!profileId) return;
 

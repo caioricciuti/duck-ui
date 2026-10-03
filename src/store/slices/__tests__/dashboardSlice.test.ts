@@ -122,6 +122,16 @@ describe("updateDashboard ordering", () => {
       return { ...entry, updatedAt: `saved:${entry.source}` };
     });
 
+  it("renames the tab that shows the dashboard", async () => {
+    saveDashboard.mockImplementation(async (_profileId: string, d: Dashboard) => d);
+    const state = setup({
+      dashboards: [dashboard("d1"), dashboard("d2")],
+      tabs: [dashboardTab("t1", "d1"), dashboardTab("t2", "d2")],
+    });
+    await state().updateDashboard({ ...dashboard("d1"), name: "Test dash" });
+    expect(state().tabs.map((tab) => tab.title)).toEqual(["Test dash", "d2"]);
+  });
+
   it("keeps the newer text when the older save finishes last", async () => {
     slowSaves({ older: 30, newer: 0 });
     const state = setup({ dashboards: [dashboard("a", "start")] });
