@@ -141,6 +141,15 @@ test.describe("markdown dashboards", () => {
     await expect(panel.locator(".cm-content")).toHaveCount(0);
   });
 
+  test("renaming a dashboard renames its tab", async ({ page }) => {
+    await bootApp(page);
+    await createDashboard(page, "Before");
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
+    await page.getByLabel("Dashboard name").fill("Test dash");
+    await expect(page.getByRole("tab", { name: "Test dash", exact: true })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Before", exact: true })).toHaveCount(0);
+  });
+
   test("the editor autocompletes components, and accepting one scaffolds its props", async ({
     page,
   }) => {
