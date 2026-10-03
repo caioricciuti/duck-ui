@@ -10,7 +10,7 @@
     "target": "ES2022",
     "useDefineForClassFields": true,
     "module": "ESNext",
-    "types": ["svelte", "vite/client", "vitest/globals"],
+    "types": ["svelte", "vite/client", "vite-plugin-pwa/client", "vitest/globals"],
     "composite": true,
     "emitDeclarationOnly": true,
     /**

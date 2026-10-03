@@ -47,6 +47,12 @@ This guide helps you resolve common issues when using Duck-UI. If you encounter 
 - Check if your browser has WebAssembly disabled
 - Try a different browser
 
+### The app looks out of date
+
+Duck-UI installs a service worker so it loads instantly and works offline. When a new version ships, the worker fetches it in the background, and an **update button** (an arrow in a circle) appears at the bottom of the left rail. Click it: your work is saved and the page reloads into the new version. Open tabs check for a new build every hour and each time you come back to them.
+
+If the button never appears, the browser may be holding on to an old worker: close every Duck-UI tab and open the app again.
+
 ### OPFS Storage
 
 #### Problem: "OPFS not available in this browser"
