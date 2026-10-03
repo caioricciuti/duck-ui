@@ -303,12 +303,17 @@
     </div>
   {/if}
 
-  <div class="absolute -bottom-3 left-1/2 z-10 -translate-x-1/2 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+  <!-- A zero-width box at the midpoint; flex centers the button around it.
+       Not a transform: the menu this opens is position: fixed, and a
+       transformed ancestor would pin it to this box instead of the viewport.
+       The hover fade is on the button alone, so the open menu stays visible
+       when the pointer leaves the cell. -->
+  <div class="absolute -bottom-3 left-1/2 z-10 flex w-0 justify-center">
     <AddCellMenu
       onadd={(type) => onaddcell(cell.id, type)}
       align="center"
       ariaLabel="Add cell below"
-      class="inline-flex h-5 w-5 items-center justify-center rounded-full border border-edge bg-surface text-fg-3 shadow-sm transition-colors hover:border-edge-strong hover:text-fg"
+      class="inline-flex h-5 w-5 items-center justify-center rounded-full border border-edge bg-surface text-fg-3 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 focus-visible:opacity-100 aria-expanded:opacity-100 hover:border-edge-strong hover:text-fg"
     >
       <Plus size={12} />
     </AddCellMenu>
