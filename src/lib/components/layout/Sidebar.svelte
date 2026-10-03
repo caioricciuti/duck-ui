@@ -7,7 +7,8 @@
   import { openCommandPalette } from '../../stores/command-palette.svelte'
   import { getRoute, goTo, goWorkspace } from '../../stores/router.svelte'
   import { groupForRoute, NAV_GROUPS, visibleRoutes, type NavGroup } from '@/lib/routes'
-  import { Sun, Moon, Search, SquareTerminal, PanelLeft } from 'lucide-svelte'
+  import { Sun, Moon, Search, SquareTerminal, PanelLeft, CircleArrowUp } from 'lucide-svelte'
+  import { applyUpdate, isUpdateApplying, isUpdateAvailable } from '../../stores/update.svelte'
   import { isMobile, openDrawer } from '../../stores/layout.svelte'
 
   const profile = $derived(duck((s) => s.currentProfile))
@@ -101,6 +102,19 @@
   {/if}
 
   {#if !mobile}<span class="my-1.5 h-px w-5 bg-edge"></span>{/if}
+
+  {#if isUpdateAvailable()}
+    <!-- A new build is active in the service worker; this reload picks it up. -->
+    <button
+      class="{railButton} {mobile ? '' : 'mb-1'} bg-accent-soft text-accent hover:bg-hover disabled:opacity-60"
+      onclick={() => void applyUpdate()}
+      disabled={isUpdateApplying()}
+      title="A new version of Duck-UI is ready. Click to reload into it"
+      aria-label="Update to the latest version"
+    >
+      <CircleArrowUp size={16} />
+    </button>
+  {/if}
 
   {#if !mobile}
     <span

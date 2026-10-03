@@ -10,6 +10,7 @@
   import { isEmbedPath } from './lib/urlLoaders'
   import { duck, duckActions } from './lib/stores/duck.svelte'
   import { syncThemeFromStorage } from './lib/stores/theme.svelte'
+  import { startUpdateChecks } from './lib/stores/update.svelte'
   import { bootProfile, selectProfile, createAndLoadProfile } from './lib/boot'
   import type { Profile } from './store/types'
 
@@ -34,6 +35,9 @@
   }
 
   onMount(async () => {
+    // Every screen, the embed included, registers the worker: it is what
+    // caches the app for offline use and what announces a new version.
+    void startUpdateChecks()
     if (embed) return
     try {
       const boot = await bootProfile()

@@ -1,9 +1,9 @@
-import { defineConfig, loadEnv } from 'vite'
-import { svelte } from '@sveltejs/vite-plugin-svelte'
-import tailwindcss from '@tailwindcss/vite'
-import { VitePWA } from 'vite-plugin-pwa'
-import { fileURLToPath } from 'node:url'
-import pkg from './package.json' with { type: 'json' }
+import { defineConfig, loadEnv } from "vite";
+import { svelte } from "@sveltejs/vite-plugin-svelte";
+import tailwindcss from "@tailwindcss/vite";
+import { VitePWA } from "vite-plugin-pwa";
+import { fileURLToPath } from "node:url";
+import pkg from "./package.json" with { type: "json" };
 
 // Applied by `vite preview` and the Docker serve config (serve.json, keep the
 // two in sync). Not applied to `vite dev`, whose HMR needs inline scripts.
@@ -22,78 +22,91 @@ const CSP = [
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
-].join('; ')
+].join("; ");
 
 // DuckDB OPFS and the Python kernel's SharedArrayBuffer need cross-origin isolation.
 const ISOLATION_HEADERS = {
-  'Cross-Origin-Opener-Policy': 'same-origin',
-  'Cross-Origin-Embedder-Policy': 'credentialless',
-}
+  "Cross-Origin-Opener-Policy": "same-origin",
+  "Cross-Origin-Embedder-Policy": "credentialless",
+};
 
 export default defineConfig(({ mode }) => {
   // Only DUCK_UI_ prefixed vars are loaded, so CI secrets cannot leak into the bundle.
-  const env = loadEnv(mode, process.cwd(), 'DUCK_UI_')
-  const buildDuckdbCdnOnly = env.DUCK_UI_DUCKDB_WASM_CDN_ONLY === 'true'
+  const env = loadEnv(mode, process.cwd(), "DUCK_UI_");
+  const buildDuckdbCdnOnly = env.DUCK_UI_DUCKDB_WASM_CDN_ONLY === "true";
 
   // Keys that are not valid JS identifiers are skipped (Windows exposes env
   // vars like "=::"). See https://github.com/caioricciuti/duck-ui/issues/26
-  const envDefines: Record<string, string> = {}
+  const envDefines: Record<string, string> = {};
   for (const key in env) {
     if (/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(key)) {
-      envDefines[`import.meta.env.${key}`] = JSON.stringify(env[key])
+      envDefines[`import.meta.env.${key}`] = JSON.stringify(env[key]);
     }
   }
 
   return {
-    appType: 'spa',
-    base: process.env.DUCK_UI_BASEPATH ?? '/',
+    appType: "spa",
+    base: process.env.DUCK_UI_BASEPATH ?? "/",
     plugins: [
       svelte(),
       tailwindcss(),
       VitePWA({
-        registerType: 'autoUpdate',
-        includeAssets: ['logo.png', 'logo-light.png', 'logo-padding.png', 'logo-192.png', 'badge.svg'],
+        registerType: "autoUpdate",
+        // The app registers the worker itself (stores/update.svelte.ts) so it
+        // can show an update button instead of reloading under the user.
+        injectRegister: false,
+        includeAssets: [
+          "logo.png",
+          "logo-light.png",
+          "logo-padding.png",
+          "logo-192.png",
+          "badge.svg",
+        ],
         manifest: {
-          name: 'Duck-UI',
-          short_name: 'Duck-UI',
+          name: "Duck-UI",
+          short_name: "Duck-UI",
           description:
-            'DuckDB in your browser: SQL editor, notebooks, charts, and AI, fully local.',
-          theme_color: '#000000',
-          background_color: '#000000',
-          display: 'standalone',
-          start_url: '.',
+            "DuckDB in your browser: SQL editor, notebooks, charts, and AI, fully local.",
+          theme_color: "#000000",
+          background_color: "#000000",
+          display: "standalone",
+          start_url: ".",
           icons: [
-            { src: 'logo-192.png', sizes: '192x192', type: 'image/png' },
-            { src: 'logo-padding.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-            { src: 'logo-padding.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+            { src: "logo-192.png", sizes: "192x192", type: "image/png" },
+            { src: "logo-padding.png", sizes: "512x512", type: "image/png", purpose: "any" },
+            { src: "logo-padding.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
           ],
         },
         workbox: {
+          // A new worker takes over at once; without these it waited until
+          // every Duck-UI tab was closed, which is why a plain reload kept
+          // showing the old version and only a hard reload got the new one.
+          skipWaiting: true,
+          clientsClaim: true,
           // Precache only the app shell. Precaching every chunk would push
           // tens of megabytes to first-time visitors (exceljs, both DuckDB
           // workers, the map). Hashed /assets/* chunks, the WASM binaries and
           // AI models are cached at runtime on first use instead, so after
           // one session the app works fully offline.
           globPatterns: [
-            'index.html',
-            'registerSW.js',
-            'manifest.webmanifest',
-            '*.{svg,png,ico}',
-            'theme.js',
-            'fonts/*.woff2',
-            'assets/index-*.{js,css}',
+            "index.html",
+            "manifest.webmanifest",
+            "*.{svg,png,ico}",
+            "theme.js",
+            "fonts/*.woff2",
+            "assets/index-*.{js,css}",
           ],
-          globIgnores: ['**/env.js', '**/screenshot.png'],
+          globIgnores: ["**/env.js", "**/screenshot.png"],
           maximumFileSizeToCacheInBytes: 20 * 1024 * 1024,
-          navigateFallback: 'index.html',
+          navigateFallback: "index.html",
           runtimeCaching: [
             {
               // Hashed build chunks (immutable filenames), cached as the app
               // loads them.
               urlPattern: /\/assets\/.+\.(js|css)$/,
-              handler: 'CacheFirst',
+              handler: "CacheFirst",
               options: {
-                cacheName: 'duckui-chunks',
+                cacheName: "duckui-chunks",
                 expiration: { maxEntries: 300 },
                 cacheableResponse: { statuses: [0, 200] },
               },
@@ -101,18 +114,18 @@ export default defineConfig(({ mode }) => {
             {
               // Same-origin WASM (DuckDB engine bundles)
               urlPattern: /\.wasm$/,
-              handler: 'CacheFirst',
+              handler: "CacheFirst",
               options: {
-                cacheName: 'duckui-wasm',
+                cacheName: "duckui-wasm",
                 expiration: { maxEntries: 12 },
                 cacheableResponse: { statuses: [0, 200] },
               },
             },
             {
               urlPattern: /^https:\/\/(community-)?extensions\.duckdb\.org\/.*/i,
-              handler: 'CacheFirst',
+              handler: "CacheFirst",
               options: {
-                cacheName: 'duckdb-extensions',
+                cacheName: "duckdb-extensions",
                 expiration: { maxEntries: 60 },
                 cacheableResponse: { statuses: [0, 200] },
               },
@@ -122,9 +135,9 @@ export default defineConfig(({ mode }) => {
               // never change, and large enough (runtime + wheels) that it
               // must not evict the DuckDB bundles from the jsdelivr cache.
               urlPattern: /^https:\/\/cdn\.jsdelivr\.net\/pyodide\/.*/i,
-              handler: 'CacheFirst',
+              handler: "CacheFirst",
               options: {
-                cacheName: 'pyodide',
+                cacheName: "pyodide",
                 expiration: { maxEntries: 80, maxAgeSeconds: 30 * 24 * 60 * 60 },
                 cacheableResponse: { statuses: [0, 200] },
               },
@@ -134,9 +147,9 @@ export default defineConfig(({ mode }) => {
               // opaque no-cors responses, so a poisoned/failed entry must be
               // able to self-heal from the network.
               urlPattern: /^https:\/\/cdn\.jsdelivr\.net\/.*/i,
-              handler: 'StaleWhileRevalidate',
+              handler: "StaleWhileRevalidate",
               options: {
-                cacheName: 'jsdelivr-cdn',
+                cacheName: "jsdelivr-cdn",
                 expiration: { maxEntries: 40, maxAgeSeconds: 7 * 24 * 60 * 60 },
                 cacheableResponse: { statuses: [0, 200] },
               },
@@ -145,9 +158,9 @@ export default defineConfig(({ mode }) => {
               // Runtime config: fresh from the server when online, last-seen
               // value when offline (env.js is excluded from the precache).
               urlPattern: /\/env\.js$/,
-              handler: 'NetworkFirst',
+              handler: "NetworkFirst",
               options: {
-                cacheName: 'duckui-env',
+                cacheName: "duckui-env",
                 expiration: { maxEntries: 1 },
                 cacheableResponse: { statuses: [0, 200] },
               },
@@ -158,28 +171,28 @@ export default defineConfig(({ mode }) => {
     ],
     resolve: {
       alias: {
-        '@': fileURLToPath(new URL('./src', import.meta.url)),
+        "@": fileURLToPath(new URL("./src", import.meta.url)),
       },
       dedupe: [
-        '@codemirror/state',
-        '@codemirror/view',
-        '@codemirror/language',
-        '@codemirror/autocomplete',
-        '@codemirror/commands',
-        '@codemirror/search',
-        '@lezer/common',
-        '@lezer/highlight',
-        '@lezer/lr',
+        "@codemirror/state",
+        "@codemirror/view",
+        "@codemirror/language",
+        "@codemirror/autocomplete",
+        "@codemirror/commands",
+        "@codemirror/search",
+        "@lezer/common",
+        "@lezer/highlight",
+        "@lezer/lr",
       ],
     },
     server: {
-      host: '127.0.0.1',
+      host: "127.0.0.1",
       port: 5173,
       headers: ISOLATION_HEADERS,
     },
     preview: {
-      host: '127.0.0.1',
-      headers: { ...ISOLATION_HEADERS, 'Content-Security-Policy': CSP },
+      host: "127.0.0.1",
+      headers: { ...ISOLATION_HEADERS, "Content-Security-Policy": CSP },
     },
     define: {
       __DUCK_UI_VERSION__: JSON.stringify(pkg.version),
@@ -188,18 +201,18 @@ export default defineConfig(({ mode }) => {
       ...envDefines,
     },
     build: {
-      target: 'es2022',
+      target: "es2022",
       rollupOptions: {
         output: {
           manualChunks(id) {
-            if (!id.includes('node_modules')) return undefined
-            if (id.includes('@codemirror') || id.includes('@lezer')) return 'codemirror'
-            if (id.includes('lucide-svelte')) return 'icons'
-            if (id.includes('uplot')) return 'charts'
-            return undefined
+            if (!id.includes("node_modules")) return undefined;
+            if (id.includes("@codemirror") || id.includes("@lezer")) return "codemirror";
+            if (id.includes("lucide-svelte")) return "icons";
+            if (id.includes("uplot")) return "charts";
+            return undefined;
           },
         },
       },
     },
-  }
-})
+  };
+});

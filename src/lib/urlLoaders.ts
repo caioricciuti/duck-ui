@@ -1,4 +1,3 @@
-import { flushAutoSave, leaveWithoutPrompt } from "@/store";
 import { useDuckStore } from "@/store";
 import * as toast from "@/lib/stores/toast.svelte";
 import { getUiConfig } from "@/lib/appConfig";
@@ -145,30 +144,4 @@ export async function copyQueryURL(query: string, autoExecute = false): Promise<
     console.error("Failed to copy URL to clipboard:", error);
     return false;
   }
-}
-
-/**
- * After a deploy, the auto-updating service worker purges the previous
- * build's precache; a mid-session lazy chunk load would then 404. Reload once
- * when a NEW worker replaces an existing one. The 2s-debounced workspace
- * auto-save makes this nearly lossless. The first-ever install also fires
- * controllerchange (clientsClaim), and reloading there would loop.
- */
-export function reloadOnServiceWorkerUpdate(): void {
-  if (!("serviceWorker" in navigator)) return;
-  let hadController = !!navigator.serviceWorker.controller;
-  let reloadingForNewVersion = false;
-  navigator.serviceWorker.addEventListener("controllerchange", () => {
-    if (!hadController) {
-      hadController = true;
-      return;
-    }
-    if (reloadingForNewVersion) return;
-    reloadingForNewVersion = true;
-    // Stored first, so nothing is lost by reloading without asking.
-    void flushAutoSave().finally(() => {
-      leaveWithoutPrompt();
-      window.location.reload();
-    });
-  });
 }
