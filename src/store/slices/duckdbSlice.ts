@@ -11,6 +11,7 @@ import { localHandles, mergeConnections, toCurrentConnection } from "./connectio
 import { getSetting } from "@/services/persistence/repositories/settingsRepository";
 import { clampMaxResultRows, DEFAULT_MAX_RESULT_ROWS } from "./querySlice";
 import { loadAppConfig } from "@/lib/appConfig";
+import { loadRangeReadsPreference } from "@/services/duckdb/rangeReads";
 import { toast } from "svelte-sonner";
 
 export const DEFAULT_DUCKDB_MEMORY_LIMIT_MB = 4096;
@@ -77,6 +78,10 @@ export const createDuckdbSlice: StateCreator<DuckStoreState, [], [], DuckdbSlice
       set({ isLoading: false, isInitialized: true });
       return;
     }
+
+    // Before any engine runs a statement: each applies it on its first one.
+    const bootProfileId = get().currentProfileId;
+    if (bootProfileId) await loadRangeReadsPreference(bootProfileId);
 
     // The in-browser engine always boots, even when an external connection is
     // the one that ends up active: file import, deep links and parquet export

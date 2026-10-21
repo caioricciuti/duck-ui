@@ -20,6 +20,12 @@ import * as duckdb from "@duckdb/duckdb-wasm";
 import { generateUUID } from "@/lib/utils";
 import { fetchWasmDatabases } from "@/services/duckdb/schemaFetcher";
 import {
+  applyRangeReads,
+  isRangeUnsupportedError,
+  isSingleStatement,
+  rangeReadsPreferred,
+} from "@/services/duckdb/rangeReads";
+import {
   createExecution,
   QueryCancelledError,
   type ProducedItem,
@@ -54,6 +60,8 @@ export class LocalDuckSessionImpl implements LocalDuckSession {
   private open = true;
   private execConnection: duckdb.AsyncDuckDBConnection | null = null;
   private queue: Promise<void> = Promise.resolve();
+  /** The range-reads preference last applied to `execConnection`. */
+  private rangeReadsWanted: boolean | null = null;
   private readonly teardown: LocalDuckSessionOptions["teardown"];
 
   constructor(options: LocalDuckSessionOptions) {
@@ -96,25 +104,57 @@ export class LocalDuckSessionImpl implements LocalDuckSession {
       if (context.signal.aborted) throw new QueryCancelledError();
 
       const connection = await this.getExecConnection();
-      const reader = await connection.send(sql);
-
-      // Stop pressed in the window before send() resolved.
-      if (context.signal.aborted) {
-        await connection.cancelSent().catch(() => {});
-        throw new QueryCancelledError();
-      }
-      interrupt.hook = () => connection.cancelSent();
-
-      if (reader.schema) {
-        yield { kind: "schema", schema: arrowSchemaToQuerySchema(reader.schema) };
-      }
-
-      for await (const batch of reader) {
-        yield { kind: "chunk", rows: batch.numRows, chunk: { encoding: "arrow", batch } };
+      const progress = { schemaSent: false, rowsSent: false };
+      try {
+        yield* this.stream(connection, sql, context, interrupt, progress);
+      } catch (error) {
+        // A server that ignores Range makes httpfs fail; a full download
+        // works. Retried only while nothing reached the caller and the SQL is
+        // one statement, so nothing runs twice.
+        const message = error instanceof Error ? error.message : String(error);
+        if (progress.rowsSent || context.signal.aborted || !isRangeUnsupportedError(message)) {
+          throw error;
+        }
+        if (!isSingleStatement(sql)) throw error;
+        console.info("[DuckDB] The server ignores range requests, downloading the file whole.");
+        await connection.query("SET force_download = true");
+        try {
+          yield* this.stream(connection, sql, context, interrupt, progress);
+        } finally {
+          await connection.query("RESET force_download").catch(() => {});
+        }
       }
     } finally {
       interrupt.hook = null;
       release();
+    }
+  }
+
+  private async *stream(
+    connection: duckdb.AsyncDuckDBConnection,
+    sql: string,
+    context: ProducerContext,
+    interrupt: { hook: (() => Promise<unknown>) | null },
+    progress: { schemaSent: boolean; rowsSent: boolean }
+  ): AsyncGenerator<ProducedItem> {
+    const reader = await connection.send(sql);
+
+    // Stop pressed in the window before send() resolved.
+    if (context.signal.aborted) {
+      await connection.cancelSent().catch(() => {});
+      throw new QueryCancelledError();
+    }
+    interrupt.hook = () => connection.cancelSent();
+
+    // A retry has the same schema; it is announced once.
+    if (reader.schema && !progress.schemaSent) {
+      progress.schemaSent = true;
+      yield { kind: "schema", schema: arrowSchemaToQuerySchema(reader.schema) };
+    }
+
+    for await (const batch of reader) {
+      progress.rowsSent = true;
+      yield { kind: "chunk", rows: batch.numRows, chunk: { encoding: "arrow", batch } };
     }
   }
 
@@ -147,10 +187,19 @@ export class LocalDuckSessionImpl implements LocalDuckSession {
     await this.teardown(this.local.db, this.local.connection);
   }
 
-  /** Lazily opens the dedicated statement connection. */
+  /**
+   * Lazily opens the dedicated statement connection, and brings its HTTP
+   * layer in line with the range-reads preference, which can change between
+   * runs.
+   */
   private async getExecConnection(): Promise<duckdb.AsyncDuckDBConnection> {
     if (!this.execConnection) {
       this.execConnection = await this.local.db.connect();
+    }
+    const wanted = rangeReadsPreferred();
+    if (this.rangeReadsWanted !== wanted) {
+      this.rangeReadsWanted = wanted;
+      await applyRangeReads(this.execConnection, wanted);
     }
     return this.execConnection;
   }

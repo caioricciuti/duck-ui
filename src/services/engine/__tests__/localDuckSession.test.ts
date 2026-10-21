@@ -4,6 +4,7 @@ import type * as duckdb from "@duckdb/duckdb-wasm";
 import { LocalDuckSessionImpl } from "../drivers/localDuckSession";
 import { collectExecution, materializeExecution } from "../queryStream";
 import { LOCAL_MEMORY_CAPABILITIES } from "../session";
+import { isSingleStatement } from "@/services/duckdb/rangeReads";
 
 /**
  * A stand-in for `AsyncDuckDBConnection` that records the order statements
@@ -215,5 +216,98 @@ describe("LocalDuckSessionImpl — lifecycle", () => {
     await session.close();
     const result = await materializeExecution(session.execute({ sql: "SELECT 1" }));
     expect(result.error).toMatch(/closed/i);
+  });
+});
+
+describe("LocalDuckSessionImpl — remote reads", () => {
+  const NO_RANGE = "HTTP Error: Server sent back more data than expected";
+
+  /** Makes the next `send` of the first exec connection fail once with `message`. */
+  const failFirstSend = (engine: ReturnType<typeof makeFakeEngine>, message: string) => {
+    const original = engine.db.connect.getMockImplementation()!;
+    engine.db.connect.mockImplementationOnce(async () => {
+      const connection = await original();
+      const send = connection.send.getMockImplementation()!;
+      connection.send.mockImplementationOnce(async () => {
+        throw new Error(message);
+      });
+      connection.send.mockImplementation(send);
+      return connection;
+    });
+  };
+
+  it("switches the statement connection to httpfs before the first statement", async () => {
+    const engine = makeFakeEngine();
+    const session = makeSession(engine);
+    await materializeExecution(session.execute({ sql: "SELECT 1" }));
+
+    const exec = engine.events.filter((e) => e.startsWith("exec1:"));
+    expect(exec.slice(0, 4)).toEqual([
+      "exec1:query:INSTALL httpfs",
+      "exec1:query:LOAD httpfs",
+      "exec1:query:SET builtin_httpfs = false",
+      "exec1:start:SELECT 1",
+    ]);
+  });
+
+  it("retries once with a full download when the server ignores Range", async () => {
+    const engine = makeFakeEngine();
+    failFirstSend(engine, NO_RANGE);
+    const session = makeSession(engine);
+
+    const result = await materializeExecution(
+      session.execute({ sql: "SELECT * FROM 'https://example.com/x.parquet'" })
+    );
+
+    expect(result.error).toBeUndefined();
+    expect(result.rowCount).toBe(2);
+    const exec = engine.events.filter((e) => e.startsWith("exec1:query:"));
+    expect(exec.slice(-2)).toEqual([
+      "exec1:query:SET force_download = true",
+      "exec1:query:RESET force_download",
+    ]);
+  });
+
+  it("does not retry several statements, which would run the first ones twice", async () => {
+    const engine = makeFakeEngine();
+    failFirstSend(engine, NO_RANGE);
+    const session = makeSession(engine);
+
+    const result = await materializeExecution(
+      session.execute({
+        sql: "INSERT INTO t VALUES (1); SELECT * FROM 'https://example.com/x.parquet'",
+      })
+    );
+
+    expect(result.error).toMatch(/more data than expected/);
+    expect(engine.events).not.toContain("exec1:query:SET force_download = true");
+  });
+
+  it("does not retry other errors", async () => {
+    const engine = makeFakeEngine();
+    failFirstSend(engine, "HTTP Error: 404 Not Found");
+    const session = makeSession(engine);
+
+    const result = await materializeExecution(session.execute({ sql: "SELECT 1" }));
+
+    expect(result.error).toMatch(/404/);
+    expect(engine.events).not.toContain("exec1:query:SET force_download = true");
+  });
+});
+
+describe("isSingleStatement", () => {
+  it.each([
+    ["SELECT 1", true],
+    ["SELECT 1;", true],
+    ["SELECT 1;  \n -- done", true],
+    ["SELECT ';' AS semi", true],
+    ["SELECT '--'; DROP TABLE t", false],
+    ["SELECT 1 -- a; comment", true],
+    ['SELECT 1 AS "a;b"', true],
+    ["SELECT $$;$$ /* ; */", true],
+    ["INSERT INTO t VALUES (1); SELECT 2", false],
+    ["SELECT 'it''s; fine'", true],
+  ])("%s -> %s", (sql, expected) => {
+    expect(isSingleStatement(sql)).toBe(expected);
   });
 });

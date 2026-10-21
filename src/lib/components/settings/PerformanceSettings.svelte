@@ -1,6 +1,7 @@
 <script lang="ts">
   import { getSetting, setSetting } from '@/services/persistence/repositories/settingsRepository'
   import { DEFAULT_DUCKDB_MEMORY_LIMIT_MB } from '@/store/slices/duckdbSlice'
+  import { RANGE_READS_SETTING, rangeReadsPreferred, setRangeReadsPreferred } from '@/services/duckdb/rangeReads'
   import { clampMaxResultRows, MAX_MAX_RESULT_ROWS, MIN_MAX_RESULT_ROWS } from '@/store/slices/querySlice'
   import Button from '../common/Button.svelte'
   import Input from '../common/Input.svelte'
@@ -20,6 +21,8 @@
   let maxResultRowsDraft = $state<number | null>(null)
   const maxResultRows = $derived(maxResultRowsDraft ?? storedMaxResultRows)
   let saving = $state(false)
+  // Loaded with the profile, before this page can open.
+  let rangeReads = $state(rangeReadsPreferred())
 
   $effect(() => {
     const profileId = currentProfileId
@@ -53,6 +56,18 @@
       toast.error('Failed to save memory limit')
     } finally {
       saving = false
+    }
+  }
+
+  async function saveRangeReads(enabled: boolean) {
+    rangeReads = enabled
+    // Each engine applies it before its next statement, no reload needed.
+    setRangeReadsPreferred(enabled)
+    if (!currentProfileId) return
+    try {
+      await setSetting(currentProfileId, 'duckdb', RANGE_READS_SETTING, JSON.stringify(enabled))
+    } catch {
+      toast.error('Failed to save the remote file setting')
     }
   }
 
@@ -118,5 +133,24 @@
       />
       <Button size="md" variant="outline" disabled={saving} onclick={saveMaxResultRows}>Save</Button>
     </div>
+  </FormField>
+
+  <FormField
+    layout="row"
+    controlWidth="full"
+    label="Read remote files in ranges"
+    for="range-reads"
+    hint="Fetches only the parts of a remote Parquet or DuckDB file a query needs, through DuckDB's httpfs extension (about 500 kB, downloaded once). A server that does not support ranges still works: the file is then downloaded whole. Turn off to always download remote files whole."
+  >
+    <label class="ds-checkbox-label">
+      <input
+        id="range-reads"
+        type="checkbox"
+        class="ds-checkbox"
+        checked={rangeReads}
+        onchange={(e) => saveRangeReads(e.currentTarget.checked)}
+      />
+      <span class="text-sm">Enabled</span>
+    </label>
   </FormField>
 </div>
