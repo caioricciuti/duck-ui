@@ -10,6 +10,7 @@ import type { ForkTableProgress } from "@/services/collaboration/fork";
 import type { Dashboard } from "@/services/dashboard/types";
 import type { ResultSnapshot } from "@/lib/resultDiff";
 import type { QueryParamsState } from "@/lib/sqlParams";
+import type { QuackAttachment } from "@/lib/quack";
 import type { ExtensionAction, ExtensionInfo } from "@/lib/duckdbExtensions";
 
 //
@@ -738,6 +739,23 @@ export interface ResultPinSlice {
   clearResultPins: () => void;
 }
 
+/** A remote DuckDB attached over Quack, as the UI sees it. Never holds the token. */
+export interface QuackAttachmentState extends QuackAttachment {
+  status: "attached" | "failed";
+  /** DuckDB's message from the last failed attach. */
+  error?: string;
+}
+
+export interface QuackSlice {
+  quackAttachments: QuackAttachmentState[];
+  /** Attaches the profile's saved remote databases. Called once the engine is up. */
+  restoreQuackAttachments: () => Promise<void>;
+  /** Attaches and saves. Throws with a readable message when it cannot attach. */
+  attachQuack: (input: QuackAttachment & { token: string }) => Promise<void>;
+  reconnectQuack: (alias: string) => Promise<void>;
+  detachQuack: (alias: string) => Promise<void>;
+}
+
 //
 // Composed Store Type
 //
@@ -752,4 +770,5 @@ export type DuckStoreState = DuckdbSlice &
   ProfileSlice &
   SessionSlice &
   DashboardSlice &
-  ResultPinSlice;
+  ResultPinSlice &
+  QuackSlice;

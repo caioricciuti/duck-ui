@@ -8,6 +8,7 @@
   import { duck, duckActions } from '../../stores/duck.svelte'
   import ConnectionForm from './ConnectionForm.svelte'
   import ConnectionsList from './ConnectionsList.svelte'
+  import QuackAttachments from './QuackAttachments.svelte'
   import { toConnectionProvider, valuesFromConnection, type ConnectionFormValues } from './connectionSchema'
 
   const connections = $derived(duck((s) => s.connectionList.connections))
@@ -71,6 +72,8 @@
       />
     </div>
   </Panel>
+
+  <QuackAttachments />
 </PageBody>
 
 <ConnectionForm open={adding} onsubmit={addConnection} onclose={() => (adding = false)} />

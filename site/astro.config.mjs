@@ -68,6 +68,7 @@ export default defineConfig({
             { label: "Folder access", slug: "docs/folder-access" },
             { label: "Dashboards", slug: "docs/dashboards" },
             { label: "Live sessions", slug: "docs/live-sessions" },
+            { label: "Remote DuckDB", slug: "docs/remote-duckdb" },
             { label: "Charts", slug: "docs/charts" },
             { label: "Embedding", slug: "docs/embedding" },
             { label: "Environment variables", slug: "docs/environment-variables" },

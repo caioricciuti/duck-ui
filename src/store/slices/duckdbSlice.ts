@@ -156,6 +156,14 @@ export const createDuckdbSlice: StateCreator<DuckStoreState, [], [], DuckdbSlice
       );
     }
 
+    // Before the catalog loads, so remote databases show up in it. A server
+    // that is down marks its attachment failed and does not hold up the boot.
+    try {
+      await get().restoreQuackAttachments();
+    } catch (error) {
+      console.warn("[Quack] Failed to restore attachments:", error);
+    }
+
     // An ENV-configured external server takes over as the active connection.
     // The WASM provider is always pushed first, so index 0 is never it.
     // Otherwise the connection that was active before the reload comes back,

@@ -54,6 +54,7 @@ describe("statement screening — writes and escapes are refused", () => {
     ["SELECT * FROM read_csv('/etc/passwd')", /files or URLs/i],
     ["SELECT * FROM read_parquet('https://evil.example/x.parquet')", /files or URLs/i],
     ["SELECT * FROM glob('/**')", /files or URLs/i],
+    ["SELECT * FROM quack_query('quack:evil.example', 'SELECT 1')", /files or URLs/i],
   ])("refuses %s", (sql, expected) => {
     expect(allows(sql)).toBe(false);
     expect(refusalFor(sql)).toMatch(expected);
