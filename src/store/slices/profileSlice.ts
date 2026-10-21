@@ -18,6 +18,7 @@ import {
   getConversations,
 } from "@/services/persistence/repositories/aiConfigRepository";
 import { getSettingsByCategory } from "@/services/persistence/repositories/settingsRepository";
+import { loadRangeReadsPreference } from "@/services/duckdb/rangeReads";
 import {
   generateEncryptionKey,
   deriveKeyFromPassword,
@@ -265,6 +266,9 @@ export const createProfileSlice: StateCreator<DuckStoreState, [], [], ProfileSli
       isProfileLoaded: true,
       encryptionKey: cryptoKey,
     });
+
+    // Applied by each engine before its next statement.
+    await loadRangeReadsPreference(profileId);
 
     // On first boot the engine starts later and restores them itself.
     if (get().isInitialized) {

@@ -154,6 +154,18 @@ If the button never appears, the browser may be holding on to an old worker: clo
    SELECT * FROM read_csv('https://raw.githubusercontent.com/...');
    ```
 
+#### Problem: "Queries on remote files download too much"
+
+Duck-UI reads remote Parquet and DuckDB files in ranges, fetching only the parts a query needs. This uses DuckDB's httpfs extension, downloaded once (about 500 kB). Check the Network tab: requests should carry a `Range` header and answer `206`.
+
+If they don't:
+
+1. **Check the setting**: Settings > Performance > **Read remote files in ranges** must be on.
+2. **Check the server**: it must answer `Range` requests with `206`, and its CORS headers must allow the `Range` request header and expose `Content-Range` and `Content-Length`.
+3. **Offline or blocked extension**: when httpfs cannot be loaded, Duck-UI falls back to DuckDB-WASM's built-in HTTP layer, which downloads remote files whole.
+
+A server that ignores `Range` still works: the query is retried once with the whole file downloaded. A script of several statements is not retried, so nothing runs twice; run the failing statement on its own, or start the script with `SET force_download = true;`.
+
 ### File System Access
 
 #### Problem: "File System Access not supported"
