@@ -19,6 +19,9 @@ export const fetchWasmDatabases = async (
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     dbListResult.toArray().map(async (db: any) => {
       const dbName = db.name.toString();
+      if (String(db.file ?? "").startsWith("quack:")) {
+        return { name: dbName, tables: await fetchQuackTables(connection, dbName) };
+      }
       const tablesResult = await connection.query(
         `SELECT table_schema, table_name
          FROM information_schema.tables
@@ -67,4 +70,63 @@ export const fetchWasmDatabases = async (
       return { name: dbName, tables };
     })
   );
+};
+
+/**
+ * Tables of a database attached over Quack.
+ *
+ * A Quack catalog resolves tables lazily, so the local metadata views list
+ * none of them. The server is asked instead, in two round trips for the whole
+ * catalog rather than a DESCRIBE and a COUNT per table, each of which would
+ * cross the network. Row counts are DuckDB's estimate, exact for a table
+ * without deletes. A server that cannot answer leaves the catalog empty
+ * instead of sinking the explorer.
+ */
+const fetchQuackTables = async (
+  connection: duckdb.AsyncDuckDBConnection,
+  dbName: string
+): Promise<TableInfo[]> => {
+  const remote = (sql: string) =>
+    connection.query(
+      `SELECT * FROM quack_query_by_name('${sqlEscapeString(dbName)}', '${sqlEscapeString(sql)}')`
+    );
+  try {
+    const tablesResult = await remote(
+      `SELECT t.table_schema, t.table_name, coalesce(d.estimated_size, 0) AS row_count
+       FROM information_schema.tables t
+       LEFT JOIN duckdb_tables() d
+         ON d.database_name = t.table_catalog AND d.schema_name = t.table_schema AND d.table_name = t.table_name
+       WHERE t.table_catalog = current_database()
+       ORDER BY t.table_schema, t.table_name`
+    );
+    const columnsResult = await remote(
+      `SELECT table_schema, table_name, column_name, data_type, is_nullable
+       FROM information_schema.columns
+       WHERE table_catalog = current_database()
+       ORDER BY table_schema, table_name, ordinal_position`
+    );
+    const columnsByTable = new Map<string, ColumnInfo[]>();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const col of columnsResult.toArray() as any[]) {
+      const key = `${col.table_schema}\u0000${col.table_name}`;
+      const list = columnsByTable.get(key) ?? [];
+      list.push({
+        name: String(col.column_name),
+        type: String(col.data_type),
+        nullable: col.is_nullable === "YES",
+      });
+      columnsByTable.set(key, list);
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (tablesResult.toArray() as any[]).map((tbl) => ({
+      name: String(tbl.table_name),
+      schema: String(tbl.table_schema),
+      columns: columnsByTable.get(`${tbl.table_schema}\u0000${tbl.table_name}`) ?? [],
+      rowCount: Number(tbl.row_count ?? 0),
+      createdAt: new Date().toISOString(),
+    }));
+  } catch (error) {
+    console.error(`Failed to introspect Quack database ${dbName}:`, error);
+    return [];
+  }
 };

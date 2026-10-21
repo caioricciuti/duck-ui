@@ -69,7 +69,7 @@ const CONFIGURING = /\bSET\s+(?!SESSION\s+TIME\s+ZONE)/i;
 
 /** Functions that read from disk or the network. */
 const EXTERNAL_READERS =
-  /\b(read_csv|read_csv_auto|read_json|read_json_auto|read_ndjson|read_parquet|read_blob|read_text|parquet_scan|glob|sniff_csv)\s*\(/i;
+  /\b(read_csv|read_csv_auto|read_json|read_json_auto|read_ndjson|read_parquet|read_blob|read_text|parquet_scan|glob|sniff_csv|quack_query|quack_query_by_name)\s*\(/i;
 
 /**
  * Screens one statement against a capability's policy.

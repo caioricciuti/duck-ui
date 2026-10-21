@@ -229,10 +229,19 @@ Share Runtime — its own DuckDB-WASM instance holding only explicitly shared
 data — executes it. That boundary is a Phase 5 deliverable and its limitations
 will be documented rather than overstated.
 
-### Quack (future)
+### Quack
 
-DuckDB 2.x over Quack is a `QuackDriver` and nothing else. No core type
-mentions DuckDB 2.0, and none should.
+Quack runs over plain HTTP, so DuckDB-WASM speaks it through the `quack`
+extension. Duck-UI uses it as an ATTACH on the built-in in-browser engine,
+not as a driver: the remote database becomes one more catalog, and a query
+can join it with local data (`store/slices/quackSlice.ts`, `lib/quack.ts`).
+The token lives in a host-scoped secret, never in the ATTACH options, which
+`duckdb_databases()` would list in plain text. A Quack catalog does not list
+its tables locally, so `schemaFetcher.ts` asks the server through
+`quack_query_by_name`.
+
+The `quack` connection kind stays reserved for a session that runs entirely
+on the server, should that ever be wanted.
 
 ### Flight SQL (future, constrained)
 

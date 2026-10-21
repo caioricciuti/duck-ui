@@ -265,6 +265,13 @@ export const createProfileSlice: StateCreator<DuckStoreState, [], [], ProfileSli
       isProfileLoaded: true,
       encryptionKey: cryptoKey,
     });
+
+    // On first boot the engine starts later and restores them itself.
+    if (get().isInitialized) {
+      await get()
+        .restoreQuackAttachments()
+        .catch((error) => console.warn("[Quack] Failed to restore attachments:", error));
+    }
   },
 
   switchProfile: async (profileId, password) => {

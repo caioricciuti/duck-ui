@@ -10,6 +10,7 @@ import { createProfileSlice } from "./slices/profileSlice";
 import { createSessionSlice } from "./slices/sessionSlice";
 import { createDashboardSlice } from "./slices/dashboardSlice";
 import { createResultPinSlice } from "./slices/resultPinSlice";
+import { createQuackSlice } from "./slices/quackSlice";
 import { saveWorkspace } from "@/services/persistence/repositories/workspaceRepository";
 import {
   saveProviderConfig,
@@ -33,6 +34,7 @@ const storeCreator: StateCreator<DuckStoreState> = (...a) => ({
   ...createSessionSlice(...a),
   ...createDashboardSlice(...a),
   ...createResultPinSlice(...a),
+  ...createQuackSlice(...a),
 });
 
 export const useDuckStore = create<DuckStoreState>()(storeCreator);
