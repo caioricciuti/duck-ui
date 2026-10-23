@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte'
   import { Info, Plus, RefreshCw, Trash2 } from 'lucide-svelte'
   import type { QuackAttachmentState } from '@/store/types'
   import Badge from '../common/Badge.svelte'
@@ -15,10 +16,16 @@
 LOAD quack;
 CALL quack_serve('quack:localhost', token := 'your-token');`
 
+  interface Props {
+    /** The attach sheet is open. Bindable, so "Add connection" can open it. */
+    attaching?: boolean
+  }
+
+  let { attaching = $bindable(false) }: Props = $props()
+
   const attachments = $derived(duck((s) => s.quackAttachments))
   const engineReady = $derived(duck((s) => s.isInitialized))
 
-  let open = $state(false)
   let alias = $state('')
   let host = $state('')
   let token = $state('')
@@ -27,13 +34,16 @@ CALL quack_serve('quack:localhost', token := 'your-token');`
   let pending = $state<string | null>(null)
   let detachTarget = $state<QuackAttachmentState | null>(null)
 
-  function openSheet() {
-    alias = ''
-    host = 'localhost:9494'
-    token = ''
-    error = ''
-    open = true
-  }
+  // Fresh fields each time the sheet opens, whoever opened it.
+  $effect(() => {
+    if (!attaching) return
+    untrack(() => {
+      alias = ''
+      host = 'localhost:9494'
+      token = ''
+      error = ''
+    })
+  })
 
   async function submit(e: SubmitEvent) {
     e.preventDefault()
@@ -42,13 +52,13 @@ CALL quack_serve('quack:localhost', token := 'your-token');`
     error = ''
     try {
       await duckActions().attachQuack({ alias, host, token })
-      open = false
+      attaching = false
     } catch (err) {
       // Shown in the sheet so the values can be fixed rather than retyped.
       error = err instanceof Error ? err.message : String(err)
     } finally {
       busy = false
-      token = open ? token : ''
+      token = attaching ? token : ''
     }
   }
 
@@ -81,7 +91,7 @@ CALL quack_serve('quack:localhost', token := 'your-token');`
   class="mt-4"
 >
   {#snippet actions()}
-    <Button size="sm" variant="outline" disabled={!engineReady} onclick={openSheet}>
+    <Button size="sm" variant="outline" disabled={!engineReady} onclick={() => (attaching = true)}>
       <Plus size={14} />
       Attach
     </Button>
@@ -152,11 +162,11 @@ CALL quack_serve('quack:localhost', token := 'your-token');`
 </Panel>
 
 <Sheet
-  {open}
+  open={attaching}
   size="sm"
   title="Attach remote DuckDB"
   description="Over Quack, DuckDB's client-server protocol. The token is stored encrypted in this browser."
-  onclose={() => (open = false)}
+  onclose={() => (attaching = false)}
 >
   <form id={FORM_ID} class="flex flex-col gap-4" novalidate onsubmit={submit}>
     <div class="flex gap-2 rounded-md bg-surface-2 p-3 text-xs text-fg-2">
@@ -186,7 +196,7 @@ CALL quack_serve('quack:localhost', token := 'your-token');`
   </form>
 
   {#snippet footer()}
-    <Button size="sm" variant="outline" onclick={() => (open = false)} disabled={busy}>Cancel</Button>
+    <Button size="sm" variant="outline" onclick={() => (attaching = false)} disabled={busy}>Cancel</Button>
     <Button size="sm" type="submit" form={FORM_ID} disabled={busy}>{busy ? 'Attaching...' : 'Attach'}</Button>
   {/snippet}
 </Sheet>
