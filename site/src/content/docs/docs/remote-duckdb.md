@@ -20,7 +20,7 @@ The server listens on `localhost:9494` and only accepts connections from the sam
 ## Attach it in Duck-UI
 
 1. Open **Data > Connections**
-2. In **Remote DuckDB (Quack)**, click **Attach**
+2. In **Remote DuckDB (Quack)**, click **Attach**. Or click **Add connection** and pick **Remote DuckDB (Quack)** as the connection type
 3. Fill in a **Name** (how the database is called in SQL), the **Host** (`localhost:9494`) and the **Token**
 4. Click **Attach**
 

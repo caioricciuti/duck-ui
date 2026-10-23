@@ -17,6 +17,7 @@
   const loading = $derived(duck((s) => s.isLoading))
 
   let adding = $state(false)
+  let attachingQuack = $state(false)
   let editingId = $state<string | null>(null)
   let editingValues = $state<ConnectionFormValues | undefined>(undefined)
 
@@ -73,10 +74,18 @@
     </div>
   </Panel>
 
-  <QuackAttachments />
+  <QuackAttachments bind:attaching={attachingQuack} />
 </PageBody>
 
-<ConnectionForm open={adding} onsubmit={addConnection} onclose={() => (adding = false)} />
+<ConnectionForm
+  open={adding}
+  onsubmit={addConnection}
+  onclose={() => (adding = false)}
+  onquack={() => {
+    adding = false
+    attachingQuack = true
+  }}
+/>
 
 <ConnectionForm
   open={editingId !== null}

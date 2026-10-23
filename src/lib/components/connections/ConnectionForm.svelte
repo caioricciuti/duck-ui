@@ -22,19 +22,34 @@
     initialValues?: ConnectionFormValues
     onsubmit: (values: ConnectionFormValues) => Promise<void>
     onclose: () => void
+    /**
+     * Offers Quack in the type list. A Quack database is attached rather
+     * than connected to, so picking it hands over to the attach sheet.
+     */
+    onquack?: () => void
   }
 
-  let { open, editMode = false, initialValues, onsubmit, onclose }: Props = $props()
+  let { open, editMode = false, initialValues, onsubmit, onclose, onquack }: Props = $props()
 
   const FORM_ID = `connection-form-${Math.random().toString(36).slice(2, 8)}`
   const HTTP_SERVER_SNIPPET = `INSTALL httpserver FROM community;
 LOAD httpserver;
 SELECT httpserve_start('0.0.0.0', 9999, '');`
 
-  const scopeOptions = [
+  const QUACK = 'Quack'
+  const scopeOptions = $derived([
     { value: 'External', label: 'DuckDB HTTP Server' },
     { value: 'OPFS', label: 'Browser Storage (OPFS)' },
-  ]
+    ...(onquack && !editMode ? [{ value: QUACK, label: 'Remote DuckDB (Quack)' }] : []),
+  ])
+
+  function changeScope(value: string) {
+    if (value === QUACK) {
+      onquack?.()
+      return
+    }
+    if (value === 'External' || value === 'OPFS') draft.scope = value
+  }
   const authOptions = [
     { value: 'none', label: 'None' },
     { value: 'password', label: 'Username/Password' },
@@ -108,7 +123,7 @@ SELECT httpserve_start('0.0.0.0', 9999, '');`
     </FormField>
 
     <FormField controlWidth="full" label="Connection Type" for="connection-scope">
-      <Select id="connection-scope" bind:value={draft.scope} options={scopeOptions} />
+      <Select id="connection-scope" value={draft.scope} options={scopeOptions} onchange={changeScope} />
     </FormField>
 
     {#if draft.scope === 'External'}

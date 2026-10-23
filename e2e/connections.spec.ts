@@ -56,3 +56,20 @@ test("a saved browser-storage connection is still listed after a reload", async 
     list.getByRole("row", { name: /WASM/ }).getByRole("button", { name: "Connect", exact: true })
   ).toBeVisible();
 });
+
+test("Add connection offers Quack and hands over to the attach sheet", async ({ page }) => {
+  await bootConnections(page);
+  await page.getByRole("button", { name: "Add connection" }).click();
+  const sheet = page.getByRole("dialog", { name: "Add New Connection" });
+  await sheet.getByLabel("Connection Type").selectOption("Quack");
+
+  await expect(sheet).toBeHidden();
+  const attach = page.getByRole("dialog", { name: "Attach remote DuckDB" });
+  await expect(attach).toBeVisible();
+  await expect(attach.getByLabel("Host")).toHaveValue("localhost:9494");
+
+  // Closed and reopened, Add connection starts from its own defaults again.
+  await attach.getByRole("button", { name: "Cancel" }).click();
+  await page.getByRole("button", { name: "Add connection" }).click();
+  await expect(sheet.getByLabel("Connection Type")).toHaveValue("External");
+});

@@ -2,19 +2,21 @@ import { test, expect, type Page } from "@playwright/test";
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 
 /**
- * A remote DuckDB attached over Quack. Needs the `duckdb` CLI (1.5.2 or
- * later) on PATH to serve the remote side, so it is skipped where there is
- * none, CI included.
+ * A remote DuckDB attached over Quack. Needs a `duckdb` CLI (1.5.2 or
+ * later) on PATH that can load the quack extension, to serve the remote
+ * side; skipped where there is none, CI included.
  */
 
 const PORT = 19494;
 const HOST = `localhost:${PORT}`;
 const TOKEN = "e2e-quack-token";
-const hasCli = spawnSync("duckdb", ["--version"]).status === 0;
+// Not just installed: the CLI must also get the extension. A development
+// build of DuckDB finds no extension published for its commit.
+const hasCli = spawnSync("duckdb", ["-c", "INSTALL quack; LOAD quack;"]).status === 0;
 
 let server: ChildProcess | undefined;
 
-test.skip(!hasCli, "the duckdb CLI is not installed");
+test.skip(!hasCli, "no duckdb CLI that can load the quack extension");
 
 test.beforeAll(async () => {
   server = spawn("duckdb", [
