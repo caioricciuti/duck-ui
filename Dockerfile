@@ -1,5 +1,8 @@
-# Use an official Node runtime as a parent image with bun
-FROM oven/bun:1-alpine AS build
+# Bun, pinned by version and digest, so a release builds on the image it was
+# tested with and a new upstream push cannot slip in unreviewed. The floating
+# 1-alpine tag moved from 1.4.2 to 1.4.4 between v2.4.0 and v2.5.0 without a
+# commit here. Bump on purpose.
+FROM oven/bun:1.4.2-alpine@sha256:d888c0ae6c86d7866ff10c5aafdd9077b36aee6455b33dd270fb93c0dd5cef6f AS build
 
 ARG DUCK_UI_BASEPATH="/"
 
@@ -19,7 +22,7 @@ COPY . .
 RUN DUCK_UI_BASEPATH=${DUCK_UI_BASEPATH} bun run build
 
 # Use a second stage to reduce image size
-FROM oven/bun:1-alpine
+FROM oven/bun:1.4.2-alpine@sha256:d888c0ae6c86d7866ff10c5aafdd9077b36aee6455b33dd270fb93c0dd5cef6f
 
 # Set the working directory for the second stage
 WORKDIR /app
