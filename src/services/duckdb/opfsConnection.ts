@@ -1,6 +1,6 @@
 import * as duckdb from "@duckdb/duckdb-wasm";
 import { retryWithBackoff, validateConnection } from "./utils";
-import { createDuckdbWorker, resolveDuckdbBundles } from "./wasmConnection";
+import { createDuckdbWorker, selectDuckdbBundle } from "./wasmConnection";
 import type { ConnectionProvider } from "@/store/types";
 
 // OPFS connection tracking to prevent concurrent access
@@ -90,12 +90,8 @@ export const testOPFSConnection = async (
     db: duckdb.AsyncDuckDB;
     connection: duckdb.AsyncDuckDBConnection;
   }> => {
-    const bundles = await resolveDuckdbBundles();
-    const bundle = await duckdb.selectBundle(bundles);
-    if (!bundle.mainWorker) {
-      opfsActivePaths.delete(opfsPath);
-      throw new Error("DuckDB WASM bundle is missing the main worker URL");
-    }
+    // The path is released by the catch around connectionLogic.
+    const bundle = await selectDuckdbBundle();
     const { worker, revoke } = createDuckdbWorker(bundle.mainWorker);
     const logger = new duckdb.VoidLogger();
     const db = new duckdb.AsyncDuckDB(logger, worker);

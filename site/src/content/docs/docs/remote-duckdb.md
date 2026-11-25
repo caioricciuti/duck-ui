@@ -5,6 +5,10 @@ description: "Attach a DuckDB server to the in-browser engine and query it next 
 
 Quack is DuckDB's own client-server protocol. It runs over plain HTTP, so the DuckDB engine inside your browser tab can talk to a DuckDB server directly. Duck-UI attaches the server's database as one more catalog: it shows up in the explorer, and a single query can join remote tables with local files and tables.
 
+:::caution[Not available in Duck-UI 2.6.0]
+Duck-UI 2.6.0 runs DuckDB 2.0, and the browser build of the Quack extension for DuckDB 2.0 needs threads the in-browser engine does not have. Attaching fails with a message saying so. The extension is downloaded from DuckDB when you attach, so Quack works again as soon as DuckDB publishes a fixed one, without a Duck-UI update. Duck-UI 2.5 and earlier are not affected.
+:::
+
 ## Start a server
 
 On the machine with the data, with DuckDB 1.5.2 or later:

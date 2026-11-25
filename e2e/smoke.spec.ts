@@ -111,9 +111,7 @@ test("imports the whole dirty CSV corpus without errors", async ({ page }) => {
   }
 });
 
-test("attaches a multi-schema .duckdb file and shows non-main schemas (#3)", async ({
-  page,
-}) => {
+test("attaches a multi-schema .duckdb file and shows non-main schemas (#3)", async ({ page }) => {
   await bootApp(page);
   await importFiles(page, [fixture("multi_schema.duckdb")]);
 
@@ -121,6 +119,14 @@ test("attaches a multi-schema .duckdb file and shows non-main schemas (#3)", asy
   const tree = await expandTreeNode(page, "multi_schema");
   await expect(tree.getByText("products").first()).toBeVisible();
   await expect(tree.getByText(/staging\./).first()).toBeVisible();
+});
+
+test("attaches a .duckdb file written by DuckDB 2.0 (#81)", async ({ page }) => {
+  await bootApp(page);
+  await importFiles(page, [fixture("duckdb_v2.duckdb")]);
+
+  const tree = await expandTreeNode(page, "duckdb_v2");
+  await expect(tree.getByText("t", { exact: true }).first()).toBeVisible();
 });
 
 test("exports query results to CSV", async ({ page }) => {
@@ -155,9 +161,7 @@ test("cell context menu items actually work", async ({ page }) => {
   await expect(page.getByText("25 cells selected")).toBeVisible();
 });
 
-test("Open-in-Duck-UI deep link confirms, loads remote parquet, and runs", async ({
-  page,
-}) => {
+test("Open-in-Duck-UI deep link confirms, loads remote parquet, and runs", async ({ page }) => {
   const parquet = fs.readFileSync(fixture("tiny.parquet"));
 
   // Serve the fixture as a CORS-enabled remote host, with Range support:

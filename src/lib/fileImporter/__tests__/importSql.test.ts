@@ -11,7 +11,7 @@ import type { SchemaColumn } from "../types";
 describe("buildCsvReadOptions", () => {
   it("writes the basic options as before when nothing advanced is set", () => {
     expect(buildCsvReadOptions(DEFAULT_CSV_OPTIONS)).toBe(
-      "header=true, auto_detect=true, all_varchar=false, ignore_errors=true, null_padding=true, delim=','"
+      "header=true, auto_detect=true, all_varchar=false, ignore_errors=true, null_padding=true, delim=',', parallel=false"
     );
     expect(buildCsvReadOptions()).toBe(buildCsvReadOptions(DEFAULT_CSV_OPTIONS));
   });
@@ -30,7 +30,7 @@ describe("buildCsvReadOptions", () => {
     });
     expect(options).toBe(
       "header=true, auto_detect=true, all_varchar=false, ignore_errors=true, null_padding=true, " +
-        "delim=';', quote='`', escape='\\', skip=2, sample_size=5000, nullstr='N/A', " +
+        "delim=';', parallel=false, quote='`', escape='\\', skip=2, sample_size=5000, nullstr='N/A', " +
         "dateformat='%d/%m/%Y', timestampformat='%d/%m/%Y %H:%M'"
     );
   });

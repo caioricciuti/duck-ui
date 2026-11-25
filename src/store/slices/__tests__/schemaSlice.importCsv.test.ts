@@ -79,7 +79,7 @@ describe("importFile CSV options", () => {
   it("keeps the defaults when no options are given", async () => {
     await setup().importFile("data.csv", new ArrayBuffer(0), "data", "csv");
     expect(createStatement()).toContain(
-      "read_csv('data.csv', header=true, auto_detect=true, all_varchar=false, ignore_errors=true, null_padding=true, delim=',')"
+      "read_csv('data.csv', header=true, auto_detect=true, all_varchar=false, ignore_errors=true, null_padding=true, delim=',', parallel=false)"
     );
   });
 });

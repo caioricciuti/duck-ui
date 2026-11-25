@@ -6,6 +6,12 @@ import { validateConnection } from "./utils";
 const getRuntimeEnv = (): Partial<NonNullable<Window["env"]>> =>
   (window.env ?? {}) as Partial<NonNullable<Window["env"]>>;
 
+// File names of the single-threaded bundle since duckdb-wasm moved to DuckDB
+// 2.0 (before: duckdb-eh.wasm and duckdb-browser-eh.worker.js). A custom CDN
+// base URL must serve these.
+const BASE_MODULE_FILE = "duckdb-base.wasm";
+const BASE_WORKER_FILE = "duckdb-browser-base.worker.js";
+
 const getCdnBundles = (runtimeEnv: Partial<NonNullable<Window["env"]>>): duckdb.DuckDBBundles => {
   const configuredBaseUrl = runtimeEnv.DUCK_UI_DUCKDB_WASM_BASE_URL ?? "";
   if (!configuredBaseUrl) {
@@ -15,13 +21,9 @@ const getCdnBundles = (runtimeEnv: Partial<NonNullable<Window["env"]>>): duckdb.
   const baseUrl = configuredBaseUrl.replace(/\/+$/, "");
 
   return {
-    mvp: {
-      mainModule: `${baseUrl}/duckdb-mvp.wasm`,
-      mainWorker: `${baseUrl}/duckdb-browser-mvp.worker.js`,
-    },
-    eh: {
-      mainModule: `${baseUrl}/duckdb-eh.wasm`,
-      mainWorker: `${baseUrl}/duckdb-browser-eh.worker.js`,
+    base: {
+      mainModule: `${baseUrl}/${BASE_MODULE_FILE}`,
+      mainWorker: `${baseUrl}/${BASE_WORKER_FILE}`,
     },
   };
 };
@@ -35,19 +37,16 @@ export const resolveDuckdbBundles: () => Promise<duckdb.DuckDBBundles> =
         const getLocalBundles = async (): Promise<duckdb.DuckDBBundles> => {
           if (!localBundlesPromise) {
             localBundlesPromise = Promise.all([
-              import("@duckdb/duckdb-wasm/dist/duckdb-mvp.wasm?url"),
-              import("@duckdb/duckdb-wasm/dist/duckdb-browser-mvp.worker.js?url"),
-              import("@duckdb/duckdb-wasm/dist/duckdb-eh.wasm?url"),
-              import("@duckdb/duckdb-wasm/dist/duckdb-browser-eh.worker.js?url"),
+              import("@duckdb/duckdb-wasm/dist/duckdb-base.wasm?url"),
+              import("@duckdb/duckdb-wasm/dist/duckdb-browser-base.worker.js?url"),
             ])
-              .then(([duckdbWasm, mvpWorker, duckdbWasmEh, ehWorker]) => ({
-                mvp: {
-                  mainModule: duckdbWasm.default,
-                  mainWorker: mvpWorker.default,
-                },
-                eh: {
-                  mainModule: duckdbWasmEh.default,
-                  mainWorker: ehWorker.default,
+              // Only the single-threaded bundle: the threads one is still
+              // experimental upstream, and every engine here runs one query
+              // at a time per connection anyway.
+              .then(([baseWasm, baseWorker]) => ({
+                base: {
+                  mainModule: baseWasm.default,
+                  mainWorker: baseWorker.default,
                 },
               }))
               .catch((error) => {
@@ -68,6 +67,60 @@ export const resolveDuckdbBundles: () => Promise<duckdb.DuckDBBundles> =
           return getLocalBundles();
         };
       })();
+
+/**
+ * Picks the engine bundle and turns the two ways that fails into messages a
+ * person can act on. Every engine (memory, OPFS, shared session) starts here.
+ */
+export const selectDuckdbBundle = async (): Promise<
+  duckdb.DuckDBBundle & { mainWorker: string }
+> => {
+  const bundles = await resolveDuckdbBundles();
+  let bundle: duckdb.DuckDBBundle;
+  try {
+    bundle = await duckdb.selectBundle(bundles);
+  } catch (error) {
+    // DuckDB 2.0 dropped the build for browsers without WebAssembly
+    // exception handling: Chrome and Edge before 95, Firefox before 100,
+    // Safari before 15.2.
+    if (error instanceof Error && /exception handling/i.test(error.message)) {
+      throw new Error(
+        "This browser is too old to run DuckDB: it lacks WebAssembly exception handling. " +
+          "Use a current Chrome, Edge, Firefox or Safari."
+      );
+    }
+    throw error;
+  }
+  if (!bundle.mainWorker) {
+    throw new Error("DuckDB WASM bundle is missing the main worker URL");
+  }
+  await checkCustomBaseUrl(bundle.mainModule);
+  return { ...bundle, mainWorker: bundle.mainWorker };
+};
+
+/**
+ * A self-hosted DUCK_UI_DUCKDB_WASM_BASE_URL pinned to a duckdb-wasm build
+ * from before 2.0 has no duckdb-base.wasm. Without this check the worker fails
+ * to load and the engine never starts, with nothing on screen saying why.
+ */
+const checkCustomBaseUrl = async (mainModule: string): Promise<void> => {
+  const baseUrl = getRuntimeEnv().DUCK_UI_DUCKDB_WASM_BASE_URL;
+  if (!baseUrl || !mainModule.startsWith(baseUrl.replace(/\/+$/, ""))) return;
+  let status: number;
+  try {
+    status = (await fetch(mainModule, { method: "HEAD" })).status;
+  } catch {
+    // Offline or a CORS refusal: let instantiate report it as before.
+    return;
+  }
+  if (status === 404) {
+    throw new Error(
+      `DUCK_UI_DUCKDB_WASM_BASE_URL has no ${BASE_MODULE_FILE} (${mainModule} returned 404). ` +
+        `Duck-UI now runs DuckDB 2.0: point it at a duckdb-wasm build that serves ` +
+        `${BASE_MODULE_FILE} and ${BASE_WORKER_FILE}, or unset it.`
+    );
+  }
+};
 
 export const createDuckdbWorker = (
   mainWorkerUrl: string
@@ -95,11 +148,7 @@ export const initializeWasmConnection = async (): Promise<{
   db: duckdb.AsyncDuckDB;
   connection: duckdb.AsyncDuckDBConnection;
 }> => {
-  const bundles = await resolveDuckdbBundles();
-  const bundle = await duckdb.selectBundle(bundles);
-  if (!bundle.mainWorker) {
-    throw new Error("DuckDB WASM bundle is missing the main worker URL");
-  }
+  const bundle = await selectDuckdbBundle();
   const { worker, revoke } = createDuckdbWorker(bundle.mainWorker);
   const logger = new duckdb.VoidLogger();
 

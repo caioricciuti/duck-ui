@@ -84,6 +84,23 @@ export function quackAttachStatements(attachment: QuackAttachment, token: string
   ];
 }
 
+/**
+ * The message to show for a failed attach. The browser build of the Quack
+ * extension for DuckDB 2.0 starts a thread pool, which the single-threaded
+ * engine refuses with a bare "thread constructor failed". Extensions are
+ * fetched from DuckDB at run time, so a fixed extension needs no Duck-UI
+ * release and this message simply stops appearing.
+ */
+export function quackAttachErrorMessage(message: string): string {
+  if (/thread constructor failed/i.test(message)) {
+    return (
+      "Quack is not available in the browser with DuckDB 2.0 yet: the Quack extension needs " +
+      "threads the in-browser engine does not have. It will work again once DuckDB ships a fixed extension."
+    );
+  }
+  return message;
+}
+
 /** The statements that undo `quackAttachStatements`. Each may fail on its own. */
 export function quackDetachStatements(alias: string): string[] {
   return [
