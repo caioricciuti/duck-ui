@@ -36,7 +36,7 @@
     "@codemirror/search": "6.7.0",
     "@codemirror/state": "6.6.0",
     "@codemirror/view": "6.42.1",
-    "@duckdb/duckdb-wasm": "1.33.1-dev64.0",
+    "@duckdb/duckdb-wasm": "1.33.1-dev118.0",
     "@lezer/highlight": "1.2.3",
     "@mlc-ai/web-llm": "^0.2.84",
     "@tailwindcss/vite": "^4.3.3",

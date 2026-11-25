@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { createRequire } from "node:module";
+import { readFileSync } from "node:fs";
 import { resultToJSON } from "../resultParser";
 import { findGeometryColumns, resultToGeoJson } from "@/lib/geoResult";
 import { LIST_EXTENSIONS_SQL, parseExtensionRows } from "@/lib/duckdbExtensions";
@@ -15,17 +16,17 @@ const require = createRequire(import.meta.url);
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let conn: any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let db: any;
 
 beforeAll(async () => {
   const duckdb = require("@duckdb/duckdb-wasm/dist/duckdb-node-blocking.cjs");
-  const mainModule = require.resolve("@duckdb/duckdb-wasm/dist/duckdb-eh.wasm");
-  const db = await duckdb.createDuckDB(
+  db = await duckdb.createDuckDB(
     {
-      mvp: {
-        mainModule: require.resolve("@duckdb/duckdb-wasm/dist/duckdb-mvp.wasm"),
+      base: {
+        mainModule: require.resolve("@duckdb/duckdb-wasm/dist/duckdb-base.wasm"),
         mainWorker: null,
       },
-      eh: { mainModule, mainWorker: null },
     },
     new duckdb.VoidLogger(),
     duckdb.NODE_RUNTIME
@@ -292,5 +293,27 @@ describe("map view and extension manager against the real engine", () => {
     const parquet = extensions.find((e) => e.name === "parquet");
     expect(parquet).toBeDefined();
     expect(typeof parquet?.loaded).toBe("boolean");
+  });
+});
+
+describe("database files across DuckDB versions", () => {
+  it("runs DuckDB 2.0", () => {
+    expect(run("SELECT version() AS v").data[0].v).toMatch(/^v2\./);
+  });
+
+  it("attaches a file written by the DuckDB 2.0 CLI, storage version 999 (#81)", () => {
+    // e2e/fixtures/duckdb_v2.duckdb: made with the 2.0.0 CLI, header version 999,
+    // which the 1.x engine refused with "can only read versions between 64 and 68".
+    const file = readFileSync(
+      new URL("../../../../e2e/fixtures/duckdb_v2.duckdb", import.meta.url)
+    );
+    db.registerFileBuffer("duckdb_v2.duckdb", new Uint8Array(file));
+    run("ATTACH 'duckdb_v2.duckdb' AS v2 (READ_ONLY)");
+    try {
+      const rows = run("SELECT id, label FROM v2.t ORDER BY id").data;
+      expect(rows.map((r) => r.label)).toEqual(["row 0", "row 1", "row 2"]);
+    } finally {
+      run("DETACH v2");
+    }
   });
 });

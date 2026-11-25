@@ -4,6 +4,7 @@ import { toast } from "svelte-sonner";
 import { getSession, requireLocalDuckSession, WASM_CONNECTION_ID } from "@/services/engine";
 import {
   normalizeQuackHost,
+  quackAttachErrorMessage,
   quackAttachStatements,
   quackDetachStatements,
   validateQuackAttachment,
@@ -37,7 +38,7 @@ async function attach(attachment: QuackAttachment, token: string): Promise<void>
   } catch (error) {
     // Leave no secret behind for an attachment that does not exist.
     await detach(attachment.alias);
-    throw error;
+    throw new Error(quackAttachErrorMessage(errorMessage(error)), { cause: error });
   }
 }
 

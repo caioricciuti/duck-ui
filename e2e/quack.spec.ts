@@ -67,7 +67,12 @@ async function runQuery(page: Page, sql: string) {
   return panel;
 }
 
-test("attaches a remote DuckDB, keeps it across a reload, and detaches it", async ({ page }) => {
+// The browser build of the Quack extension for DuckDB 2.0 starts a thread
+// pool the single-threaded engine refuses. Lift this once DuckDB ships a
+// fixed extension; the test below then fails and says so.
+test.fixme("attaches a remote DuckDB, keeps it across a reload, and detaches it", async ({
+  page,
+}) => {
   await page.goto("/?page=connections");
   await ensureProfile(page);
   await expect(page.getByRole("button", { name: "Attach" })).toBeEnabled({ timeout: 60_000 });
@@ -124,6 +129,25 @@ test("attaches a remote DuckDB, keeps it across a reload, and detaches it", asyn
   await ensureProfile(page);
   await expect(page.getByRole("button", { name: "Attach" })).toBeEnabled({ timeout: 60_000 });
   await expect(page.getByText("Nothing attached.")).toBeVisible();
+});
+
+test("explains that Quack does not run on the DuckDB 2.0 browser engine yet", async ({ page }) => {
+  await page.goto("/?page=connections");
+  await ensureProfile(page);
+  await expect(page.getByRole("button", { name: "Attach" })).toBeEnabled({ timeout: 60_000 });
+
+  await page.getByRole("button", { name: "Attach" }).click();
+  const sheet = page.getByRole("dialog", { name: "Attach remote DuckDB" });
+  await sheet.getByLabel("Name").fill("remote_db");
+  await sheet.getByLabel("Host").fill(HOST);
+  await sheet.getByLabel("Token").fill(TOKEN);
+  await sheet.getByRole("button", { name: "Attach" }).click();
+  await expect(sheet.getByRole("alert")).toContainText(
+    "not available in the browser with DuckDB 2.0",
+    {
+      timeout: 60_000,
+    }
+  );
 });
 
 test("a wrong token is reported in the sheet", async ({ page }) => {

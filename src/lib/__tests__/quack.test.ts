@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   normalizeQuackHost,
+  quackAttachErrorMessage,
   quackAttachStatements,
   quackDetachStatements,
   validateQuackAttachment,
@@ -69,6 +70,20 @@ describe("quackAttachStatements", () => {
 
   it("loads the extension before using it", () => {
     expect(statements.slice(0, 2)).toEqual(["INSTALL quack", "LOAD quack"]);
+  });
+});
+
+describe("quackAttachErrorMessage", () => {
+  it("explains the DuckDB 2.0 thread error", () => {
+    expect(
+      quackAttachErrorMessage("Invalid Error: thread constructor failed: Not supported")
+    ).toMatch(/not available in the browser with DuckDB 2.0/);
+  });
+
+  it("passes any other error through", () => {
+    expect(quackAttachErrorMessage("IO Error: connection refused")).toBe(
+      "IO Error: connection refused"
+    );
   });
 });
 

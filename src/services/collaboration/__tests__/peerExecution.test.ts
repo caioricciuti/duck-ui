@@ -34,12 +34,8 @@ beforeAll(async () => {
   const duckdb = require("@duckdb/duckdb-wasm/dist/duckdb-node-blocking.cjs");
   const db = await duckdb.createDuckDB(
     {
-      mvp: {
-        mainModule: require.resolve("@duckdb/duckdb-wasm/dist/duckdb-mvp.wasm"),
-        mainWorker: null,
-      },
-      eh: {
-        mainModule: require.resolve("@duckdb/duckdb-wasm/dist/duckdb-eh.wasm"),
+      base: {
+        mainModule: require.resolve("@duckdb/duckdb-wasm/dist/duckdb-base.wasm"),
         mainWorker: null,
       },
     },

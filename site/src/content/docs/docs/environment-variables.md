@@ -27,7 +27,7 @@ These variables pre-configure a connection to an external DuckDB server (via HTT
 |----------|-------------|----------|---------|---------|
 | `DUCK_UI_ALLOW_UNSIGNED_EXTENSIONS` | Allow loading unsigned DuckDB extensions | No | `false` | `"true"` |
 | `DUCK_UI_DUCKDB_WASM_USE_CDN` | Enable loading DuckDB WASM and worker files from CDN (ignored when `DUCK_UI_DUCKDB_WASM_CDN_ONLY=true` at build time) | No | `false` | `"true"` |
-| `DUCK_UI_DUCKDB_WASM_BASE_URL` | Custom CDN base URL (when `DUCK_UI_DUCKDB_WASM_USE_CDN=true`). The origin is added to the CSP automatically at container start | No | Auto (`duckdb.getJsDelivrBundles()`) | `"https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.33.1-dev64.0/dist"` |
+| `DUCK_UI_DUCKDB_WASM_BASE_URL` | Custom CDN base URL (when `DUCK_UI_DUCKDB_WASM_USE_CDN=true`). It must serve `duckdb-base.wasm` and `duckdb-browser-base.worker.js`, the DuckDB 2.0 builds: a URL pinned to an older duckdb-wasm stops the engine from starting. The origin is added to the CSP automatically at container start | No | Auto (`duckdb.getJsDelivrBundles()`) | `"https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.33.1-dev118.0/dist"` |
 | `DUCK_UI_PYODIDE_BASE_URL` | Where Python notebook cells load Pyodide from: a URL or a same-origin path of a Pyodide 0.29.5 "full" distribution folder. A cross-origin URL's origin is added to the CSP at container start | No | `https://cdn.jsdelivr.net/pyodide/v0.29.5/full/` | `"/pyodide/"` |
 
 ### Live session networking
@@ -103,7 +103,7 @@ Optionally specify a custom CDN base URL:
 ```bash
 docker run -p 5522:5522 \
   -e DUCK_UI_DUCKDB_WASM_USE_CDN="true" \
-  -e DUCK_UI_DUCKDB_WASM_BASE_URL="https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.33.1-dev64.0/dist" \
+  -e DUCK_UI_DUCKDB_WASM_BASE_URL="https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.33.1-dev118.0/dist" \
   ghcr.io/caioricciuti/duck-ui:latest
 ```
 
@@ -142,7 +142,7 @@ services:
 
       # CDN Loading (optional)
       # DUCK_UI_DUCKDB_WASM_USE_CDN: "true"
-      # DUCK_UI_DUCKDB_WASM_BASE_URL: "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.33.1-dev64.0/dist"
+      # DUCK_UI_DUCKDB_WASM_BASE_URL: "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.33.1-dev118.0/dist"
 ```
 
 Start the service:

@@ -16,6 +16,8 @@ const ELLIPSIS = "...";
  *     LINE 1: select * FORM t
  *                      ^
  *
+ * DuckDB 2.0 keeps this shape and sometimes marks a span with several carets.
+ *
  * Long lines are shortened with "..." on either side, so the caret column is
  * measured inside the excerpt and the excerpt is then located in the real
  * line. Returns null when the message has no position or it cannot be placed
@@ -58,6 +60,13 @@ export function locateError(message: string, sql: string): ErrorLocation | null 
 
     let from = offsetInLine;
     for (let l = 0; l < lineNumber - 1; l++) from += sqlLines[l].length + 1;
+
+    // DuckDB 2.0 marks some errors with a run of carets over the whole
+    // expression (`^^^^`); that span is the better underline.
+    const run = /^\^+/.exec(lines[i + 1].slice(caret))?.[0].length ?? 1;
+    if (run > 1) {
+      return { from, to: Math.min(from + line.length - offsetInLine, from + run) };
+    }
 
     // Underline the token at the caret, or one character when it sits on
     // whitespace or at the end of the line.

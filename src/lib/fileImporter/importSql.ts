@@ -37,6 +37,9 @@ export function buildCsvReadOptions(csv: Partial<CsvImportOptions> = {}): string
     `null_padding=${flag(csv.nullPadding, true)}`,
     `delim=${quoted(delimiter)}`,
   ];
+  // DuckDB 2.0 refuses null_padding on a file with quoted newlines unless
+  // the parallel reader is off; 1.x switched it off on its own.
+  if (flag(csv.nullPadding, true)) options.push("parallel=false");
 
   const quote = textOption(csv.quote);
   if (quote) options.push(`quote=${quoted(quote)}`);

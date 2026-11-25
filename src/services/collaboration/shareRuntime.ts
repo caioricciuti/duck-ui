@@ -54,7 +54,7 @@
 import * as duckdb from "@duckdb/duckdb-wasm";
 import { Table, type RecordBatch } from "apache-arrow";
 import { generateUUID } from "@/lib/utils";
-import { createDuckdbWorker, resolveDuckdbBundles } from "@/services/duckdb/wasmConnection";
+import { createDuckdbWorker, selectDuckdbBundle } from "@/services/duckdb/wasmConnection";
 
 /** Memory ceiling for the share runtime. Deliberately well below the host's. */
 export const SHARE_RUNTIME_MEMORY_MB = 512;
@@ -122,12 +122,7 @@ export class ShareRuntime {
   }
 
   private async boot(): Promise<void> {
-    const bundles = await resolveDuckdbBundles();
-    const bundle = await duckdb.selectBundle(bundles);
-    if (!bundle.mainWorker) {
-      throw new Error("DuckDB WASM bundle is missing the main worker URL");
-    }
-
+    const bundle = await selectDuckdbBundle();
     const { worker, revoke } = createDuckdbWorker(bundle.mainWorker);
     const db = new duckdb.AsyncDuckDB(new duckdb.VoidLogger(), worker);
 

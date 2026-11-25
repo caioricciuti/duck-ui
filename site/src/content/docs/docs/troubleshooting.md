@@ -20,10 +20,12 @@ This guide helps you resolve common issues when using Duck-UI. If you encounter 
 
 1. **Check browser compatibility**:
    ```
-   Chrome/Edge: Version 88+
-   Firefox: Version 79+
-   Safari: Version 14+
+   Chrome/Edge: Version 95+
+   Firefox: Version 100+
+   Safari: Version 15.2+
    ```
+   DuckDB 2.0 needs WebAssembly exception handling. Older browsers get the
+   message "This browser is too old to run DuckDB".
 
 2. **Clear browser cache**:
    - Press `Ctrl+Shift+Delete` (Windows/Linux) or `Cmd+Shift+Delete` (Mac)
@@ -46,6 +48,26 @@ This guide helps you resolve common issues when using Duck-UI. If you encounter 
 - Update your browser to the latest version
 - Check if your browser has WebAssembly disabled
 - Try a different browser
+
+### DuckDB 2.0
+
+Duck-UI runs DuckDB 2.0 in the browser since version 2.6.0.
+
+#### Problem: "Trying to read a database file with version number 999"
+
+The file was written by DuckDB 2.0 and the engine reading it is older. Duck-UI before 2.6.0 runs DuckDB 1.5 and cannot read it; update the app (see below). The same goes the other way: a database **created** in Duck-UI 2.6.0 or later, or by any DuckDB 2.0, cannot be opened by DuckDB 1.x tools. Databases that already existed keep their format when 2.0 writes to them, so OPFS databases made with an older Duck-UI stay readable by DuckDB 1.x.
+
+#### Problem: "Deprecated lambda arrow (->) detected"
+
+DuckDB 2.0 turned off the `x -> x + 1` lambda syntax. Write `lambda x: x + 1` instead, for example `list_transform(l, lambda x: x * 2)`. To run old queries unchanged for now, `SET lambda_syntax = 'ENABLE_SINGLE_ARROW'` in the same tab first.
+
+#### Problem: "Quack is not available in the browser with DuckDB 2.0 yet"
+
+The browser build of DuckDB 2.0's Quack extension starts threads the in-browser engine cannot run, so attaching a remote DuckDB fails. It works again once DuckDB publishes a fixed extension; no Duck-UI update is needed. See [Remote DuckDB](/docs/remote-duckdb).
+
+#### Problem: "DUCK_UI_DUCKDB_WASM_BASE_URL has no duckdb-base.wasm"
+
+A self-hosted image points `DUCK_UI_DUCKDB_WASM_BASE_URL` at a duckdb-wasm build from before 2.0, whose files are named `duckdb-eh.wasm` and `duckdb-browser-eh.worker.js`. Point it at a 2.0 build (see [Environment variables](/docs/environment-variables)) or unset it.
 
 ### The app looks out of date
 
